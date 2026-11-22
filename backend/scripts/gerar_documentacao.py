@@ -281,6 +281,7 @@ def montar(app) -> str:
     <tr><th>Professor</th><td>Wanderson Muniz de Santana</td></tr>
     <tr><th>Curso</th><td>Ciência da Computação · Noturno · UVV</td></tr>
     <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol</td></tr>
+    <tr><th>Versão online</th><td><b>https://caronauvv.vercel.app</b></td></tr>
     <tr><th>Repositório</th><td>github.com/Kauazxz/caronauvv</td></tr>
     <tr><th>Data</th><td>Novembro de 2026</td></tr>
   </table>
@@ -625,6 +626,8 @@ Flask ── create_app()   (Application Factory)
     a("""
 <section class="quebra">
   <h2>7. Como rodar o projeto</h2>
+  <p><b>Online:</b> <b>https://caronauvv.vercel.app</b> (Vercel: Vue como site estático, API Flask como função
+  serverless e banco PostgreSQL Neon; logins de exemplo abaixo). Para rodar na própria máquina:</p>
   <p><b>Pré-requisitos:</b> Python 3.10 ou mais novo e Node.js 18 ou mais novo. No Windows, extraia o projeto num
   caminho curto (ex.: <code>C:\\caronauvv</code>), porque caminhos longos passam do limite de 260 caracteres e o
   <code>pip</code> falha. São dois terminais.</p>

@@ -116,6 +116,22 @@ python -m flask --app app.py db upgrade && python -m flask --app app.py seed-db
 # testes no PostgreSQL: TEST_DATABASE_URL=postgresql+psycopg://usuario:senha@localhost:5432/caronauvv_test pytest
 ```
 
+### Versão online (Vercel)
+
+O sistema está publicado em **https://caronauvv.vercel.app**:
+
+- o Vue é gerado no build (`frontend/dist`) e servido como site estático;
+- a API Flask roda como função serverless (`api/index.py`, dependências em `requirements.txt`);
+- o banco é um **PostgreSQL Neon** (plano grátis), ligado ao projeto pela variável `DATABASE_URL`;
+- `APP_TZ=<-03>3` deixa o servidor (que roda em UTC) no horário de Brasília;
+- configuração em `vercel.json` e variáveis no painel da Vercel (`SECRET_KEY`, `APP_TZ`, `MOSTRAR_CODIGO_DEV`...).
+
+Publicar de novo: `vercel deploy --prod` na pasta raiz. **Zerar o banco online** com os dados de exemplo
+(faça antes de apresentar): `invoke resetvercel` dentro de `backend/`, com a CLI da Vercel logada.
+
+> A versão online usa as mesmas contas de exemplo (senha `123456`): qualquer pessoa com o link
+> consegue entrar. É uma demonstração; para uso real, troque as senhas e configure um servidor de e-mail.
+
 ## Usuários de exemplo (senha `123456`)
 
 | E-mail | Papel na demonstração |

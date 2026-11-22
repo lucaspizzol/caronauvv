@@ -10,3 +10,6 @@ instance/
 node_modules/
 dist/
 frontend/dist/
+.coverage
+htmlcov/
+logs/

@@ -60,3 +60,49 @@ def nova_carona(client):
         return resp.get_json()["carona"]
 
     return _publicar
+
+
+@pytest.fixture
+def admin(client, novo_aluno):
+    """Aluno com permissao de administrador (painel /admin)."""
+    from caronauvv.auth.models import Usuario
+
+    usuario, headers = novo_aluno("900000001", "Admin")
+    db.session.get(Usuario, usuario["id"]).is_admin = True
+    db.session.commit()
+    return usuario, headers
+
+
+@pytest.fixture
+def viagem(client, novo_aluno, nova_carona):
+    """
+    Carona que sai daqui a 10 min (ja pode ser iniciada) com um passageiro aceito.
+    Devolve um dict com motorista/passageiro (headers), carona, solicitacao e pin.
+    """
+    motorista, h_motorista = novo_aluno("100000001", "Kaua Araujo")
+    passageiro, h_passageiro = novo_aluno("100000002", "Ana Souza")
+    carona = nova_carona(
+        h_motorista, valor_por_passageiro=1.5,
+        data_hora_saida=(datetime.now() + timedelta(minutes=10)).isoformat(timespec="minutes"),
+    )
+    pedido = client.post(f"/api/caronas/{carona['id']}/solicitacoes", json={}, headers=h_passageiro).get_json()
+    sid = pedido["solicitacao"]["id"]
+    client.post(f"/api/solicitacoes/{sid}/aceitar", headers=h_motorista)
+    minhas = client.get("/api/solicitacoes/minhas", headers=h_passageiro).get_json()["solicitacoes"]
+    pin = next(s["pin_embarque"] for s in minhas if s["id"] == sid)
+    return {
+        "motorista": motorista, "h_motorista": h_motorista,
+        "passageiro": passageiro, "h_passageiro": h_passageiro,
+        "carona": carona, "sid": sid, "pin": pin,
+    }
+
+
+@pytest.fixture
+def concluida(client, viagem):
+    """A mesma viagem, ja iniciada, com embarque por PIN e concluida."""
+    cid, sid = viagem["carona"]["id"], viagem["sid"]
+    assert client.post(f"/api/caronas/{cid}/iniciar", headers=viagem["h_motorista"]).status_code == 200
+    assert client.post(f"/api/solicitacoes/{sid}/embarque", json={"pin": viagem["pin"]},
+                       headers=viagem["h_motorista"]).status_code == 200
+    assert client.post(f"/api/caronas/{cid}/concluir", headers=viagem["h_motorista"]).status_code == 200
+    return viagem

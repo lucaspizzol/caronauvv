@@ -1,6 +1,6 @@
 import secrets
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 
 from sqlalchemy.orm import selectinload
 
@@ -61,8 +61,10 @@ def teto_rateio() -> Decimal:
 def valor_sugerido(distancia_km: float, vagas: int) -> Decimal:
     """Custo do combustivel dividido entre motorista e passageiros, limitado ao teto."""
     custo_km = Configuracao.obter_decimal("custo_km_combustivel", "0.55")
-    valor = (custo_km * Decimal(str(distancia_km)) / Decimal(vagas + 1)).quantize(Decimal("0.50"))
-    return min(max(valor, Decimal("0")), teto_rateio())
+    valor = custo_km * Decimal(str(distancia_km)) / Decimal(vagas + 1)
+    # arredonda para cima, de 50 em 50 centavos (R$ 0,85 -> R$ 1,00)
+    valor = (valor * 2).to_integral_value(rounding=ROUND_CEILING) / 2
+    return min(max(valor, Decimal("0")), teto_rateio()).quantize(Decimal("0.01"))
 
 
 def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:

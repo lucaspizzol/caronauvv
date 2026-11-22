@@ -17,9 +17,14 @@ dependencies = [
     "Flask-Migrate>=4.0",
     "Flask-CORS>=4.0",
     "python-dotenv>=1.0",
+    "pydantic>=2.9",          # validacao dos formularios no servidor (schemas)
 ]
 
 [project.optional-dependencies]
+# PostgreSQL (producao): pip install -e .[postgres] e defina DATABASE_URL no .env
+postgres = [
+    "psycopg[binary]>=3.2",
+]
 dev = [
     "ipython",
     "flask-shell-ipython",
@@ -34,6 +39,10 @@ test = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+filterwarnings = [
+    # o SQLite em memoria fecha a conexao no fim de cada teste; o aviso nao indica erro
+    "ignore::ResourceWarning",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

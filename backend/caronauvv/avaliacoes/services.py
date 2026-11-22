@@ -2,7 +2,7 @@ import unicodedata
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from flask import g, has_request_context
+from flask import has_request_context, request
 from sqlalchemy.orm import selectinload
 
 from caronauvv.errors import ApiError
@@ -161,11 +161,11 @@ def _calcular_reputacao(usuario) -> dict:
 
 
 def reputacao(usuario) -> dict:
-    # Guarda o resultado durante a requisicao: a lista de caronas pode
-    # repetir o mesmo motorista varias vezes
+    # Guarda o resultado durante a requisicao (no environ, que e unico por
+    # requisicao): a lista de caronas pode repetir o mesmo motorista varias vezes
     if not has_request_context():
         return _calcular_reputacao(usuario)
-    cache = g.setdefault("_reputacoes", {})
+    cache = request.environ.setdefault("caronauvv.reputacoes", {})
     if usuario.id not in cache:
         cache[usuario.id] = _calcular_reputacao(usuario)
     return cache[usuario.id]

@@ -43,6 +43,25 @@
 
         <CaronaInfo :carona="carona" />
 
+        <!-- Viagem em andamento: GPS ao vivo e seguranca -->
+        <div v-if="carona.status === 'em_andamento'" class="alert alert-info mt-3 mb-0 py-2">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <i class="bi bi-car-front-fill"></i>
+            <strong>Viagem em andamento.</strong>
+            <span class="small">Peça o PIN de cada passageiro quando ele entrar no carro.</span>
+            <button v-if="gps.caronaId !== carona.id" class="btn btn-sm btn-outline-primary ms-auto" @click="ligarGps(carona)">
+              <i class="bi bi-geo-alt me-1"></i>Compartilhar minha localização
+            </button>
+            <span v-else class="small fw-semibold text-success ms-auto">
+              <i class="bi bi-broadcast me-1"></i>Localização ao vivo ligada
+              <span v-if="gps.ultimoEnvio"> · {{ gps.ultimoEnvio }}</span>
+              <button class="btn btn-sm btn-link" @click="desligarGps">desligar</button>
+            </span>
+          </div>
+          <div v-if="gps.erro" class="small text-danger mt-1">{{ gps.erro }}</div>
+          <div class="mt-2"><SegurancaViagem :carona-id="carona.id" /></div>
+        </div>
+
         <!-- Acoes do motorista -->
         <div class="d-flex flex-wrap gap-2 border-top mt-3 pt-3">
           <button class="btn btn-sm btn-outline-primary" @click="alternarPedidos(carona)">
@@ -51,6 +70,17 @@
           </button>
           <RouterLink v-if="podeEditar(carona)" :to="`/caronas/${carona.id}/editar`" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-pencil me-1"></i>Editar
+          </RouterLink>
+          <BotaoConfirmar
+            v-if="podeIniciar(carona)"
+            texto="Iniciar viagem"
+            pergunta="Começar a viagem agora?"
+            icone="bi-play-fill"
+            classe="btn-primary"
+            :acao="() => iniciar(carona)"
+          />
+          <RouterLink v-if="podeAvaliarPassageiros(carona)" to="/avaliacoes" class="btn btn-sm btn-warning">
+            <i class="bi bi-star-fill me-1"></i>Avaliar passageiros
           </RouterLink>
           <BotaoConfirmar
             v-if="podeConcluir(carona)"
@@ -76,9 +106,10 @@
             <span class="avatar">{{ iniciais(s.passageiro.nome) }}</span>
             <div class="flex-grow-1" style="min-width: 12rem">
               <div class="fw-semibold">
-                {{ s.passageiro.nome }}
+                <RouterLink :to="`/usuarios/${s.passageiro.id}`" class="text-reset">{{ s.passageiro.nome }}</RouterLink>
                 <span class="text-secondary fw-normal small">· {{ s.passageiro.bairro }}</span>
               </div>
+              <ReputacaoResumo :usuario="s.passageiro" mostrar-faltas />
               <div v-if="s.endereco_embarque" class="small"><i class="bi bi-geo-alt me-1"></i>{{ s.endereco_embarque }}</div>
               <div v-if="s.mensagem" class="small text-secondary">"{{ s.mensagem }}"</div>
               <div v-if="s.status === 'aceita' && s.passageiro.telefone" class="small mt-1">
@@ -88,7 +119,34 @@
                 </a>
               </div>
             </div>
+            <span v-if="s.embarcou_em" class="badge text-bg-success"><i class="bi bi-person-check-fill me-1"></i>Embarcou</span>
+            <span v-else-if="s.faltou" class="badge text-bg-warning">Não apareceu</span>
+            <span v-if="s.pagamento?.status === 'pago'" class="badge text-bg-light border text-success"><i class="bi bi-cash-coin me-1"></i>Pago</span>
             <StatusBadge :status="s.status" tipo="pedido" />
+
+            <!-- Embarque: o passageiro fala o PIN e o motorista digita (como no Uber) -->
+            <form
+              v-if="carona.status === 'em_andamento' && s.status === 'aceita' && !s.embarcou_em && !s.faltou"
+              class="d-flex flex-wrap align-items-start gap-2 w-100 mt-1"
+              novalidate
+              @submit.prevent="confirmarEmbarque(carona, s)"
+            >
+              <div>
+                <input
+                  v-model.trim="pins[s.id]"
+                  inputmode="numeric"
+                  maxlength="4"
+                  :aria-label="`PIN de ${s.passageiro.nome}`"
+                  placeholder="PIN"
+                  :class="['form-control form-control-sm font-monospace text-center', { 'is-invalid': errosPin[s.id] }]"
+                  style="width: 6rem"
+                />
+                <div class="invalid-feedback">{{ errosPin[s.id] }}</div>
+              </div>
+              <button class="btn btn-sm btn-success" :disabled="respondendo === s.id"><i class="bi bi-person-check me-1"></i>Confirmar embarque</button>
+              <BotaoConfirmar texto="Não apareceu" pergunta="Marcar falta?" classe="btn-outline-warning" :acao="() => marcarFalta(carona, s)" />
+            </form>
+
             <div v-if="s.status === 'pendente'" class="d-flex gap-2">
               <button class="btn btn-sm btn-success" :disabled="respondendo === s.id" @click="responder(carona, s, 'aceitar')">
                 <i class="bi bi-check-lg"></i> Aceitar
@@ -105,17 +163,20 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
+import ReputacaoResumo from '../components/ReputacaoResumo.vue'
+import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api from '../services/api'
 import { iniciais, jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { regras } from '../utils/validacao'
 
 const route = useRoute()
 
@@ -136,8 +197,19 @@ const historico = computed(() => caronas.value.filter((c) => !EM_ABERTO.includes
 const lista = computed(() => (aba.value === 'abertas' ? abertas.value : historico.value))
 
 const pendentes = (c) => (pedidos[c.id] || []).filter((s) => s.status === 'pendente').length
+const JANELA_INICIO_MS = 30 * 60 * 1000 // pode iniciar 30 min antes da saida
+const aceitos = (c) => (pedidos[c.id] || []).filter((s) => s.status === 'aceita')
 const podeEditar = (c) => ['ativa', 'lotada'].includes(c.status) && !jaSaiu(c.data_hora_saida)
-const podeConcluir = (c) => EM_ABERTO.includes(c.status) && jaSaiu(c.data_hora_saida)
+const podeIniciar = (c) =>
+  ['ativa', 'lotada'].includes(c.status) &&
+  aceitos(c).length > 0 &&
+  new Date(c.data_hora_saida).getTime() - JANELA_INICIO_MS <= Date.now()
+const podeConcluir = (c) => c.status === 'em_andamento' || (EM_ABERTO.includes(c.status) && jaSaiu(c.data_hora_saida))
+const podeAvaliarPassageiros = (c) =>
+  c.status === 'concluida' && aceitos(c).some((s) => !s.faltou && !s.ja_avaliei)
+
+const pins = reactive({}) // solicitacao_id -> PIN digitado
+const errosPin = reactive({})
 
 function avisar(texto, tipo = 'success') {
   aviso.texto = texto
@@ -155,7 +227,9 @@ async function carregar() {
     const { data } = await api.get('/caronas/minhas')
     caronas.value = data.caronas
     // Ja traz os pedidos das caronas em aberto, para mostrar quantos estao esperando resposta
-    await Promise.all(abertas.value.map(carregarPedidos))
+    // (e das concluidas recentes, para o botao "Avaliar passageiros")
+    const recentes = historico.value.filter((c) => c.status === 'concluida').slice(0, 5)
+    await Promise.all([...abertas.value, ...recentes].map(carregarPedidos))
     abertas.value.filter((c) => pendentes(c) > 0).forEach((c) => abertas_.add(c.id))
   } catch (e) {
     avisar(e.mensagem, 'danger')
@@ -236,11 +310,95 @@ async function concluir(carona) {
   try {
     const { data } = await api.post(`/caronas/${carona.id}/concluir`)
     substituir(data.carona)
-    avisar('Carona concluída e guardada no histórico.')
+    await carregarPedidos(carona)
+    if (gps.caronaId === carona.id) desligarGps()
+    avisar('Carona concluída! Agora vocês podem se avaliar em "Avaliações".')
   } catch (e) {
     avisar(e.mensagem, 'danger')
   }
 }
+
+// ==========================================================
+// CICLO DA VIAGEM
+// ==========================================================
+async function iniciar(carona) {
+  try {
+    const { data } = await api.post(`/caronas/${carona.id}/iniciar`)
+    substituir(data.carona)
+    await carregarPedidos(carona)
+    abertas_.add(carona.id)
+    avisar('Viagem iniciada! Os passageiros foram avisados. Confirme o PIN de cada um no embarque.')
+  } catch (e) {
+    avisar(e.mensagem, 'danger')
+  }
+}
+
+async function confirmarEmbarque(carona, s) {
+  errosPin[s.id] = regras.pin(pins[s.id])
+  if (errosPin[s.id]) return
+  respondendo.value = s.id
+  try {
+    await api.post(`/solicitacoes/${s.id}/embarque`, { pin: pins[s.id] })
+    await carregarPedidos(carona)
+    avisar(`${s.passageiro.nome.split(' ')[0]} embarcou. PIN conferido!`)
+  } catch (e) {
+    errosPin[s.id] = e.campos?.pin || e.mensagem
+  } finally {
+    respondendo.value = null
+  }
+}
+
+async function marcarFalta(carona, s) {
+  try {
+    await api.post(`/solicitacoes/${s.id}/falta`)
+    await carregarPedidos(carona)
+    avisar(`Falta registrada para ${s.passageiro.nome.split(' ')[0]}.`, 'warning')
+  } catch (e) {
+    avisar(e.mensagem, 'danger')
+  }
+}
+
+// ==========================================================
+// GPS AO VIVO (aparece no link da familia)
+// Envia a posicao do celular do motorista no maximo a cada 15 s.
+// ==========================================================
+const gps = reactive({ caronaId: null, watchId: null, ultimoEnvio: '', erro: '' })
+let ultimoEnvioMs = 0
+
+function ligarGps(carona) {
+  gps.erro = ''
+  if (!navigator.geolocation) {
+    gps.erro = 'Este navegador não tem GPS.'
+    return
+  }
+  desligarGps()
+  gps.caronaId = carona.id
+  gps.watchId = navigator.geolocation.watchPosition(
+    async (p) => {
+      if (Date.now() - ultimoEnvioMs < 15000) return
+      ultimoEnvioMs = Date.now()
+      try {
+        await api.post(`/caronas/${carona.id}/posicao`, { lat: p.coords.latitude, lng: p.coords.longitude })
+        gps.ultimoEnvio = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      } catch (e) {
+        gps.erro = e.mensagem
+      }
+    },
+    () => {
+      gps.erro = 'Permita o acesso à localização no navegador para compartilhar o trajeto.'
+      desligarGps()
+    },
+    { enableHighAccuracy: true }
+  )
+}
+
+function desligarGps() {
+  if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId)
+  gps.watchId = null
+  gps.caronaId = null
+}
+
+onBeforeUnmount(desligarGps)
 
 onMounted(async () => {
   if (route.query.ok === 'criada') avisar('Carona publicada! Ela já aparece na busca dos outros alunos.')

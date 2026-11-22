@@ -28,8 +28,9 @@
         <span class="d-inline-flex align-items-center gap-2">
           <span class="avatar" style="width: 1.9rem; height: 1.9rem; font-size: 0.75rem">{{ iniciais(carona.motorista?.nome) }}</span>
           <span>
-            <span class="fw-semibold">{{ carona.motorista?.nome }}</span>
+            <RouterLink :to="`/usuarios/${carona.motorista?.id}`" class="fw-semibold text-reset">{{ carona.motorista?.nome }}</RouterLink>
             <span v-if="carona.motorista?.curso" class="text-secondary d-none d-sm-inline"> · {{ carona.motorista.curso }}</span>
+            <span class="d-block"><ReputacaoResumo :usuario="carona.motorista" /></span>
           </span>
         </span>
         <span v-if="carona.veiculo" class="text-secondary">
@@ -37,6 +38,7 @@
           <span v-if="carona.veiculo.placa" class="badge text-bg-light border ms-1">{{ carona.veiculo.placa }}</span>
         </span>
       </div>
+      <div v-if="carona.observacoes" class="small text-secondary mt-2"><i class="bi bi-chat-left-text me-1"></i>{{ carona.observacoes }}</div>
     </div>
 
     <div class="text-end coluna-preco" style="min-width: 5.5rem">
@@ -56,6 +58,7 @@
 
 <script setup>
 import { dataCurta, dinheiro, hora, iniciais } from '../utils/formato'
+import ReputacaoResumo from './ReputacaoResumo.vue'
 
 defineProps({
   carona: { type: Object, required: true }

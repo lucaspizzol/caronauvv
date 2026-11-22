@@ -33,6 +33,10 @@ export const auth = reactive({
 
 export const logado = computed(() => Boolean(auth.token))
 
+// Modo desenvolvimento/apresentacao: sem servidor de e-mail, a API devolve o
+// codigo de verificacao ("codigo_dev") e a tela de confirmacao o mostra.
+export const demo = reactive({ codigoDev: null })
+
 function persistir() {
   try {
     if (auth.token) {

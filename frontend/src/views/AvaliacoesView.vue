@@ -1,0 +1,130 @@
+<template>
+  <div class="container py-4" style="max-width: 760px">
+    <h1 class="titulo-pagina h3 mb-1">Avaliações</h1>
+    <p class="text-secondary">
+      Depois de cada viagem, motorista e passageiro se avaliam. A nota fica escondida até os dois avaliarem
+      (ou até 7 dias), assim ninguém avalia por vingança.
+    </p>
+
+    <AlertaMensagem :texto="aviso.texto" :tipo="aviso.tipo" @fechar="aviso.texto = ''" />
+
+    <div v-if="carregando" class="text-center py-5"><span class="spinner-border text-primary"></span></div>
+
+    <div v-else-if="!pendentes.length" class="card vazio">
+      <i class="bi bi-star"></i>
+      <p class="fw-semibold mb-1">Nenhuma avaliação pendente.</p>
+      <p class="small mb-0">Quando uma viagem terminar, ela aparece aqui por 14 dias.</p>
+    </div>
+
+    <div v-else class="d-flex flex-column gap-3">
+      <form v-for="p in pendentes" :key="p.solicitacao_id" class="card p-3" novalidate @submit.prevent="enviar(p)">
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <span class="avatar">{{ iniciais(p.avaliado.nome) }}</span>
+          <div>
+            <div class="fw-bold">
+              Como foi {{ p.papel_avaliado === 'motorista' ? 'a viagem com' : 'levar' }}
+              <RouterLink :to="`/usuarios/${p.avaliado.id}`">{{ p.avaliado.nome }}</RouterLink>?
+            </div>
+            <div class="small text-secondary">
+              {{ p.papel_avaliado === 'motorista' ? 'Motorista' : 'Passageiro(a)' }} ·
+              {{ dataCurta(p.carona.data_hora_saida) }} {{ hora(p.carona.data_hora_saida) }} ·
+              {{ p.carona.sentido === 'ida' ? `${p.carona.bairro_origem} → UVV` : `UVV → ${p.carona.bairro_origem}` }}
+            </div>
+          </div>
+        </div>
+
+        <EstrelasNota v-model="form(p).nota" :rotulo="`Nota para ${p.avaliado.nome}`" />
+        <div v-if="erros[p.solicitacao_id]?.nota" class="small text-danger">{{ erros[p.solicitacao_id].nota }}</div>
+
+        <div class="mt-3">
+          <div class="form-label mb-1">Elogios <span class="text-secondary fw-normal">(opcional)</span></div>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              v-for="tag in p.tags_sugeridas"
+              :key="tag"
+              type="button"
+              :class="['btn btn-sm tag-escolha', form(p).tags.includes(tag) ? 'btn-primary' : 'btn-outline-secondary']"
+              :aria-pressed="form(p).tags.includes(tag)"
+              @click="alternarTag(p, tag)"
+            >
+              {{ tag }}
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label" :for="`com-${p.solicitacao_id}`">Comentário <span class="text-secondary fw-normal">(opcional)</span></label>
+          <textarea :id="`com-${p.solicitacao_id}`" v-model.trim="form(p).comentario" rows="2" maxlength="500" class="form-control" placeholder="Conte como foi a viagem"></textarea>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <RouterLink :to="`/usuarios/${p.avaliado.id}#denunciar`" class="small text-danger">Teve um problema sério? Denunciar</RouterLink>
+          <button class="btn btn-primary" :disabled="enviando === p.solicitacao_id">
+            <span v-if="enviando === p.solicitacao_id" class="spinner-border spinner-border-sm me-1"></span>Enviar avaliação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, reactive, ref } from 'vue'
+
+import AlertaMensagem from '../components/AlertaMensagem.vue'
+import EstrelasNota from '../components/EstrelasNota.vue'
+import api from '../services/api'
+import { dataCurta, hora, iniciais } from '../utils/formato'
+
+const pendentes = ref([])
+const carregando = ref(true)
+const enviando = ref(null)
+const aviso = reactive({ texto: '', tipo: 'success' })
+const formularios = reactive({}) // solicitacao_id -> { nota, tags, comentario }
+const erros = reactive({})
+
+function form(p) {
+  if (!formularios[p.solicitacao_id]) formularios[p.solicitacao_id] = { nota: 0, tags: [], comentario: '' }
+  return formularios[p.solicitacao_id]
+}
+
+function alternarTag(p, tag) {
+  const tags = form(p).tags
+  const i = tags.indexOf(tag)
+  if (i >= 0) tags.splice(i, 1)
+  else tags.push(tag)
+}
+
+async function carregar() {
+  try {
+    const { data } = await api.get('/avaliacoes/pendentes')
+    pendentes.value = data.pendentes
+  } catch (e) {
+    aviso.texto = e.mensagem
+    aviso.tipo = 'danger'
+  } finally {
+    carregando.value = false
+  }
+}
+
+async function enviar(p) {
+  const dados = form(p)
+  erros[p.solicitacao_id] = dados.nota ? {} : { nota: 'Escolha uma nota de 1 a 5 estrelas.' }
+  if (!dados.nota) return
+  enviando.value = p.solicitacao_id
+  try {
+    await api.post(`/solicitacoes/${p.solicitacao_id}/avaliacao`, dados)
+    pendentes.value = pendentes.value.filter((x) => x.solicitacao_id !== p.solicitacao_id)
+    aviso.texto = `Obrigado! Sua avaliação de ${p.avaliado.nome.split(' ')[0]} foi registrada.`
+    aviso.tipo = 'success'
+  } catch (e) {
+    erros[p.solicitacao_id] = e.campos || {}
+    aviso.texto = e.mensagem
+    aviso.tipo = 'danger'
+  } finally {
+    enviando.value = null
+  }
+}
+
+onMounted(carregar)
+</script>

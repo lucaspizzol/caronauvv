@@ -8,13 +8,22 @@
 
       <ul class="navbar-nav me-auto d-none d-md-flex">
         <li v-for="item in itens" :key="item.to" class="nav-item">
-          <RouterLink class="nav-link px-3" :to="item.to">
-            <i :class="['bi', item.icone, 'me-1']"></i>{{ item.texto }}
+          <RouterLink class="nav-link px-2 px-lg-3" :to="item.to">
+            <i :class="['bi', item.icone, 'me-1']"></i><span class="d-none d-lg-inline">{{ item.texto }}</span><span class="d-lg-none">{{ item.curto }}</span>
           </RouterLink>
+        </li>
+        <li v-if="auth.usuario?.is_admin" class="nav-item">
+          <RouterLink class="nav-link px-2 px-lg-3" to="/admin"><i class="bi bi-speedometer2 me-1"></i>Admin</RouterLink>
         </li>
       </ul>
 
       <div class="d-flex align-items-center gap-2">
+        <RouterLink to="/notificacoes" class="btn btn-sm btn-link text-white position-relative sino" title="Notificações" aria-label="Notificações">
+          <i class="bi bi-bell-fill fs-5"></i>
+          <span v-if="naoLidas > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning">
+            {{ naoLidas > 9 ? '9+' : naoLidas }}
+          </span>
+        </RouterLink>
         <RouterLink to="/perfil" class="text-white text-decoration-none d-flex align-items-center gap-2">
           <span class="avatar" style="width: 2rem; height: 2rem; font-size: 0.8rem">{{ iniciais(auth.usuario?.nome) }}</span>
           <span class="d-none d-lg-inline small">{{ primeiroNome }}</span>
@@ -35,9 +44,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { useAoVivo } from '../composables/useAoVivo'
 import api from '../services/api'
 import { auth, sair } from '../stores/auth'
 import { iniciais } from '../utils/formato'
@@ -48,11 +58,24 @@ const itens = [
   { to: '/caronas', texto: 'Buscar caronas', curto: 'Buscar', icone: 'bi-search' },
   { to: '/caronas/nova', texto: 'Oferecer carona', curto: 'Oferecer', icone: 'bi-plus-circle' },
   { to: '/minhas-caronas', texto: 'Minhas caronas', curto: 'Motorista', icone: 'bi-car-front' },
-  { to: '/meus-pedidos', texto: 'Meus pedidos', curto: 'Pedidos', icone: 'bi-ticket-perforated' }
+  { to: '/meus-pedidos', texto: 'Meus pedidos', curto: 'Pedidos', icone: 'bi-ticket-perforated' },
+  { to: '/avaliacoes', texto: 'Avaliações', curto: 'Avaliar', icone: 'bi-star' }
 ]
-const itensCelular = [...itens, { to: '/perfil', texto: 'Perfil', icone: 'bi-person-circle' }]
+const itensCelular = [...itens.slice(0, 4), { to: '/perfil', texto: 'Perfil', icone: 'bi-person-circle' }]
 
 const primeiroNome = computed(() => (auth.usuario?.nome || '').split(' ')[0])
+
+// Sino: numero de notificacoes nao lidas, atualizado a cada 10 s
+const naoLidas = ref(0)
+async function contar() {
+  const { data } = await api.get('/notificacoes/contagem')
+  naoLidas.value = data.nao_lidas
+}
+const { atualizarAgora } = useAoVivo(contar, 10000)
+atualizarAgora()
+router.afterEach((to) => {
+  if (to.name === 'notificacoes') naoLidas.value = 0
+})
 
 async function fazerLogout() {
   try {

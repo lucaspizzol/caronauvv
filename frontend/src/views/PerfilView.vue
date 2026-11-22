@@ -1,6 +1,31 @@
 <template>
   <div class="container py-4" style="max-width: 860px">
-    <h1 class="titulo-pagina h3 mb-3">Meu perfil</h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+      <h1 class="titulo-pagina h3 mb-0">Meu perfil</h1>
+      <RouterLink v-if="auth.usuario" :to="`/usuarios/${auth.usuario.id}`" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-eye me-1"></i>Ver como os outros me veem
+      </RouterLink>
+    </div>
+
+    <!-- CONFIANCA: e-mail confirmado e selo de perfil verificado -->
+    <div class="card p-3 mb-4">
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <span :class="['selo', { 'bg-warning-subtle text-warning-emphasis': !auth.usuario?.email_verificado }]">
+          <i :class="['bi', auth.usuario?.email_verificado ? 'bi-envelope-check-fill' : 'bi-envelope-exclamation']"></i>
+          {{ auth.usuario?.email_verificado ? 'E-mail UVV confirmado' : 'E-mail UVV não confirmado' }}
+        </span>
+        <RouterLink v-if="!auth.usuario?.email_verificado" to="/verificar-email" class="small">Confirmar agora</RouterLink>
+
+        <span v-if="auth.usuario?.verificado" class="selo"><i class="bi bi-patch-check-fill"></i>Perfil verificado pela UVV</span>
+        <span v-else-if="auth.usuario?.verificacao_solicitada_em" class="small text-secondary">
+          <i class="bi bi-hourglass-split me-1"></i>Verificação do perfil em análise pela administração
+        </span>
+        <button v-else class="btn btn-sm btn-outline-primary" :disabled="!auth.usuario?.email_verificado" @click="pedirVerificacao">
+          <i class="bi bi-patch-check me-1"></i>Pedir selo de perfil verificado
+        </button>
+      </div>
+      <AlertaMensagem class="mt-2 mb-0" :texto="msgSelo.texto" :tipo="msgSelo.tipo" @fechar="msgSelo.texto = ''" />
+    </div>
 
     <div class="row g-4">
       <!-- DADOS PESSOAIS -->
@@ -39,7 +64,38 @@
             </div>
             <div class="col-sm-6">
               <label class="form-label" for="p-pix">Chave Pix <span class="text-secondary fw-normal">(para o rateio)</span></label>
-              <input id="p-pix" v-model.trim="perfil.chave_pix" class="form-control" />
+              <input id="p-pix" v-model.trim="perfil.chave_pix" :class="['form-control', { 'is-invalid': errosPerfil.chave_pix }]" />
+              <div class="invalid-feedback">{{ errosPerfil.chave_pix }}</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="p-bio">Sobre mim <span class="text-secondary fw-normal">(aparece no seu perfil)</span></label>
+              <textarea id="p-bio" v-model.trim="perfil.bio" rows="2" maxlength="300" :class="['form-control', { 'is-invalid': errosPerfil.bio }]" placeholder="Ex.: estudo à noite e saio pontualmente"></textarea>
+              <div class="invalid-feedback">{{ errosPerfil.bio }}</div>
+            </div>
+
+            <!-- Preferencias de viagem (como o "Bla, BlaBla, BlaBlaBla" do BlaBlaCar) -->
+            <div class="col-12">
+              <div class="form-label">Preferências na viagem</div>
+              <div class="btn-group btn-group-sm w-100 mb-2" role="group" aria-label="Conversa">
+                <template v-for="(info, nivel) in PREF_CONVERSA" :key="nivel">
+                  <input :id="`conv-${nivel}`" v-model="perfil.pref_conversa" class="btn-check" type="radio" :value="nivel" />
+                  <label class="btn btn-outline-primary" :for="`conv-${nivel}`"><i :class="['bi me-1', info.icone]"></i>{{ info.texto }}</label>
+                </template>
+              </div>
+              <div class="d-flex flex-wrap gap-3">
+                <div class="form-check form-switch">
+                  <input id="pm" v-model="perfil.pref_musica" class="form-check-input" type="checkbox" role="switch" />
+                  <label class="form-check-label small" for="pm">Música no caminho</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input id="pa" v-model="perfil.pref_animais" class="form-check-input" type="checkbox" role="switch" />
+                  <label class="form-check-label small" for="pa">Aceito animais</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input id="pf" v-model="perfil.pref_fumar" class="form-check-input" type="checkbox" role="switch" />
+                  <label class="form-check-label small" for="pf">Pode fumar no carro</label>
+                </div>
+              </div>
             </div>
           </div>
           <div class="text-end mt-3">
@@ -69,6 +125,36 @@
             <button class="btn btn-outline-primary" :disabled="salvandoSenha">Trocar senha</button>
           </div>
         </form>
+      </div>
+
+      <!-- SEGURANCA: contatos de confianca -->
+      <div id="seguranca" class="col-12">
+        <div class="card p-4">
+          <h2 class="h5 fw-bold mb-1"><i class="bi bi-shield-heart me-1"></i>Contatos de confiança</h2>
+          <p class="small text-secondary">
+            Pessoas que recebem o link para acompanhar sua viagem e o aviso se você apertar o botão de emergência (até 5).
+          </p>
+          <AlertaMensagem :texto="msgContato.texto" :tipo="msgContato.tipo" @fechar="msgContato.texto = ''" />
+          <div v-for="c in contatos" :key="c.id" class="d-flex align-items-center gap-3 border rounded-3 p-2 mb-2">
+            <i class="bi bi-person-heart fs-4 text-danger"></i>
+            <div class="flex-grow-1"><span class="fw-semibold">{{ c.nome }}</span> <span class="text-secondary">{{ telefoneFormatado(c.telefone) }}</span></div>
+            <BotaoConfirmar texto="Remover" pergunta="Remover contato?" icone="bi-trash" :acao="() => removerContato(c)" />
+          </div>
+          <p v-if="!contatos.length" class="small text-secondary">Nenhum contato cadastrado.</p>
+          <form v-if="contatos.length < 5" class="row g-2 align-items-start mt-1" novalidate @submit.prevent="adicionarContato">
+            <div class="col-sm-5">
+              <input v-model.trim="contato.nome" placeholder="Nome (ex.: Mãe)" aria-label="Nome do contato" :class="['form-control', { 'is-invalid': errosContato.nome }]" />
+              <div class="invalid-feedback">{{ errosContato.nome }}</div>
+            </div>
+            <div class="col-sm-5">
+              <input v-model.trim="contato.telefone" type="tel" placeholder="(27) 99999-0000" aria-label="Telefone do contato" :class="['form-control', { 'is-invalid': errosContato.telefone }]" />
+              <div class="invalid-feedback">{{ errosContato.telefone }}</div>
+            </div>
+            <div class="col-sm-2 d-grid">
+              <button class="btn btn-primary"><i class="bi bi-plus-lg"></i> Adicionar</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- VEICULOS -->
@@ -119,10 +205,19 @@ import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import api from '../services/api'
 import { atualizarUsuario, auth } from '../stores/auth'
 import { BAIRROS } from '../utils/bairros'
-import { iniciais } from '../utils/formato'
-import { regras, validar } from '../utils/validacao'
+import { iniciais, PREF_CONVERSA, telefoneFormatado } from '../utils/formato'
+import { errosDoServidor, regras, validar } from '../utils/validacao'
 
-const perfil = reactive({ nome: '', telefone: '', bairro: '', curso: '', chave_pix: '' })
+const perfil = reactive({
+  nome: '', telefone: '', bairro: '', curso: '', chave_pix: '', bio: '',
+  pref_conversa: 'depende', pref_musica: true, pref_animais: false, pref_fumar: false
+})
+const msgSelo = reactive({ texto: '', tipo: 'success' })
+
+const contatos = ref([])
+const contato = reactive({ nome: '', telefone: '' })
+const errosContato = ref({})
+const msgContato = reactive({ texto: '', tipo: 'success' })
 const errosPerfil = ref({})
 const msgPerfil = reactive({ texto: '', tipo: 'success' })
 const salvandoPerfil = ref(false)
@@ -138,15 +233,21 @@ const errosVeiculo = ref({})
 const msgVeiculo = reactive({ texto: '', tipo: 'success' })
 
 function preencher(u) {
-  Object.assign(perfil, { nome: u.nome, telefone: u.telefone, bairro: u.bairro, curso: u.curso || '', chave_pix: u.chave_pix || '' })
+  const p = u.preferencias || {}
+  Object.assign(perfil, {
+    nome: u.nome, telefone: u.telefone, bairro: u.bairro, curso: u.curso || '', chave_pix: u.chave_pix || '',
+    bio: u.bio || '', pref_conversa: p.conversa || 'depende', pref_musica: p.musica ?? true,
+    pref_animais: Boolean(p.animais), pref_fumar: Boolean(p.fumar)
+  })
 }
 
 onMounted(async () => {
   try {
-    const [me, vs] = await Promise.all([api.get('/auth/me'), api.get('/veiculos')])
+    const [me, vs, cs] = await Promise.all([api.get('/auth/me'), api.get('/veiculos'), api.get('/contatos')])
     atualizarUsuario(me.data.usuario)
     preencher(me.data.usuario)
     veiculos.value = vs.data.veiculos
+    contatos.value = cs.data.contatos
   } catch (e) {
     msgPerfil.texto = e.mensagem
     msgPerfil.tipo = 'danger'
@@ -170,8 +271,48 @@ async function salvarPerfil() {
   } catch (e) {
     msgPerfil.texto = e.mensagem
     msgPerfil.tipo = 'danger'
+    errosPerfil.value = { ...errosPerfil.value, ...errosDoServidor(e, Object.keys(perfil)) }
   } finally {
     salvandoPerfil.value = false
+  }
+}
+
+async function pedirVerificacao() {
+  try {
+    const { data } = await api.post('/auth/solicitar-verificacao')
+    atualizarUsuario(data.usuario)
+    msgSelo.texto = 'Pedido enviado! A administração confere sua matrícula e aprova o selo.'
+    msgSelo.tipo = 'success'
+  } catch (e) {
+    msgSelo.texto = e.mensagem
+    msgSelo.tipo = 'danger'
+  }
+}
+
+async function adicionarContato() {
+  msgContato.texto = ''
+  errosContato.value = validar(contato, { nome: [regras.obrigatorio], telefone: [regras.obrigatorio, regras.telefone] })
+  if (Object.keys(errosContato.value).length) return
+  try {
+    const { data } = await api.post('/contatos', contato)
+    contatos.value.push(data.contato)
+    Object.assign(contato, { nome: '', telefone: '' })
+    msgContato.texto = 'Contato adicionado.'
+    msgContato.tipo = 'success'
+  } catch (e) {
+    msgContato.texto = e.mensagem
+    msgContato.tipo = 'danger'
+    errosContato.value = errosDoServidor(e, ['nome', 'telefone'])
+  }
+}
+
+async function removerContato(c) {
+  try {
+    await api.delete(`/contatos/${c.id}`)
+    contatos.value = contatos.value.filter((x) => x.id !== c.id)
+  } catch (e) {
+    msgContato.texto = e.mensagem
+    msgContato.tipo = 'danger'
   }
 }
 
@@ -206,6 +347,7 @@ async function adicionarVeiculo() {
   } catch (e) {
     msgVeiculo.texto = e.mensagem
     msgVeiculo.tipo = 'danger'
+    errosVeiculo.value = errosDoServidor(e, ['modelo', 'cor', 'placa'])
   }
 }
 

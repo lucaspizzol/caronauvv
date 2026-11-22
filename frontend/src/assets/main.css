@@ -272,3 +272,94 @@ body {
     box-shadow: 0 0 0 3px rgba(255, 199, 44, 0);
   }
 }
+
+/* ==========================================================
+   Confianca, notificacoes e painel
+   ========================================================== */
+.aviso-email {
+  background: var(--uvv-amarelo);
+  color: var(--uvv-azul);
+  font-weight: 600;
+}
+
+.sino {
+  text-decoration: none;
+}
+
+.estrela {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.estrela:focus-visible {
+  outline: 2px solid var(--uvv-azul-2);
+  border-radius: 0.3rem;
+}
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #e8f0fe;
+  color: var(--uvv-azul-2);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tag-escolha {
+  border-radius: 999px;
+}
+
+.kpi {
+  border-left: 4px solid var(--uvv-azul-2);
+}
+
+.kpi .valor {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--uvv-azul);
+  line-height: 1.1;
+}
+
+.kpi.alerta {
+  border-left-color: #dc3545;
+}
+
+.kpi.verde {
+  border-left-color: #198754;
+}
+
+.pix-codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  background: #f6f8fb;
+}
+
+.notificacao.nao-lida {
+  border-left: 4px solid var(--uvv-amarelo);
+}
+
+.diagrama-er {
+  overflow-x: auto;
+  background: #fff;
+}
+
+.btn-sos {
+  --bs-btn-bg: #dc3545;
+  --bs-btn-border-color: #dc3545;
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: #b02a37;
+  --bs-btn-hover-border-color: #b02a37;
+  --bs-btn-hover-color: #fff;
+  font-weight: 700;
+}
+
+.mapa-viagem {
+  width: 100%;
+  height: 260px;
+  border: 0;
+  border-radius: var(--bs-border-radius);
+}

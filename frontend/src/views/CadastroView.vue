@@ -3,7 +3,7 @@
     <div class="container" style="max-width: 560px">
       <div class="text-center mb-4">
         <div class="marca display-6"><i class="bi bi-car-front-fill me-2"></i>Carona<span>UVV</span></div>
-        <p class="text-white-50 mb-0">Crie sua conta com os dados de aluno da UVV.</p>
+        <p class="text-white-50 mb-0">Só alunos da UVV: use seu e-mail institucional.</p>
       </div>
 
       <div class="card p-4">
@@ -27,8 +27,8 @@
               <input id="curso" v-model.trim="form.curso" class="form-control" placeholder="Ciência da Computação" />
             </div>
             <div class="col-sm-6">
-              <label class="form-label" for="email">E-mail</label>
-              <input id="email" v-model.trim="form.email" type="email" autocomplete="email" :class="['form-control', { 'is-invalid': erros.email }]" />
+              <label class="form-label" for="email">E-mail UVV</label>
+              <input id="email" v-model.trim="form.email" type="email" autocomplete="email" :class="['form-control', { 'is-invalid': erros.email }]" placeholder="nome@uvv.br" />
               <div class="invalid-feedback">{{ erros.email }}</div>
             </div>
             <div class="col-sm-6">
@@ -56,6 +56,7 @@
 
           <p class="small text-secondary mt-3 mb-3">
             <i class="bi bi-shield-lock me-1"></i>Seu telefone só aparece para o motorista ou passageiro depois que a vaga é confirmada.
+            Vamos enviar um código para confirmar seu e-mail UVV.
           </p>
 
           <button class="btn btn-primary w-100 py-2" type="submit" :disabled="enviando">
@@ -75,9 +76,9 @@ import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import api from '../services/api'
-import { entrar } from '../stores/auth'
+import { demo, entrar } from '../stores/auth'
 import { BAIRROS } from '../utils/bairros'
-import { regras, validar } from '../utils/validacao'
+import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const router = useRouter()
 
@@ -91,7 +92,7 @@ async function enviar() {
   erros.value = validar(form, {
     nome: [regras.obrigatorio],
     matricula: [regras.obrigatorio, regras.matricula],
-    email: [regras.obrigatorio, regras.email],
+    email: [regras.obrigatorio, regras.email, regras.emailUvv],
     telefone: [regras.obrigatorio, regras.telefone],
     bairro: [regras.obrigatorio],
     senha: [regras.obrigatorio, regras.senha],
@@ -104,9 +105,12 @@ async function enviar() {
     const { confirmar, ...dados } = form
     const { data } = await api.post('/auth/cadastro', dados)
     entrar(data.token, data.usuario)
-    router.push('/caronas')
+    demo.codigoDev = data.codigo_dev || null
+    router.push('/verificar-email')
   } catch (e) {
     erroApi.value = e.mensagem
+    // erros que so o servidor conhece (ex.: dominio do e-mail) aparecem no campo certo
+    erros.value = { ...erros.value, ...errosDoServidor(e, Object.keys(form)) }
   } finally {
     enviando.value = false
   }

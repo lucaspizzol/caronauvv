@@ -22,6 +22,9 @@
             <i class="bi bi-exclamation-circle me-1"></i>O motorista cancelou esta carona
           </span>
           <span v-else-if="p.carona.status === 'concluida'" class="small text-secondary">Viagem concluída</span>
+          <span v-else-if="p.carona.status === 'em_andamento' && p.status === 'aceita'" class="small fw-semibold text-info-emphasis">
+            <i class="bi bi-car-front-fill me-1"></i>{{ p.embarcou_em ? 'Você está a bordo. Boa viagem!' : 'O motorista iniciou a viagem. Esteja no ponto!' }}
+          </span>
         </div>
 
         <CaronaInfo :carona="p.carona" />
@@ -46,6 +49,11 @@
 
           <div v-if="p.endereco_embarque" class="small text-secondary"><i class="bi bi-geo-alt me-1"></i>{{ p.endereco_embarque }}</div>
 
+          <RouterLink v-if="podeAvaliar(p)" to="/avaliacoes" class="btn btn-sm btn-warning">
+            <i class="bi bi-star-fill me-1"></i>Avaliar {{ p.carona.motorista.nome.split(' ')[0] }}
+          </RouterLink>
+          <span v-else-if="p.ja_avaliei" class="small text-secondary"><i class="bi bi-star me-1"></i>Você já avaliou esta viagem</span>
+
           <div class="ms-auto">
             <BotaoConfirmar
               v-if="podeCancelar(p)"
@@ -55,6 +63,18 @@
               :acao="() => cancelar(p)"
             />
           </div>
+        </div>
+
+        <!-- Pagamento do rateio e seguranca (so com a vaga confirmada) -->
+        <div v-if="p.status === 'aceita' && (emAberto(p) || p.carona.status === 'concluida')" class="border-top mt-3 pt-3 d-flex flex-column gap-2">
+          <PixPagamento
+            v-if="p.carona.valor_por_passageiro > 0"
+            :solicitacao-id="p.id"
+            :valor="p.carona.valor_por_passageiro"
+            :motorista="p.carona.motorista.nome"
+            :inicial="p.pagamento"
+          />
+          <SegurancaViagem v-if="emAberto(p)" :carona-id="p.carona.id" />
         </div>
       </div>
     </div>
@@ -68,6 +88,8 @@ import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
+import PixPagamento from '../components/PixPagamento.vue'
+import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api from '../services/api'
@@ -79,6 +101,7 @@ const aviso = reactive({ texto: '', tipo: 'success' })
 const destacados = reactive(new Set()) // pedidos cujo status acabou de mudar
 
 const emAberto = (p) => ['ativa', 'lotada', 'em_andamento'].includes(p.carona.status)
+const podeAvaliar = (p) => p.status === 'aceita' && !p.faltou && p.carona.status === 'concluida' && !p.ja_avaliei
 const podeCancelar = (p) => ['pendente', 'aceita'].includes(p.status) && ['ativa', 'lotada'].includes(p.carona.status)
 
 async function carregar() {

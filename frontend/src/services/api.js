@@ -6,6 +6,8 @@ import { auth, sair } from '../stores/auth'
 // Cliente HTTP da API Flask
 // - envia o token de login em todas as requisicoes
 // - transforma qualquer erro em uma mensagem legivel (campo "error" da API)
+// - repassa o erro de cada campo do formulario (campo "campos" da API, vindo
+//   da validacao Pydantic no servidor) para a tela marcar o campo certo
 // ==========================================================
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -30,6 +32,7 @@ api.interceptors.response.use(
         location.assign(`/login?expirou=1&volta=${encodeURIComponent(location.pathname)}`)
       }
     }
+    erro.campos = erro.response?.data?.campos || {}
     erro.mensagem =
       erro.response?.data?.error ||
       (erro.code === 'ECONNABORTED'

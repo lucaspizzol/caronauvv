@@ -37,6 +37,8 @@ export function jaSaiu(iso) {
 
 export function linkWhatsApp(telefone, texto = '') {
   const numero = String(telefone || '').replace(/\D/g, '')
+  // Sem numero: o WhatsApp abre e a pessoa escolhe o contato
+  if (!numero) return `https://wa.me/${texto ? `?text=${encodeURIComponent(texto)}` : ''}`
   const comPais = numero.startsWith('55') ? numero : `55${numero}`
   return `https://wa.me/${comPais}${texto ? `?text=${encodeURIComponent(texto)}` : ''}`
 }
@@ -78,4 +80,54 @@ export function hojeLocal(deslocamentoDias = 0) {
   const d = new Date()
   d.setDate(d.getDate() + deslocamentoDias)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// ==========================================================
+// Reputacao, preferencias e textos de confianca
+// ==========================================================
+export function nota(valor) {
+  return valor == null ? 'Novo' : Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+export const PREF_CONVERSA = {
+  quieto: { texto: 'Prefere silêncio', icone: 'bi-chat' },
+  depende: { texto: 'Conversa se você quiser', icone: 'bi-chat-dots' },
+  conversador: { texto: 'Adora conversar', icone: 'bi-chat-heart' }
+}
+
+export function listaPreferencias(p) {
+  if (!p) return []
+  const conversa = PREF_CONVERSA[p.conversa] || PREF_CONVERSA.depende
+  return [
+    conversa,
+    p.musica ? { texto: 'Curte música', icone: 'bi-music-note-beamed' } : { texto: 'Sem música', icone: 'bi-volume-mute' },
+    p.animais ? { texto: 'Aceita animais', icone: 'bi-heart' } : { texto: 'Sem animais', icone: 'bi-slash-circle' },
+    p.fumar ? { texto: 'Pode fumar', icone: 'bi-cloud' } : { texto: 'Não fuma no carro', icone: 'bi-ban' }
+  ]
+}
+
+export const MOTIVOS_DENUNCIA = {
+  nao_compareceu: 'Não compareceu',
+  direcao_perigosa: 'Direção perigosa',
+  comportamento_inadequado: 'Comportamento inadequado',
+  assedio: 'Assédio',
+  cobranca_indevida: 'Cobrança indevida',
+  perfil_falso: 'Perfil falso',
+  outro: 'Outro motivo'
+}
+
+export function dataHora(iso) {
+  const d = paraData(iso)
+  return d ? `${dataCurta(iso)} ${hora(iso)}` : ''
+}
+
+export function membroDesde(isoData) {
+  if (!isoData) return ''
+  const [ano, mes] = isoData.split('-')
+  const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+  return `${meses[Number(mes) - 1]}/${ano}`
+}
+
+export function porcentagem(fracao) {
+  return `${Math.round(Number(fracao || 0) * 100)}%`
 }

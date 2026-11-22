@@ -58,9 +58,32 @@
           <label class="form-label" for="valor">Rateio (R$)</label>
           <div class="input-group has-validation">
             <span class="input-group-text">R$</span>
-            <input id="valor" v-model.number="form.valor_por_passageiro" type="number" min="0" step="0.50" :class="['form-control', { 'is-invalid': erros.valor_por_passageiro }]" />
+            <input id="valor" v-model.number="form.valor_por_passageiro" type="number" min="0" :max="teto" step="0.50" :class="['form-control', { 'is-invalid': erros.valor_por_passageiro }]" />
             <div class="invalid-feedback">{{ erros.valor_por_passageiro }}</div>
           </div>
+        </div>
+
+        <!-- Carona solidaria: valor sugerido = combustivel dividido entre todos -->
+        <div class="col-12">
+          <div class="bg-light rounded-3 p-3 d-flex flex-wrap align-items-end gap-2">
+            <div>
+              <label class="form-label mb-1" for="distancia">Distância aproximada <span class="text-secondary fw-normal">(km, opcional)</span></label>
+              <input id="distancia" v-model.number="form.distancia_km" type="number" min="0" max="500" step="0.1" class="form-control" style="max-width: 9rem" :class="{ 'is-invalid': erros.distancia_km }" />
+            </div>
+            <button type="button" class="btn btn-outline-primary" :disabled="!form.distancia_km" @click="sugerirValor">
+              <i class="bi bi-calculator me-1"></i>Sugerir rateio
+            </button>
+            <div class="small text-secondary flex-grow-1">
+              <span v-if="sugestao !== null">Sugestão: <strong>{{ dinheiro(sugestao) }}</strong> por pessoa (combustível dividido entre você e {{ form.vagas }} passageiro(s)).</span>
+              <span v-else>O CaronaUVV é carona solidária: o rateio só divide o combustível (máximo de {{ dinheiro(teto) }}).</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label" for="obs">Observações <span class="text-secondary fw-normal">(opcional)</span></label>
+          <textarea id="obs" v-model.trim="form.observacoes" rows="2" maxlength="300" :class="['form-control', { 'is-invalid': erros.observacoes }]" placeholder="Ex.: saio pontualmente; cabe mochila no porta-malas"></textarea>
+          <div class="invalid-feedback">{{ erros.observacoes }}</div>
         </div>
 
         <div class="col-md-7">
@@ -102,8 +125,8 @@ import { useRouter } from 'vue-router'
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import api from '../services/api'
 import { BAIRROS } from '../utils/bairros'
-import { hojeLocal } from '../utils/formato'
-import { regras, validar } from '../utils/validacao'
+import { dinheiro, hojeLocal } from '../utils/formato'
+import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const props = defineProps({ id: { type: String, default: null } })
 const router = useRouter()
@@ -121,8 +144,25 @@ const form = reactive({
   vagas: 3,
   valor_por_passageiro: 0,
   veiculo_id: null,
-  reserva_automatica: false
+  reserva_automatica: false,
+  observacoes: '',
+  distancia_km: null
 })
+const teto = ref(5)
+const sugestao = ref(null)
+
+async function sugerirValor() {
+  try {
+    const { data } = await api.get('/caronas/valor-sugerido', {
+      params: { distancia_km: form.distancia_km, vagas: form.vagas || 1 }
+    })
+    sugestao.value = data.valor_sugerido
+    teto.value = data.teto
+    form.valor_por_passageiro = data.valor_sugerido
+  } catch (e) {
+    erroApi.value = e.mensagem
+  }
+}
 const veiculos = ref([])
 const erros = ref({})
 const erroApi = ref('')
@@ -148,7 +188,9 @@ onMounted(async () => {
         vagas: c.vagas,
         valor_por_passageiro: c.valor_por_passageiro,
         veiculo_id: c.veiculo?.id ?? null,
-        reserva_automatica: c.reserva_automatica
+        reserva_automatica: c.reserva_automatica,
+        observacoes: c.observacoes || '',
+        distancia_km: c.distancia_km
       })
       if (!DESTINOS.includes(c.destino)) DESTINOS.push(c.destino)
     }
@@ -166,7 +208,10 @@ function validarForm() {
     data: [regras.obrigatorio],
     hora: [regras.obrigatorio],
     vagas: [(v) => (Number.isInteger(v) && v >= 1 && v <= 6 ? null : 'De 1 a 6 vagas.')],
-    valor_por_passageiro: [(v) => (v === '' || v === null || Number(v) >= 0 ? null : 'O valor não pode ser negativo.')]
+    valor_por_passageiro: [
+      (v) => (v === '' || v === null || Number(v) >= 0 ? null : 'O valor não pode ser negativo.'),
+      (v) => (Number(v || 0) <= teto.value ? null : `Carona solidária: máximo de ${dinheiro(teto.value)} por pessoa.`)
+    ]
   })
   // Regra de negocio (tambem validada na API): saida precisa ser no futuro
   if (!e.data && !e.hora && new Date(`${form.data}T${form.hora}`) <= new Date()) {
@@ -184,6 +229,7 @@ async function salvar() {
   const dados = {
     ...resto,
     valor_por_passageiro: Number(form.valor_por_passageiro || 0),
+    distancia_km: form.distancia_km || null,
     data_hora_saida: `${data}T${hora}`
   }
 
@@ -197,6 +243,7 @@ async function salvar() {
     router.push({ name: 'minhas-caronas', query: { ok: editando.value ? 'editada' : 'criada' } })
   } catch (e) {
     erroApi.value = e.mensagem
+    erros.value = { ...erros.value, ...errosDoServidor(e, Object.keys(form)) }
   } finally {
     salvando.value = false
   }

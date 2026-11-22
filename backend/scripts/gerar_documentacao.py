@@ -634,10 +634,11 @@ python -m venv .venv
 .venv\\Scripts\\activate            (Linux/Mac: source .venv/bin/activate)
 pip install -e .[dev,test]
 copy .env.example .env             (Linux/Mac: cp .env.example .env)
-flask --app app.py db upgrade      # cria o banco instance/caronauvv.db
-flask --app app.py seed-db         # dados de exemplo (senha de todos: 123456)
-flask --app app.py run             # http://localhost:5000/api/health
-pytest                             # testes do back-end</pre>
+python -m flask --app app.py db upgrade   # cria o banco
+python -m flask --app app.py seed-db      # dados de exemplo (senha 123456)
+python -m flask --app app.py run          # http://localhost:5000
+python -m pytest                          # testes do back-end</pre>
+  <p class="pequeno">Usamos <code>python -m flask</code> porque alguns Windows (Device Guard / Smart App Control) bloqueiam os <code>.exe</code> do <code>.venv\\Scripts</code>. Atalhos: <code>invoke resetdb</code>, <code>invoke test</code>, <code>invoke run</code>.</p>
   <h3>Terminal 2 – Front-end Vue</h3>
   <pre class="terminal">cd frontend
 npm install

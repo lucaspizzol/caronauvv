@@ -83,13 +83,17 @@ python -m venv .venv
 pip install -e .[dev,test]
 cp .env.example .env             # Windows: copy .env.example .env
 
-flask --app app.py db upgrade    # cria instance/caronauvv.db
-flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
-flask --app app.py run           # API em http://localhost:5000/api/health
-pytest                           # 182 testes
+python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
+python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
+python -m flask --app app.py run           # API em http://localhost:5000/api/health
+python -m pytest                           # 182 testes
 ```
 
-Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`.
+Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
+
+> Usamos `python -m flask` e `python -m pytest` (em vez de só `flask`/`pytest`) porque alguns Windows
+> com **Device Guard / Smart App Control** bloqueiam os `.exe` criados dentro do `.venv\Scripts`.
+> As tarefas do `invoke` já fazem isso sozinhas.
 
 **2. Front-end (Vue 3)**
 
@@ -108,7 +112,7 @@ Para gerar a versão de produção: `npm run build` (sai na pasta `dist/`).
 ```bash
 pip install -e .[postgres]       # driver psycopg 3
 # no .env: DATABASE_URL=postgresql://usuario:senha@localhost:5432/caronauvv
-flask --app app.py db upgrade && flask --app app.py seed-db
+python -m flask --app app.py db upgrade && python -m flask --app app.py seed-db
 # testes no PostgreSQL: TEST_DATABASE_URL=postgresql+psycopg://usuario:senha@localhost:5432/caronauvv_test pytest
 ```
 

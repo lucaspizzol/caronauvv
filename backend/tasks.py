@@ -38,3 +38,9 @@ def docsdb(c):
 @task
 def test(c):
     c.run("pytest", echo=True)
+
+
+@task
+def docs(c):
+    """Regera docs/CaronaUVV_Documentacao.html e o PDF (precisa do Edge ou Chrome)."""
+    c.run("python scripts/gerar_documentacao.py --pdf", echo=True)

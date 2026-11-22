@@ -230,7 +230,7 @@ async function carregar() {
     // (e das concluidas recentes, para o botao "Avaliar passageiros")
     const recentes = historico.value.filter((c) => c.status === 'concluida').slice(0, 5)
     await Promise.all([...abertas.value, ...recentes].map(carregarPedidos))
-    abertas.value.filter((c) => pendentes(c) > 0).forEach((c) => abertas_.add(c.id))
+    abertas.value.filter((c) => pendentes(c) > 0 || c.status === 'em_andamento').forEach((c) => abertas_.add(c.id))
   } catch (e) {
     avisar(e.mensagem, 'danger')
   } finally {

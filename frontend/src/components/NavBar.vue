@@ -8,12 +8,12 @@
 
       <ul class="navbar-nav me-auto d-none d-md-flex">
         <li v-for="item in itens" :key="item.to" class="nav-item">
-          <RouterLink class="nav-link px-2 px-lg-3" :to="item.to">
-            <i :class="['bi', item.icone, 'me-1']"></i><span class="d-none d-lg-inline">{{ item.texto }}</span><span class="d-lg-none">{{ item.curto }}</span>
+          <RouterLink class="nav-link px-2 px-xl-3 text-nowrap" :to="item.to">
+            <i :class="['bi', item.icone, 'me-1']"></i><span class="d-none d-xl-inline">{{ item.texto }}</span><span class="d-xl-none">{{ item.curto }}</span>
           </RouterLink>
         </li>
         <li v-if="auth.usuario?.is_admin" class="nav-item">
-          <RouterLink class="nav-link px-2 px-lg-3" to="/admin"><i class="bi bi-speedometer2 me-1"></i>Admin</RouterLink>
+          <RouterLink class="nav-link px-2 px-xl-3 text-nowrap" to="/admin"><i class="bi bi-speedometer2 me-1"></i>Admin</RouterLink>
         </li>
       </ul>
 
@@ -26,7 +26,7 @@
         </RouterLink>
         <RouterLink to="/perfil" class="text-white text-decoration-none d-flex align-items-center gap-2">
           <span class="avatar" style="width: 2rem; height: 2rem; font-size: 0.8rem">{{ iniciais(auth.usuario?.nome) }}</span>
-          <span class="d-none d-lg-inline small">{{ primeiroNome }}</span>
+          <span class="d-none d-xl-inline small">{{ primeiroNome }}</span>
         </RouterLink>
         <button class="btn btn-sm btn-outline-light" title="Sair" @click="fazerLogout">
           <i class="bi bi-box-arrow-right"></i><span class="d-none d-sm-inline ms-1">Sair</span>

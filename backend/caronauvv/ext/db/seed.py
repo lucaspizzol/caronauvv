@@ -199,8 +199,9 @@ def _dados_de_exemplo() -> None:
     # ------------------------------------------------------
     c_cancelada = Carona(
         motorista=lucas, veiculo=onix, sentido="volta",
-        bairro_origem="Praia da Costa", endereco_origem="UVV - Entrada principal",
-        destino="Av. Antônio Gil Veloso, 900",
+        # volta: destino = ponto de saida na UVV; endereco_origem = onde deixa no bairro
+        bairro_origem="Praia da Costa", endereco_origem="Av. Antônio Gil Veloso, 900",
+        destino="UVV - Entrada principal",
         data_hora_saida=as_(ontem, 22, 0), vagas=2, valor_por_passageiro=1.50,
         status="cancelada", cancelada_em=as_(ontem, 17, 0),
     )
@@ -240,7 +241,7 @@ def _dados_de_exemplo() -> None:
     )
     c_volta_bia = Carona(
         motorista=beatriz, veiculo=kwid, sentido="volta", bairro_origem="Praia de Itaparica",
-        endereco_origem="UVV - Entrada principal", destino="Rua Itapemirim, 500 - Praia de Itaparica",
+        endereco_origem="Rua Itapemirim, 500", destino="UVV - Entrada principal",
         distancia_km=5.0, duracao_min=14, data_hora_saida=as_(amanha, 22, 10), vagas=2,
         valor_por_passageiro=2.00, reserva_automatica=True,
     )

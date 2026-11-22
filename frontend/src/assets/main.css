@@ -1,0 +1,274 @@
+/* ==========================================================
+   Identidade do CaronaUVV sobre o Bootstrap 5
+   Azul UVV + amarelo para destaques
+   ========================================================== */
+:root {
+  --uvv-azul: #0b2a5b;
+  --uvv-azul-2: #163f82;
+  --uvv-amarelo: #ffc72c;
+  --bs-primary: #163f82;
+  --bs-primary-rgb: 22, 63, 130;
+  --bs-link-color: #163f82;
+  --bs-link-color-rgb: 22, 63, 130;
+  --bs-body-bg: #f3f5f9;
+  --bs-border-radius: 0.6rem;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--uvv-azul-2);
+  --bs-btn-border-color: var(--uvv-azul-2);
+  --bs-btn-hover-bg: var(--uvv-azul);
+  --bs-btn-hover-border-color: var(--uvv-azul);
+  --bs-btn-active-bg: var(--uvv-azul);
+  --bs-btn-disabled-bg: var(--uvv-azul-2);
+  --bs-btn-disabled-border-color: var(--uvv-azul-2);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--uvv-azul-2);
+  --bs-btn-border-color: var(--uvv-azul-2);
+  --bs-btn-hover-bg: var(--uvv-azul-2);
+  --bs-btn-hover-border-color: var(--uvv-azul-2);
+  --bs-btn-active-bg: var(--uvv-azul);
+}
+
+.btn-destaque {
+  --bs-btn-bg: var(--uvv-amarelo);
+  --bs-btn-border-color: var(--uvv-amarelo);
+  --bs-btn-color: var(--uvv-azul);
+  --bs-btn-hover-bg: #ffb800;
+  --bs-btn-hover-border-color: #ffb800;
+  --bs-btn-hover-color: var(--uvv-azul);
+  font-weight: 600;
+}
+
+.navbar-uvv {
+  background: var(--uvv-azul);
+}
+
+.navbar-uvv .nav-link {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.navbar-uvv .nav-link:hover,
+.navbar-uvv .nav-link.router-link-active {
+  color: #fff;
+}
+
+.navbar-uvv .nav-link.router-link-active {
+  box-shadow: inset 0 -3px 0 var(--uvv-amarelo);
+}
+
+.marca {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.marca span {
+  color: var(--uvv-amarelo);
+}
+
+.card {
+  border: 0;
+  box-shadow: 0 1px 2px rgba(11, 42, 91, 0.06), 0 4px 16px rgba(11, 42, 91, 0.06);
+}
+
+.titulo-pagina {
+  font-weight: 800;
+  color: var(--uvv-azul);
+  letter-spacing: -0.02em;
+}
+
+.avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #dfe7f5;
+  color: var(--uvv-azul-2);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.horario {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--uvv-azul);
+}
+
+.rota {
+  border-left: 3px dashed #c3cfe3;
+  padding-left: 0.85rem;
+  margin-left: 0.35rem;
+}
+
+.rota .ponto {
+  position: relative;
+}
+
+.rota .ponto::before {
+  content: '';
+  position: absolute;
+  left: -1.25rem;
+  top: 0.45rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--uvv-azul-2);
+}
+
+.rota .ponto.fim::before {
+  background: var(--uvv-amarelo);
+}
+
+.vagas-bolinhas i {
+  font-size: 1.05rem;
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.tela-login {
+  min-height: 100vh;
+  background: radial-gradient(1200px 500px at 10% -10%, #2a5bb0 0%, transparent 60%), var(--uvv-azul);
+}
+
+.vazio {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6c7a92;
+}
+
+.vazio i {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Barra de navegacao inferior no celular */
+.nav-celular {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #e3e8f0;
+  z-index: 1030;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-celular a {
+  flex: 1;
+  text-align: center;
+  font-size: 0.7rem;
+  color: #6c7a92;
+  text-decoration: none;
+  padding: 0.45rem 0 0.35rem;
+}
+
+.nav-celular a i {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.nav-celular a.router-link-active {
+  color: var(--uvv-azul-2);
+  font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+  main.com-nav {
+    padding-bottom: 5rem;
+  }
+}
+
+.nav-pills {
+  --bs-nav-pills-link-active-bg: var(--uvv-azul-2);
+  --bs-nav-link-color: var(--uvv-azul-2);
+  --bs-nav-link-hover-color: var(--uvv-azul);
+}
+
+@media (max-width: 575.98px) {
+  .horario {
+    font-size: 1.35rem;
+  }
+  .coluna-preco {
+    min-width: 4.2rem !important;
+  }
+}
+
+/* deixa o texto do meio encolher (sem isso o preco estoura a tela no celular) */
+.min-w-0 {
+  min-width: 0;
+}
+
+.coluna-preco,
+.coluna-hora {
+  flex-shrink: 0;
+}
+
+@media (max-width: 575.98px) {
+  .coluna-hora {
+    min-width: 3.6rem !important;
+  }
+  .coluna-preco .fs-5 {
+    font-size: 1rem !important;
+  }
+}
+
+/* Indicador "Ao vivo" das telas com atualizacao automatica */
+.ao-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.ao-vivo .pulso {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+  animation: pulso 1.8s infinite;
+}
+
+@keyframes pulso {
+  70% {
+    box-shadow: 0 0 0 0.45rem rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ao-vivo .pulso {
+    animation: none;
+  }
+}
+
+/* destaque rapido em item que acabou de chegar/mudar */
+.chegou {
+  animation: chegou 2.4s ease-out;
+}
+
+@keyframes chegou {
+  0% {
+    box-shadow: 0 0 0 3px rgba(255, 199, 44, 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(255, 199, 44, 0);
+  }
+}

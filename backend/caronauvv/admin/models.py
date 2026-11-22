@@ -1,0 +1,80 @@
+from datetime import date, datetime, time
+from decimal import Decimal
+from typing import Optional, TYPE_CHECKING
+
+from sqlalchemy import CheckConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from caronauvv.caronas.models import SENTIDOS
+from caronauvv.ext.db import check_valores, db
+
+if TYPE_CHECKING:
+    from caronauvv.auth.models import Usuario
+
+
+# === Busca (registro para "Buscas sem resultado, por bairro") ===  [EXTRA - painel]
+class Busca(db.Model):
+    __tablename__ = "buscas"
+    __table_args__ = (
+        CheckConstraint(check_valores("sentido", SENTIDOS), name="sentido"),
+    )
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    usuario_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    bairro: Mapped[str] = mapped_column(db.String(100), nullable=False, index=True)
+    sentido: Mapped[str] = mapped_column(db.String(10), nullable=False, default="ida")
+    data_desejada: Mapped[date] = mapped_column(db.Date, nullable=False)
+    hora_inicio: Mapped[Optional[time]] = mapped_column(db.Time)   # faixa "18:00 - 19:00"
+    hora_fim: Mapped[Optional[time]] = mapped_column(db.Time)
+    qtd_resultados: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), index=True)
+
+    usuario: Mapped[Optional["Usuario"]] = relationship("Usuario")
+
+    def __repr__(self) -> str:
+        return f"<Busca id={self.id} bairro='{self.bairro}' resultados={self.qtd_resultados}>"
+
+
+# === Configuracao ("Regras e precos" do painel) ===  [EXTRA]
+class Configuracao(db.Model):
+    __tablename__ = "configuracoes"
+
+    # Valores iniciais inseridos pelo comando seed-db: chave -> (valor, descricao)
+    PADROES = {
+        "custo_km_combustivel": ("0.55", "Custo do combustível por km (R$), base do valor sugerido"),
+        "valor_maximo_passageiro": ("5.00", "Teto do valor por passageiro (R$): nunca mais que o custo"),
+        "raio_busca_km": ("2", "Distância máxima da rota até o passageiro na busca (km)"),
+        "horas_expirar_pedido": ("2", "Pedido sem resposta expira X horas antes da saída"),
+        "minutos_alerta_parada": ("6", "Carro parado fora da rota por X min dispara 'Está tudo bem?'"),
+        "minutos_sem_resposta_alerta": ("3", "Sem resposta ao alerta em X min, avisa os contatos de confiança"),
+        "dias_revelar_avaliacao": ("7", "Notas aparecem quando os dois avaliam ou após X dias"),
+        "dias_guardar_gps": ("30", "Trilhas GPS são apagadas após X dias"),
+    }
+
+    chave: Mapped[str] = mapped_column(db.String(60), primary_key=True)
+    valor: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    descricao: Mapped[Optional[str]] = mapped_column(db.String(255))
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), onupdate=datetime.now)
+
+    # ======================================================
+    # LEITURA (cai no padrao se a chave nao estiver no banco)
+    # ======================================================
+    @classmethod
+    def obter(cls, chave: str, padrao: Optional[str] = None) -> Optional[str]:
+        config = db.session.get(cls, chave)
+        if config is not None:
+            return config.valor
+        if chave in cls.PADROES:
+            return cls.PADROES[chave][0]
+        return padrao
+
+    @classmethod
+    def obter_int(cls, chave: str, padrao: int) -> int:
+        return int(cls.obter(chave, str(padrao)))
+
+    @classmethod
+    def obter_decimal(cls, chave: str, padrao: str) -> Decimal:
+        return Decimal(cls.obter(chave, padrao))
+
+    def __repr__(self) -> str:
+        return f"<Configuracao {self.chave}='{self.valor}'>"

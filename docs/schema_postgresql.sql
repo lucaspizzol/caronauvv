@@ -23,6 +23,16 @@ CREATE TABLE usuarios (
 	casa_lng FLOAT, 
 	foto_url VARCHAR(500), 
 	chave_pix VARCHAR(150), 
+	bio VARCHAR(300), 
+	pref_conversa VARCHAR(15) DEFAULT 'depende' NOT NULL, 
+	pref_musica BOOLEAN DEFAULT true NOT NULL, 
+	pref_animais BOOLEAN DEFAULT false NOT NULL, 
+	pref_fumar BOOLEAN DEFAULT false NOT NULL, 
+	email_verificado BOOLEAN DEFAULT false NOT NULL, 
+	codigo_verificacao_hash VARCHAR(255), 
+	codigo_expira_em TIMESTAMP WITHOUT TIME ZONE, 
+	codigo_tentativas INTEGER DEFAULT '0' NOT NULL, 
+	verificacao_solicitada_em TIMESTAMP WITHOUT TIME ZONE, 
 	senha_hash VARCHAR(255) NOT NULL, 
 	is_admin BOOLEAN NOT NULL, 
 	verificado BOOLEAN NOT NULL, 
@@ -30,7 +40,8 @@ CREATE TABLE usuarios (
 	ultimo_login_em TIMESTAMP WITHOUT TIME ZONE, 
 	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
 	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
-	CONSTRAINT pk_usuarios PRIMARY KEY (id)
+	CONSTRAINT pk_usuarios PRIMARY KEY (id), 
+	CONSTRAINT ck_usuarios_pref_conversa CHECK (pref_conversa IN ('quieto', 'depende', 'conversador'))
 );
 
 CREATE INDEX ix_usuarios_bairro ON usuarios (bairro);
@@ -101,6 +112,7 @@ CREATE TABLE caronas (
 	vagas INTEGER NOT NULL, 
 	valor_por_passageiro NUMERIC(6, 2) NOT NULL, 
 	reserva_automatica BOOLEAN NOT NULL, 
+	observacoes VARCHAR(300), 
 	status VARCHAR(20) NOT NULL, 
 	iniciada_em TIMESTAMP WITHOUT TIME ZONE, 
 	concluida_em TIMESTAMP WITHOUT TIME ZONE, 
@@ -136,7 +148,7 @@ CREATE TABLE alertas (
 	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
 	resolvido_em TIMESTAMP WITHOUT TIME ZONE, 
 	CONSTRAINT pk_alertas PRIMARY KEY (id), 
-	CONSTRAINT ck_alertas_tipo CHECK (tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps')), 
+	CONSTRAINT ck_alertas_tipo CHECK (tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps', 'botao_panico')), 
 	CONSTRAINT ck_alertas_resposta CHECK (resposta IN ('tudo_bem', 'preciso_ajuda', 'sem_resposta')), 
 	CONSTRAINT ck_alertas_status CHECK (status IN ('aguardando', 'em_revisao', 'resolvido')), 
 	CONSTRAINT fk_alertas_carona_id_caronas FOREIGN KEY(carona_id) REFERENCES caronas (id) ON DELETE CASCADE, 
@@ -244,7 +256,7 @@ CREATE TABLE solicitacoes (
 	CONSTRAINT pk_solicitacoes PRIMARY KEY (id), 
 	CONSTRAINT uq_solicitacao_carona_passageiro UNIQUE (carona_id, passageiro_id), 
 	CONSTRAINT ck_solicitacoes_status CHECK (status IN ('pendente', 'aceita', 'recusada', 'cancelada', 'expirada')), 
-	CONSTRAINT ck_solicitacoes_metodo_embarque CHECK (metodo_embarque IN ('pin+gps', 'gps', 'manual')), 
+	CONSTRAINT ck_solicitacoes_metodo_embarque CHECK (metodo_embarque IN ('pin', 'pin+gps', 'gps', 'manual')), 
 	CONSTRAINT fk_solicitacoes_carona_id_caronas FOREIGN KEY(carona_id) REFERENCES caronas (id) ON DELETE CASCADE, 
 	CONSTRAINT fk_solicitacoes_passageiro_id_usuarios FOREIGN KEY(passageiro_id) REFERENCES usuarios (id)
 );

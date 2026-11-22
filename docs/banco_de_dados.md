@@ -92,6 +92,16 @@ erDiagram
         float casa_lng
         string foto_url
         string chave_pix
+        string bio
+        string pref_conversa
+        boolean pref_musica
+        boolean pref_animais
+        boolean pref_fumar
+        boolean email_verificado
+        string codigo_verificacao_hash
+        datetime codigo_expira_em
+        integer codigo_tentativas
+        datetime verificacao_solicitada_em
         string senha_hash
         boolean is_admin
         boolean verificado
@@ -134,6 +144,7 @@ erDiagram
         integer vagas
         numeric valor_por_passageiro
         boolean reserva_automatica
+        string observacoes
         string status
         datetime iniciada_em
         datetime concluida_em
@@ -279,6 +290,16 @@ erDiagram
 | `casa_lng` | FLOAT | sim |  |  |
 | `foto_url` | STRING(500) | sim |  |  |
 | `chave_pix` | STRING(150) | sim |  |  |
+| `bio` | STRING(300) | sim |  |  |
+| `pref_conversa` | STRING(15) | não |  | `"depende"` |
+| `pref_musica` | BOOLEAN | não |  | `True` |
+| `pref_animais` | BOOLEAN | não |  | `False` |
+| `pref_fumar` | BOOLEAN | não |  | `False` |
+| `email_verificado` | BOOLEAN | não |  | `False` |
+| `codigo_verificacao_hash` | STRING(255) | sim |  |  |
+| `codigo_expira_em` | DATETIME | sim |  |  |
+| `codigo_tentativas` | INTEGER | não |  | `0` |
+| `verificacao_solicitada_em` | DATETIME | sim |  |  |
 | `senha_hash` | STRING(255) | não |  |  |
 | `is_admin` | BOOLEAN | não |  | `False` |
 | `verificado` | BOOLEAN | não |  | `False` |
@@ -286,6 +307,10 @@ erDiagram
 | `ultimo_login_em` | DATETIME | sim |  |  |
 | `created_at` | DATETIME | não |  | agora |
 | `updated_at` | DATETIME | não |  | agora |
+
+**Restrições:**
+
+- CHECK `ck_usuarios_pref_conversa`: `pref_conversa IN ('quieto', 'depende', 'conversador')`
 
 ### `veiculos` (módulo `auth`)
 
@@ -330,6 +355,7 @@ erDiagram
 | `vagas` | INTEGER | não |  |  |
 | `valor_por_passageiro` | NUMERIC(6,2) | não |  | `0` |
 | `reserva_automatica` | BOOLEAN | não |  | `False` |
+| `observacoes` | STRING(300) | sim |  |  |
 | `status` | STRING(20) | não | índice | `"ativa"` |
 | `iniciada_em` | DATETIME | sim |  |  |
 | `concluida_em` | DATETIME | sim |  |  |
@@ -369,7 +395,7 @@ erDiagram
 
 **Restrições:**
 
-- CHECK `ck_solicitacoes_metodo_embarque`: `metodo_embarque IN ('pin+gps', 'gps', 'manual')`
+- CHECK `ck_solicitacoes_metodo_embarque`: `metodo_embarque IN ('pin', 'pin+gps', 'gps', 'manual')`
 - CHECK `ck_solicitacoes_status`: `status IN ('pendente', 'aceita', 'recusada', 'cancelada', 'expirada')`
 - UNIQUE `uq_solicitacao_carona_passageiro`: `carona_id, passageiro_id`
 
@@ -472,7 +498,7 @@ erDiagram
 
 - CHECK `ck_alertas_resposta`: `resposta IN ('tudo_bem', 'preciso_ajuda', 'sem_resposta')`
 - CHECK `ck_alertas_status`: `status IN ('aguardando', 'em_revisao', 'resolvido')`
-- CHECK `ck_alertas_tipo`: `tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps')`
+- CHECK `ck_alertas_tipo`: `tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps', 'botao_panico')`
 
 ### `links_compartilhados` (módulo `seguranca`)
 

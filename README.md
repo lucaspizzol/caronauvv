@@ -6,12 +6,33 @@ Plataforma web de caronas entre alunos da UVV (Universidade Vila Velha). Trabalh
 O motorista publica uma carona (bairro de saída, horário, vagas e valor do rateio), os passageiros
 pedem vaga e o motorista aceita ou recusa. O telefone de cada um só aparece depois do aceite.
 
+Por cima do MVP, o CaronaUVV tem um **sistema de confiança** inspirado nos apps de carona e de
+transporte (BlaBlaCar, Uber, 99):
+
+| Recurso | Como funciona | Inspiração |
+|---|---|---|
+| Só alunos da UVV | Cadastro aceita apenas e-mail `@uvv.br` e confirma o e-mail com código de 6 números | BlaBlaCar (e-mail verificado) |
+| Perfil verificado | O aluno pede o selo e a administração confere a matrícula | BlaBlaCar (perfil verificado) |
+| Reputação | Nota média, nível (Calouro → Veterano → Embaixador), viagens, faltas, taxa de cancelamento e selos | BlaBlaCar |
+| Avaliação "às cegas" | Motorista e passageiro se avaliam (1 a 5 + elogios); a nota só aparece quando os dois avaliam ou após 7 dias | BlaBlaCar |
+| Preferências | Conversa (silêncio / depende / adora conversar), música, animais, fumar | BlaBlaCar ("Bla, BlaBla, BlaBlaBla") |
+| PIN de embarque | O motorista inicia a viagem e digita o PIN de 4 números de cada passageiro | Uber (verificação por PIN) |
+| Faltas | Passageiro confirmado que não aparece leva uma falta no perfil | BlaBlaCar (no-show) |
+| Link da família | Página pública com motorista, carro, placa e última localização GPS; expira no fim da viagem | Uber (compartilhar viagem) |
+| Botão de emergência | Avisa a administração, oferece ligar 190 e avisar os contatos de confiança | Uber / 99 |
+| Rateio solidário | Teto por passageiro e valor sugerido (combustível ÷ ocupantes); Pix copia e cola com QR Code | BlaBlaCar (preço sugerido) |
+| Notificações | Sino com contador: pedido novo, vaga confirmada, viagem iniciada, avaliação etc. | Todos |
+| Denúncias e moderação | Só denuncia quem dividiu carona; admin analisa, encerra e pode suspender | Todos |
+| Painel admin | KPIs (ocupação, CO₂ evitado, faltas), demanda sem oferta por bairro, regras e **banco de dados ao vivo** | — |
+
 ## Tecnologias
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`)
-- **Testes:** pytest + pytest-flask
-- **Front-end:** Vue 3 + Vite + vue-router + axios, com Bootstrap 5 e Bootstrap Icons (pasta `frontend/`), responsivo para celular
+- **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 182 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 182 testes, 95% de cobertura) e Vitest (front-end, 15 testes)
+- **Front-end:** Vue 3 + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons, responsivo para celular;
+  `qrcode` (QR do Pix) e `mermaid` (diagrama do banco no painel)
 
 ## Estrutura
 
@@ -20,38 +41,38 @@ backend/
   app.py                  # ponto de entrada (create_app)
   caronauvv/
     __init__.py           # Application Factory, CORS, blueprints
-    config.py             # Config e TestConfig
-    ext/db/               # SQLAlchemy, comandos init-db / seed-db / limpar-gps
-    auth/                 # usuários, login por token, veículos
-    caronas/              # caronas e solicitações de vaga
-    avaliacoes/           # avaliações, tags e pagamentos (Pix)
-    notificacoes/
-    seguranca/            # alertas, link da família, denúncias
-    admin/                # buscas e configurações
-  migrations/             # Flask-Migrate (Alembic)
-  scripts/                # geração da documentação do banco
-  tests/                  # 99 testes (pytest + pytest-flask)
-  .env.example            # variaveis de ambiente (copiar para .env)
+    config.py             # Config e TestConfig (tudo vem do .env)
+    validacao.py          # base dos schemas Pydantic e traducao dos erros
+    email.py              # envio de e-mail (SMTP) ou log em desenvolvimento
+    errors.py, logs.py    # erros em JSON e log de cada requisicao
+    ext/db/               # SQLAlchemy, comandos init-db / seed-db / limpar-gps, seed
+    auth/                 # usuarios, login, verificacao de e-mail, perfil publico, veiculos, contatos
+    caronas/              # caronas, pedidos de vaga, ciclo da viagem (iniciar, PIN, falta, GPS)
+    avaliacoes/           # avaliacoes, reputacao e pagamento Pix
+    notificacoes/         # notificacoes
+    seguranca/            # link da familia, botao de emergencia, denuncias
+    admin/                # painel: indicadores, moderacao, configuracoes, estrutura do banco
+    (cada modulo: models.py, schemas.py, services.py, routes.py)
+  migrations/             # Flask-Migrate (Alembic): 2 versoes
+  scripts/                # geracao da documentacao do banco
+  tests/                  # 182 testes (pytest + pytest-flask)
 frontend/
   src/
-    main.js               # cria o app Vue, Bootstrap e rotas
-    router/               # rotas e protecao de login
-    services/api.js       # axios: token no cabecalho e mensagens de erro da API
-    stores/auth.js        # sessao do usuario (token no sessionStorage, uma por aba)
-    composables/          # useAoVivo: atualizacao automatica das telas
-    views/                # telas: login, cadastro, busca, oferecer/editar, minhas caronas, meus pedidos, perfil
-    components/           # NavBar, CaronaInfo, StatusBadge, AlertaMensagem, BotaoConfirmar
-    utils/                # formatacao e validacao dos formularios
-docs/
-  CaronaUVV_MVP.docx      # documento do MVP
-  banco_de_dados.md       # diagrama ER (Mermaid) e dicionário de dados
-  banco.dbml              # diagrama para o dbdiagram.io
-  schema_postgresql.sql   # esquema para PostgreSQL
+    router/, services/api.js, stores/auth.js, composables/useAoVivo.js
+    views/                # 15 telas (busca, oferecer, minhas caronas, pedidos, avaliacoes,
+                          #   notificacoes, perfil, perfil publico, admin, link da familia...)
+    components/           # NavBar, CaronaInfo, ReputacaoResumo, EstrelasNota, PixPagamento,
+                          #   SegurancaViagem, StatusBadge, AlertaMensagem, BotaoConfirmar
+    utils/                # formatacao e validacao (+ testes *.test.js)
+docs/                     # documentacao do banco (gerada a partir dos modelos)
 ```
 
 ## Como rodar
 
-São dois terminais: um para a API Flask e outro para o front-end Vue.
+Precisa de **Python 3.10+** e **Node.js 18+**. São dois terminais: um para a API Flask e outro para o Vue.
+
+> Dica (Windows): extraia o projeto num caminho curto, como `C:\caronauvv`. Caminhos muito longos
+> passam do limite de 260 caracteres do Windows e o `pip install` falha.
 
 **1. API (Flask)**
 
@@ -65,64 +86,100 @@ cp .env.example .env             # Windows: copy .env.example .env
 flask --app app.py db upgrade    # cria instance/caronauvv.db
 flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 flask --app app.py run           # API em http://localhost:5000/api/health
-pytest                           # testes
+pytest                           # 182 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`.
 
-**2. Front-end (Vue 3)** — precisa do Node.js 18 ou mais novo
+**2. Front-end (Vue 3)**
 
 ```bash
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
+npm test                         # 15 testes do front (Vitest)
 ```
 
 O Vite repassa as chamadas `/api` para o Flask em `localhost:5000` (proxy em `vite.config.js`).
 Para gerar a versão de produção: `npm run build` (sai na pasta `dist/`).
 
-Usuários de exemplo: `admin@uvv.br`, `kaua@uvv.br`, `lucas@uvv.br`, `ana@uvv.br`, `pedro@uvv.br` (senha `123456`).
-Também dá para entrar com a matrícula no lugar do e-mail.
+### PostgreSQL (produção)
 
-### Demonstração com duas telas (motorista e passageiro)
+```bash
+pip install -e .[postgres]       # driver psycopg 3
+# no .env: DATABASE_URL=postgresql://usuario:senha@localhost:5432/caronauvv
+flask --app app.py db upgrade && flask --app app.py seed-db
+# testes no PostgreSQL: TEST_DATABASE_URL=postgresql+psycopg://usuario:senha@localhost:5432/caronauvv_test pytest
+```
 
-As telas **Buscar caronas**, **Minhas caronas** e **Meus pedidos** se atualizam sozinhas a cada 5 segundos
-(indicador "Ao vivo"), e o login é guardado por aba. Assim dá para mostrar os dois lados ao mesmo tempo:
+## Usuários de exemplo (senha `123456`)
 
-1. `flask --app app.py seed-db` com o banco zerado (`invoke resetdb` apaga e recria).
-2. Aba/janela 1: entre com `kaua@uvv.br` e abra **Minhas caronas** (motorista).
-3. Aba/janela 2: entre com `lucas@uvv.br`, busque "Itapuã" e clique em **Pedir vaga** na carona do Kauã.
-4. Em até 5 s o pedido aparece na tela do motorista, piscando em amarelo. Clique em **Aceitar**.
-5. Em **Meus pedidos** do passageiro, o status muda para "Vaga confirmada" e aparecem o telefone e o PIN.
+| E-mail | Papel na demonstração |
+|---|---|
+| `kaua@uvv.br` | Motorista "Veterano", nota 5,0, perfil verificado. Tem uma carona **hoje, ~20 min depois do seed** (Ana confirmada, PIN **4821**) |
+| `lucas@uvv.br` | Passageiro; tem uma avaliação pendente do Kauã |
+| `ana@uvv.br` | Passageira com contatos de confiança (Mãe, Júlia) |
+| `pedro@uvv.br` | Passageiro com 2 faltas (aparece para o motorista antes de aceitar) |
+| `marina@uvv.br` | Pediu o selo de verificado (aprovar no painel) |
+| `joao@uvv.br`, `beatriz@uvv.br` | Outros motoristas (Jardim Camburi, Praia de Itaparica) |
+| `admin@uvv.br` | Painel da administração (`/admin`) |
 
-Para usar o celular como segunda tela, deixe o PC e o celular na mesma rede e abra `http://IP-do-PC:5173`.
+Também dá para entrar com a matrícula no lugar do e-mail. Sem servidor de e-mail configurado, o
+código de verificação do cadastro aparece na própria tela ("modo de demonstração") e no log da API.
+
+### Roteiro de demonstração (duas abas: motorista e passageiro)
+
+As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** se atualizam sozinhas
+(indicador "Ao vivo") e o login é guardado por aba.
+
+1. `invoke resetdb` (apaga e recria o banco com o seed) — faça isso logo antes de apresentar.
+2. **Cadastro:** tente `fulano@gmail.com` (bloqueado) e depois `fulano@uvv.br`; confirme o código.
+3. **Aba 1 — Kauã:** Minhas caronas → carona de hoje → **Iniciar viagem** → digite o PIN **4821** da Ana
+   (teste um PIN errado antes) → **Compartilhar viagem** (abra o link numa janela anônima) → **Concluir**
+   → **Avaliações**.
+4. **Aba 2 — Lucas:** busque "Itapuã" → veja a nota do Kauã → clique no nome (perfil público) →
+   **Pedir vaga**. Na aba 1 o pedido chega sozinho; aceite. Em **Meus pedidos** do Lucas: PIN, Pix com
+   QR Code, **Compartilhar viagem** e **Emergência**.
+5. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina), Denúncias, Alertas
+   (a emergência do passo 4 aparece aqui) e **Banco de dados** (diagrama ER gerado ao vivo).
 
 ## API
 
 | Recurso | Rotas |
 |---|---|
-| Autenticação | `POST /api/auth/cadastro`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET/PUT /api/auth/me` |
-| Veículos | `GET/POST /api/veiculos`, `PUT/DELETE /api/veiculos/<id>` |
-| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET/PUT /api/caronas/<id>`, `POST /api/caronas/<id>/cancelar`, `POST /api/caronas/<id>/concluir` |
-| Solicitações | `GET/POST /api/caronas/<id>/solicitacoes`, `GET /api/solicitacoes/minhas`, `POST /api/solicitacoes/<id>/aceitar`, `/recusar`, `/cancelar` |
+| Autenticação | `POST /api/auth/cadastro`, `/login`, `/logout`, `/verificar-email`, `/reenviar-codigo`, `/solicitar-verificacao`, `GET/PUT /api/auth/me` |
+| Usuários | `GET /api/usuarios/<id>` (perfil público com reputação) |
+| Veículos e contatos | `GET/POST /api/veiculos`, `PUT/DELETE /api/veiculos/<id>`, `GET/POST /api/contatos`, `DELETE /api/contatos/<id>` |
+| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido`, `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
+| Solicitações | `GET/POST /api/caronas/<id>/solicitacoes`, `GET /api/solicitacoes/minhas`, `POST /api/solicitacoes/<id>/aceitar`, `/recusar`, `/cancelar`, `/embarque`, `/falta` |
+| Avaliações e Pix | `GET /api/avaliacoes/pendentes`, `/tags`, `POST /api/solicitacoes/<id>/avaliacao`, `GET .../pix`, `POST .../pagamento` |
+| Segurança | `POST /api/caronas/<id>/compartilhar`, `GET /api/acompanhar/<token>` (público), `POST /api/caronas/<id>/sos`, `POST /api/denuncias` |
+| Notificações | `GET /api/notificacoes`, `GET /api/notificacoes/contagem`, `POST /api/notificacoes/lidas` |
+| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
 
-Todo erro volta em JSON no formato `{"error": "mensagem"}` (regras de negócio, 404, 405 e 500), e cada
-requisição é registrada no log com método, rota, status e tempo (nível em `LOG_LEVEL` no `.env`).
+Todo erro volta em JSON no formato `{"error": "mensagem"}`; erros de validação trazem também
+`{"campos": {"email": "Use seu e-mail institucional (@uvv.br)..."}}`, que o front mostra embaixo do campo certo.
+Cada requisição é registrada no log com método, rota, status e tempo (`LOG_LEVEL` e `LOG_FILE` no `.env`).
 
 ## Regras de negócio
 
+- Só e-mail institucional (`@uvv.br`); oferecer ou pedir carona exige e-mail confirmado.
 - Uma carona não pode ter mais passageiros aceitos do que vagas; quando lota, fica `lotada` e sai da busca.
 - O motorista não pode pedir vaga na própria carona, e o passageiro não pode pedir a mesma carona duas vezes.
-- Não é possível criar carona com data/hora no passado.
-- Cancelar uma carona cancela as solicitações em aberto.
-- Pedido sem resposta expira 2 h antes da saída.
-- O telefone só aparece entre motorista e passageiro depois que a solicitação é aceita.
-- Depois do horário da viagem, o motorista marca a carona como concluída; pedidos sem resposta expiram.
-- Senhas guardadas com hash (Werkzeug).
+- Não é possível criar carona com data/hora no passado; o rateio tem teto (padrão R$ 5,00, configurável).
+- Cancelar uma carona cancela as solicitações em aberto e avisa os passageiros.
+- Pedido sem resposta expira 2 h antes da saída (ou ao iniciar a viagem).
+- A viagem pode ser iniciada a partir de 30 min antes da saída e precisa de ao menos um passageiro confirmado.
+- Embarque só com o PIN certo; passageiro confirmado que não aparece recebe falta.
+- Avaliação só depois da carona concluída, uma por pessoa, em até 14 dias; nota escondida até os dois avaliarem ou 7 dias.
+- Só denuncia quem dividiu uma carona; o link da família para de funcionar quando a viagem termina.
+- Login bloqueia por 10 min após 5 senhas erradas; código de e-mail aceita 5 tentativas e vence em 30 min.
+- Senhas com hash (Werkzeug/scrypt); o código de verificação é guardado como HMAC-SHA256, nunca em texto.
 
 ## Banco de dados
 
-15 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md). Para ver o diagrama
-visual, cole o conteúdo de [`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).
+15 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
+Para ver o diagrama: no painel admin, aba **Banco de dados** (gerado ao vivo dos modelos), ou cole
+[`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).

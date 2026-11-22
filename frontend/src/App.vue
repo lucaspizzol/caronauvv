@@ -14,12 +14,25 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 import NavBar from './components/NavBar.vue'
-import { auth, logado } from './stores/auth'
+import api from './services/api'
+import { atualizarUsuario, auth, logado } from './stores/auth'
 
 const route = useRoute()
 const mostrarMenu = computed(() => logado.value && !route.meta.publica)
+
+// Ao abrir/recarregar a pagina, busca os dados atuais do usuario
+// (ex.: o admin aprovou o selo de verificado enquanto ele estava fora)
+onMounted(async () => {
+  if (!logado.value) return
+  try {
+    const { data } = await api.get('/auth/me')
+    atualizarUsuario(data.usuario)
+  } catch {
+    /* token invalido: o interceptor do api.js ja manda para o login */
+  }
+})
 </script>

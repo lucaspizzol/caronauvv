@@ -188,6 +188,9 @@
           <div class="btn-group btn-group-sm">
             <button :class="['btn', diagramaCompleto ? 'btn-outline-primary' : 'btn-primary']" @click="desenhar(false)">Só chaves</button>
             <button :class="['btn', diagramaCompleto ? 'btn-primary' : 'btn-outline-primary']" @click="desenhar(true)">Todas as colunas</button>
+            <button :class="['btn', ampliado ? 'btn-dark' : 'btn-outline-dark']" @click="ampliado = !ampliado; desenhar(diagramaCompleto)">
+              <i :class="['bi', ampliado ? 'bi-zoom-out' : 'bi-zoom-in']"></i> {{ ampliado ? 'Caber na tela' : 'Ampliar' }}
+            </button>
           </div>
         </div>
         <p class="small text-secondary mb-0 mt-1">Diagrama gerado agora, a partir dos modelos do SQLAlchemy (mesma fonte das migrações).</p>
@@ -254,6 +257,9 @@ const banco = ref(null)
 const diagrama = ref(null)
 const diagramaCompleto = ref(false)
 const desenhando = ref(false)
+const ampliado = ref(false)
+
+const decimal = (n) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
 function avisar(texto, tipo = 'success') {
   aviso.texto = texto
@@ -267,7 +273,7 @@ const kpis = computed(() => {
     { rotulo: 'Alunos cadastrados', valor: u.total, detalhe: `${u.ativos_30_dias} ativos nos últimos 30 dias` },
     { rotulo: 'Viagens concluídas', valor: v.concluidas, detalhe: `${v.passageiros_transportados} passageiros levados`, classe: 'verde' },
     { rotulo: 'Ocupação dos carros', valor: porcentagem(v.taxa_ocupacao), detalhe: 'assentos usados nas viagens' },
-    { rotulo: 'CO₂ evitado', valor: `${v.co2_evitado_kg} kg`, detalhe: `${v.km_compartilhados} km compartilhados`, classe: 'verde' },
+    { rotulo: 'CO₂ evitado', valor: `${decimal(v.co2_evitado_kg)} kg`, detalhe: `${decimal(v.km_compartilhados)} km compartilhados`, classe: 'verde' },
     { rotulo: 'Nota média', valor: nota(c.nota_media), detalhe: `${c.avaliacoes} avaliações` },
     { rotulo: 'Faltas', valor: porcentagem(v.taxa_faltas), detalhe: 'das vagas confirmadas' },
     { rotulo: 'Denúncias abertas', valor: c.denuncias_abertas, detalhe: 'aguardando análise', classe: c.denuncias_abertas ? 'alerta' : '' },
@@ -396,7 +402,8 @@ async function desenhar(completo) {
   desenhando.value = true
   try {
     const mermaid = (await import('mermaid')).default // ~1 MB, carregado so nesta aba
-    mermaid.initialize({ startOnLoad: false, theme: 'neutral', er: { useMaxWidth: false } })
+    // useMaxWidth: o diagrama encolhe para caber na tela (bom para projetar na apresentacao)
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', er: { useMaxWidth: !ampliado.value } })
     const { svg } = await mermaid.render(`er-${Date.now()}`, codigoMermaid(completo))
     diagrama.value.innerHTML = svg
   } catch (e) {

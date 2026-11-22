@@ -171,9 +171,9 @@ def _dados_de_exemplo() -> None:
         pago_em=as_(ontem, 18, 55),
     )
     nota_ana = Avaliacao(solicitacao=ana_ontem, avaliador=ana, avaliado=kaua, nota=5,
-                         comentario="Pontual e muito educado!")
+                         comentario="Pontual e muito educado!", created_at=as_(ontem, 19, 0))
     nota_ana.tags = [AvaliacaoTag(tag="Pontual"), AvaliacaoTag(tag="Dirige bem")]
-    nota_kaua = Avaliacao(solicitacao=ana_ontem, avaliador=kaua, avaliado=ana, nota=5)
+    nota_kaua = Avaliacao(solicitacao=ana_ontem, avaliador=kaua, avaliado=ana, nota=5, created_at=as_(ontem, 19, 5))
     nota_kaua.tags = [AvaliacaoTag(tag="Pontual"), AvaliacaoTag(tag="Boa conversa")]
 
     trilha = [

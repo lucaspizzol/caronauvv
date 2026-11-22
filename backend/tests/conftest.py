@@ -19,15 +19,26 @@ def app():
 
 @pytest.fixture
 def novo_aluno(client):
-    """Cadastra um aluno pela API e devolve (usuario_dict, headers com o token)."""
+    """
+    Cadastra um aluno pela API, confirma o e-mail UVV com o codigo
+    e devolve (usuario_dict, headers com o token).
+    Use confirmar=False para testar o aluno que ainda nao confirmou o e-mail.
+    """
 
-    def _cadastrar(matricula, nome="Aluno", bairro="Itapua"):
+    def _cadastrar(matricula, nome="Aluno", bairro="Itapua", confirmar=True):
+        matricula = str(matricula).zfill(9)  # matricula da UVV tem 9 numeros ("1" -> "000000001")
         resp = client.post("/api/auth/cadastro", json={
             "matricula": matricula, "email": f"{matricula}@uvv.br", "nome": nome,
             "telefone": "27999990000", "bairro": bairro, "senha": "123456",
         })
         corpo = resp.get_json()
-        return corpo["usuario"], {"Authorization": f"Bearer {corpo['token']}"}
+        assert resp.status_code == 201, corpo
+        headers = {"Authorization": f"Bearer {corpo['token']}"}
+        if confirmar:
+            resp = client.post("/api/auth/verificar-email", json={"codigo": corpo["codigo_dev"]}, headers=headers)
+            assert resp.status_code == 200, resp.get_json()
+            corpo["usuario"] = resp.get_json()["usuario"]
+        return corpo["usuario"], headers
 
     return _cadastrar
 

@@ -55,7 +55,7 @@ def test_cadastro_senha_curta(client):
 @pytest.mark.parametrize("campo", ["matricula", "email"])
 def test_cadastro_duplicado(client, campo):
     cadastrar(client)
-    outro = {"matricula": "999", "email": "outro@uvv.br", campo: DADOS_KAUA[campo]}
+    outro = {"matricula": "202499999", "email": "outro@uvv.br", campo: DADOS_KAUA[campo]}
     resp = cadastrar(client, **outro)
     assert resp.status_code == 409
 

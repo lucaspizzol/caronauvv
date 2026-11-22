@@ -1,60 +1,29 @@
 import secrets
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from sqlalchemy.orm import selectinload
 
+from caronauvv.admin.models import Busca, Configuracao
 from caronauvv.auth.models import Usuario, Veiculo
+from caronauvv.auth.services import exigir_email_verificado
 from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
+from caronauvv.notificacoes.services import notificar
 
-from .models import SENTIDOS, Carona, Solicitacao
+from .models import SENTIDOS, Carona, PosicaoGps, Solicitacao
+from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema
 
-
-CAMPOS_OBRIGATORIOS = ("bairro_origem", "endereco_origem", "data_hora_saida", "vagas")
-CAMPOS_TEXTO = ("bairro_origem", "endereco_origem", "destino")
-VAGAS_MIN, VAGAS_MAX = 1, 6
 STATUS_EDITAVEIS = ("ativa", "lotada")
+STATUS_EM_ABERTO = ("ativa", "lotada", "em_andamento")
 STATUS_SOLICITACAO_ATIVOS = ("pendente", "aceita")
-PRAZO_RESPOSTA = timedelta(hours=2)  # pedido sem resposta expira 2 h antes da saida
+PRAZO_RESPOSTA = timedelta(hours=2)          # pedido sem resposta expira 2 h antes da saida
+JANELA_INICIO = timedelta(minutes=30)        # o motorista pode iniciar a viagem 30 min antes
 
 
 # ==========================================================
-# CONVERSAO / VALIDACAO DOS CAMPOS
+# CONVERSAO DE FILTROS DA BUSCA (query string)
 # ==========================================================
-def _texto(dados: dict, campo: str) -> str:
-    valor = dados.get(campo)
-    return str(valor).strip() if valor is not None else ""
-
-
-def _inteiro(valor, campo: str) -> int:
-    try:
-        return int(valor)
-    except (TypeError, ValueError):
-        raise ApiError(f"O campo {campo} precisa ser um número inteiro.")
-
-
-def _decimal(valor, campo: str) -> Decimal:
-    try:
-        numero = Decimal(str(valor))
-    except InvalidOperation:
-        raise ApiError(f"O campo {campo} precisa ser um número.")
-    if not numero.is_finite():
-        raise ApiError(f"O campo {campo} precisa ser um número.")
-    return numero
-
-
-def _data_hora(valor) -> datetime:
-    try:
-        data_hora = datetime.fromisoformat(str(valor))
-    except ValueError:
-        raise ApiError("data_hora_saida inválida (use AAAA-MM-DDTHH:MM).")
-    # O banco guarda horario local sem fuso
-    if data_hora.tzinfo is not None:
-        data_hora = data_hora.astimezone().replace(tzinfo=None)
-    return data_hora
-
-
 def _data(valor: str) -> date:
     try:
         return date.fromisoformat(valor)
@@ -73,62 +42,57 @@ def _aceitas(carona: Carona) -> int:
     return sum(1 for s in carona.solicitacoes if s.status == "aceita")
 
 
-def _aplicar_dados(carona: Carona, dados: dict, motorista: Usuario) -> None:
-    """Valida e copia para a carona apenas os campos presentes em `dados`."""
-    for campo in CAMPOS_TEXTO:
-        if campo in dados:
-            valor = _texto(dados, campo)
-            if not valor:
-                raise ApiError(f"O campo {campo} não pode ficar vazio.")
-            setattr(carona, campo, valor)
+def _primeiro_nome(usuario: Usuario) -> str:
+    return usuario.nome.split()[0]
 
-    if "sentido" in dados:
-        if dados["sentido"] not in SENTIDOS:
-            raise ApiError(f"sentido deve ser um de: {', '.join(SENTIDOS)}.")
-        carona.sentido = dados["sentido"]
 
+def _quando(carona: Carona) -> str:
+    saida = carona.data_hora_saida
+    return f"{saida:%d/%m} às {saida:%H:%M}"
+
+
+# ==========================================================
+# VALOR DO RATEIO (carona solidaria: ninguem lucra)
+# ==========================================================
+def teto_rateio() -> Decimal:
+    return Configuracao.obter_decimal("valor_maximo_passageiro", "5.00")
+
+
+def valor_sugerido(distancia_km: float, vagas: int) -> Decimal:
+    """Custo do combustivel dividido entre motorista e passageiros, limitado ao teto."""
+    custo_km = Configuracao.obter_decimal("custo_km_combustivel", "0.55")
+    valor = (custo_km * Decimal(str(distancia_km)) / Decimal(vagas + 1)).quantize(Decimal("0.50"))
+    return min(max(valor, Decimal("0")), teto_rateio())
+
+
+def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:
+    """Aplica na carona os campos ja validados pelo schema, checando as regras do banco."""
     # Regra: nao e possivel criar carona com data/hora no passado
-    if "data_hora_saida" in dados:
-        saida = _data_hora(dados["data_hora_saida"])
-        if saida <= datetime.now():
-            raise ApiError("A data/hora de saída precisa ser no futuro.")
-        carona.data_hora_saida = saida
+    if "data_hora_saida" in campos and campos["data_hora_saida"] <= datetime.now():
+        raise ApiError("A data/hora de saída precisa ser no futuro.")
 
-    if "vagas" in dados:
-        vagas = _inteiro(dados["vagas"], "vagas")
-        if not VAGAS_MIN <= vagas <= VAGAS_MAX:
-            raise ApiError(f"vagas deve ficar entre {VAGAS_MIN} e {VAGAS_MAX}.")
+    if "vagas" in campos:
         aceitas = _aceitas(carona)
-        if vagas < aceitas:
-            raise ApiError(f"Já há {aceitas} passageiro(s) aceito(s); não dá para ter só {vagas} vaga(s).")
-        carona.vagas = vagas
+        if campos["vagas"] < aceitas:
+            raise ApiError(f"Já há {aceitas} passageiro(s) aceito(s); não dá para ter só {campos['vagas']} vaga(s).")
 
-    if "valor_por_passageiro" in dados:
-        valor = _decimal(dados["valor_por_passageiro"], "valor_por_passageiro")
-        if valor < 0:
-            raise ApiError("O valor por passageiro não pode ser negativo.")
-        carona.valor_por_passageiro = valor.quantize(Decimal("0.01"))
+    if "valor_por_passageiro" in campos:
+        valor = campos["valor_por_passageiro"].quantize(Decimal("0.01"))
+        teto = teto_rateio()
+        if valor > teto:
+            teto_br = f"{teto:.2f}".replace(".", ",")
+            raise ApiError(
+                f"Carona solidária: o rateio máximo é R$ {teto_br} por pessoa (só para dividir o combustível)."
+            )
+        campos["valor_por_passageiro"] = valor
 
-    if "reserva_automatica" in dados:
-        carona.reserva_automatica = bool(dados["reserva_automatica"])
+    if campos.get("veiculo_id") is not None:
+        veiculo = db.session.get(Veiculo, campos["veiculo_id"])
+        if veiculo is None or veiculo.usuario_id != motorista.id:
+            raise ApiError("Veículo não encontrado entre os seus veículos.")
 
-    if "veiculo_id" in dados:
-        if dados["veiculo_id"] is None:
-            carona.veiculo_id = None
-        else:
-            veiculo = db.session.get(Veiculo, _inteiro(dados["veiculo_id"], "veiculo_id"))
-            if veiculo is None or veiculo.usuario_id != motorista.id:
-                raise ApiError("Veículo não encontrado entre os seus veículos.")
-            carona.veiculo_id = veiculo.id
-
-    for campo in ("origem_lat", "origem_lng", "distancia_km"):
-        if campo in dados:
-            valor = dados[campo]
-            setattr(carona, campo, None if valor is None else float(_decimal(valor, campo)))
-
-    if "duracao_min" in dados:
-        valor = dados["duracao_min"]
-        carona.duracao_min = None if valor is None else _inteiro(valor, "duracao_min")
+    for campo, valor in campos.items():
+        setattr(carona, campo, valor)
 
 
 # ==========================================================
@@ -143,6 +107,11 @@ def atualizar_lotacao(carona: Carona) -> None:
 def _exigir_motorista(carona: Carona, usuario: Usuario) -> None:
     if carona.motorista_id != usuario.id:
         raise ApiError("Só o motorista pode alterar esta carona.", 403)
+
+
+def participa(carona: Carona, usuario: Usuario) -> bool:
+    """Motorista ou passageiro com vaga confirmada."""
+    return carona.pode_ver_contato(usuario)
 
 
 # ==========================================================
@@ -163,11 +132,13 @@ def buscar_carona(carona_id: int) -> Carona:
     return carona
 
 
-def listar_caronas(filtros) -> list[Carona]:
+def listar_caronas(filtros, usuario: Usuario | None = None) -> list[Carona]:
     """
     Busca de caronas disponiveis: so status "ativa" e com saida no futuro.
     Filtros (query string): bairro, sentido, data (AAAA-MM-DD),
     hora_inicio e hora_fim (HH:MM). Sem data, a faixa de horario vale para hoje.
+    Buscas por bairro ficam registradas (tabela buscas) para o painel do admin
+    mostrar onde falta oferta de carona.
     """
     consulta = (
         _consulta_base()
@@ -186,13 +157,29 @@ def listar_caronas(filtros) -> list[Carona]:
         consulta = consulta.where(Carona.sentido == sentido)
 
     data, hora_inicio, hora_fim = filtros.get("data"), filtros.get("hora_inicio"), filtros.get("hora_fim")
-    if data or hora_inicio or hora_fim:
-        dia = _data(data) if data else date.today()
-        inicio = datetime.combine(dia, _hora(hora_inicio) if hora_inicio else time.min)
-        fim = datetime.combine(dia, _hora(hora_fim) if hora_fim else time.max)
+    dia = _data(data) if data else date.today()
+    h_ini = _hora(hora_inicio) if hora_inicio else None
+    h_fim = _hora(hora_fim) if hora_fim else None
+    if data or h_ini or h_fim:
+        inicio = datetime.combine(dia, h_ini or time.min)
+        fim = datetime.combine(dia, h_fim or time.max)
         consulta = consulta.where(Carona.data_hora_saida.between(inicio, fim))
 
-    return list(db.session.scalars(consulta))
+    # Nao mostra para o aluno as proprias caronas nem as de contas suspensas
+    if usuario is not None:
+        consulta = consulta.where(Carona.motorista_id != usuario.id)
+    consulta = consulta.join(Carona.motorista).where(Usuario.is_active.is_(True))
+
+    caronas = list(db.session.scalars(consulta))
+
+    if bairro:
+        db.session.add(Busca(
+            usuario_id=usuario.id if usuario else None, bairro=bairro[:100],
+            sentido=sentido or "ida", data_desejada=dia, hora_inicio=h_ini, hora_fim=h_fim,
+            qtd_resultados=len(caronas),
+        ))
+        db.session.commit()
+    return caronas
 
 
 def caronas_do_motorista(usuario: Usuario, status: str | None = None) -> list[Carona]:
@@ -210,24 +197,21 @@ def caronas_do_motorista(usuario: Usuario, status: str | None = None) -> list[Ca
 # ==========================================================
 # CRIAR / EDITAR / CANCELAR
 # ==========================================================
-def criar_carona(motorista: Usuario, dados: dict) -> Carona:
-    faltando = [campo for campo in CAMPOS_OBRIGATORIOS if not _texto(dados, campo)]
-    if faltando:
-        raise ApiError(f"Campos obrigatórios: {', '.join(faltando)}.")
-
+def criar_carona(motorista: Usuario, dados: CaronaNovaSchema) -> Carona:
+    exigir_email_verificado(motorista, "oferecer carona")
     carona = Carona(motorista_id=motorista.id, status="ativa")
-    _aplicar_dados(carona, dados, motorista)
+    _aplicar_dados(carona, dados.preenchidos(), motorista)
     db.session.add(carona)
     db.session.commit()
     return carona
 
 
-def editar_carona(carona: Carona, usuario: Usuario, dados: dict) -> Carona:
+def editar_carona(carona: Carona, usuario: Usuario, dados: CaronaEdicaoSchema) -> Carona:
     _exigir_motorista(carona, usuario)
     if carona.status not in STATUS_EDITAVEIS:
         raise ApiError(f"Não é possível editar uma carona {carona.status}.")
 
-    _aplicar_dados(carona, dados, usuario)
+    _aplicar_dados(carona, dados.preenchidos(), usuario)
     atualizar_lotacao(carona)
     db.session.commit()
     return carona
@@ -238,47 +222,124 @@ def cancelar_carona(carona: Carona, usuario: Usuario) -> Carona:
     if carona.status not in STATUS_EDITAVEIS:
         raise ApiError(f"Não é possível cancelar uma carona {carona.status}.")
 
-    # Regra: cancelar a carona cancela as solicitacoes em aberto
+    # Regra: cancelar a carona cancela as solicitacoes em aberto (e avisa os passageiros)
     carona.status = "cancelada"
     carona.cancelada_em = datetime.now()
     for solicitacao in carona.solicitacoes:
         if solicitacao.status in STATUS_SOLICITACAO_ATIVOS:
             solicitacao.status = "cancelada"
+            solicitacao.pin_embarque = None
+            notificar(solicitacao.passageiro, "carona_cancelada", "Carona cancelada",
+                      f"{_primeiro_nome(usuario)} cancelou a carona de {_quando(carona)}. "
+                      "Busque outra opção em Buscar caronas.", carona)
     db.session.commit()
     return carona
+
+
+# ==========================================================
+# CICLO DA VIAGEM (inspirado no Uber):
+# iniciar -> confirmar embarque com o PIN de cada passageiro -> concluir
+# ==========================================================
+def iniciar_carona(carona: Carona, usuario: Usuario) -> Carona:
+    _exigir_motorista(carona, usuario)
+    if carona.status not in STATUS_EDITAVEIS:
+        raise ApiError(f"Não é possível iniciar uma carona {carona.status}.")
+    if datetime.now() < carona.data_hora_saida - JANELA_INICIO:
+        raise ApiError("A viagem só pode ser iniciada a partir de 30 minutos antes da saída.")
+    aceitos = [s for s in carona.solicitacoes if s.status == "aceita"]
+    if not aceitos:
+        raise ApiError("Nenhum passageiro confirmado. Cancele a carona se não for mais sair.")
+
+    carona.status = "em_andamento"
+    carona.iniciada_em = datetime.now()
+    for solicitacao in carona.solicitacoes:
+        if solicitacao.status == "pendente":
+            solicitacao.status = "expirada"
+    for solicitacao in aceitos:
+        notificar(solicitacao.passageiro, "viagem_iniciada", f"{_primeiro_nome(usuario)} iniciou a viagem",
+                  f"Esteja no ponto de embarque. Mostre seu PIN {solicitacao.pin_embarque} ao motorista.", carona)
+    db.session.commit()
+    return carona
+
+
+def _solicitacao_da_viagem(solicitacao: Solicitacao, usuario: Usuario) -> Carona:
+    carona = solicitacao.carona
+    _exigir_motorista(carona, usuario)
+    if carona.status != "em_andamento":
+        raise ApiError("Inicie a viagem antes de registrar o embarque.")
+    if solicitacao.status != "aceita":
+        raise ApiError("Este passageiro não tem vaga confirmada.")
+    if solicitacao.embarcou_em is not None:
+        raise ApiError("Este passageiro já embarcou.")
+    return carona
+
+
+def confirmar_embarque(solicitacao: Solicitacao, usuario: Usuario, pin: str) -> Solicitacao:
+    """O passageiro fala o PIN e o motorista digita: garante que entrou no carro certo."""
+    carona = _solicitacao_da_viagem(solicitacao, usuario)
+    if not secrets.compare_digest(pin, solicitacao.pin_embarque or ""):
+        raise ApiError("PIN incorreto. Confira com o passageiro.")
+    solicitacao.embarcou_em = datetime.now()
+    solicitacao.metodo_embarque = "pin"
+    solicitacao.faltou = False
+    notificar(solicitacao.passageiro, "embarque_confirmado", "Embarque confirmado",
+              f"Boa viagem! Você está no carro de {_primeiro_nome(carona.motorista)}.", carona)
+    db.session.commit()
+    return solicitacao
+
+
+def marcar_falta(solicitacao: Solicitacao, usuario: Usuario) -> Solicitacao:
+    """Passageiro confirmado que nao apareceu: conta como falta na reputacao dele."""
+    _solicitacao_da_viagem(solicitacao, usuario)
+    solicitacao.faltou = True
+    db.session.commit()
+    return solicitacao
 
 
 def concluir_carona(carona: Carona, usuario: Usuario) -> Carona:
     """
     Funcionalidade 6 do MVP: depois do horario da viagem, o motorista marca a
     carona como concluida. O historico (passageiros aceitos) e mantido; pedidos
-    que ficaram sem resposta passam para "expirada".
+    que ficaram sem resposta passam para "expirada". Motorista e passageiros
+    recebem o convite para se avaliarem.
     """
     _exigir_motorista(carona, usuario)
-    if carona.status not in ("ativa", "lotada", "em_andamento"):
+    if carona.status not in STATUS_EM_ABERTO:
         raise ApiError(f"Não é possível concluir uma carona {carona.status}.")
-    if carona.data_hora_saida > datetime.now():
+    if carona.status != "em_andamento" and carona.data_hora_saida > datetime.now():
         raise ApiError("A carona só pode ser concluída depois do horário de saída.")
 
     carona.status = "concluida"
     carona.concluida_em = datetime.now()
+    viajaram = 0
     for solicitacao in carona.solicitacoes:
         if solicitacao.status == "pendente":
             solicitacao.status = "expirada"
+        elif solicitacao.status == "aceita" and not solicitacao.faltou:
+            viajaram += 1
+            notificar(solicitacao.passageiro, "avaliacao_pendente", "Como foi a viagem?",
+                      f"Avalie {_primeiro_nome(usuario)} e ajude a comunidade a confiar no CaronaUVV.", carona)
+    if viajaram:
+        notificar(usuario, "avaliacao_pendente", "Avalie seus passageiros",
+                  f"Sua carona de {_quando(carona)} foi concluída. Conte como foram os passageiros.", carona)
     db.session.commit()
     return carona
+
+
+def registrar_posicao(carona: Carona, usuario: Usuario, lat: float, lng: float) -> PosicaoGps:
+    """GPS do celular do motorista durante a viagem (aparece no link da familia)."""
+    _exigir_motorista(carona, usuario)
+    if carona.status != "em_andamento":
+        raise ApiError("A localização só é registrada com a viagem em andamento.")
+    posicao = PosicaoGps(carona_id=carona.id, lat=lat, lng=lng)
+    db.session.add(posicao)
+    db.session.commit()
+    return posicao
 
 
 # ==========================================================
 # SOLICITACOES (pedido de vaga)
 # ==========================================================
-def _texto_opcional(dados: dict, campo: str, limite: int) -> str | None:
-    valor = _texto(dados, campo)
-    if len(valor) > limite:
-        raise ApiError(f"O campo {campo} pode ter no máximo {limite} caracteres.")
-    return valor or None
-
-
 def _prazo_resposta(carona: Carona) -> datetime:
     # Se a carona sai em menos de 2 h, o motorista pode responder ate a saida
     limite = carona.data_hora_saida - PRAZO_RESPOSTA
@@ -298,6 +359,10 @@ def _aceitar(solicitacao: Solicitacao) -> None:
     solicitacao.respondida_em = datetime.now()
     solicitacao.pin_embarque = f"{secrets.randbelow(10000):04d}"
     atualizar_lotacao(solicitacao.carona)
+    carona = solicitacao.carona
+    notificar(solicitacao.passageiro, "vaga_confirmada", "Vaga confirmada!",
+              f"{_primeiro_nome(carona.motorista)} confirmou sua vaga para {_quando(carona)}. "
+              f"Seu PIN de embarque é {solicitacao.pin_embarque}.", carona)
 
 
 def buscar_solicitacao(solicitacao_id: int) -> Solicitacao:
@@ -307,10 +372,11 @@ def buscar_solicitacao(solicitacao_id: int) -> Solicitacao:
     return solicitacao
 
 
-def pedir_vaga(carona: Carona, passageiro: Usuario, dados: dict) -> Solicitacao:
+def pedir_vaga(carona: Carona, passageiro: Usuario, dados: PedidoVagaSchema) -> Solicitacao:
     # Regra: o motorista nao pode pedir vaga na propria carona
     if carona.motorista_id == passageiro.id:
         raise ApiError("O motorista não pode pedir vaga na própria carona.")
+    exigir_email_verificado(passageiro, "pedir vaga")
     if carona.status == "lotada":
         raise ApiError("Esta carona está lotada.")
     if carona.status != "ativa" or carona.data_hora_saida <= datetime.now():
@@ -326,8 +392,8 @@ def pedir_vaga(carona: Carona, passageiro: Usuario, dados: dict) -> Solicitacao:
         db.session.add(solicitacao)
 
     solicitacao.status = "pendente"
-    solicitacao.endereco_embarque = _texto_opcional(dados, "endereco_embarque", 255)
-    solicitacao.mensagem = _texto_opcional(dados, "mensagem", 300)
+    solicitacao.endereco_embarque = dados.endereco_embarque
+    solicitacao.mensagem = dados.mensagem
     solicitacao.respondida_em = None
     solicitacao.pin_embarque = None
     solicitacao.expira_em = _prazo_resposta(carona)
@@ -335,6 +401,11 @@ def pedir_vaga(carona: Carona, passageiro: Usuario, dados: dict) -> Solicitacao:
     # [EXTRA] "Reserva imediata": o motorista aceita automaticamente
     if carona.reserva_automatica:
         _aceitar(solicitacao)
+        notificar(carona.motorista, "novo_pedido", "Nova reserva confirmada",
+                  f"{passageiro.nome} reservou uma vaga na sua carona de {_quando(carona)}.", carona)
+    else:
+        notificar(carona.motorista, "novo_pedido", "Novo pedido de vaga",
+                  f"{passageiro.nome} pediu uma vaga na sua carona de {_quando(carona)}.", carona)
 
     db.session.commit()
     return solicitacao
@@ -391,6 +462,9 @@ def recusar_solicitacao(solicitacao: Solicitacao, usuario: Usuario) -> Solicitac
     _exigir_pendente_do_motorista(solicitacao, usuario)
     solicitacao.status = "recusada"
     solicitacao.respondida_em = datetime.now()
+    notificar(solicitacao.passageiro, "vaga_recusada", "Pedido não aceito",
+              f"Sua vaga para {_quando(solicitacao.carona)} não foi confirmada. Que tal outra carona?",
+              solicitacao.carona)
     db.session.commit()
     return solicitacao
 
@@ -403,8 +477,13 @@ def cancelar_solicitacao(solicitacao: Solicitacao, usuario: Usuario) -> Solicita
     if solicitacao.carona.status not in STATUS_EDITAVEIS:
         raise ApiError("Não é possível cancelar depois que a viagem começou.")
 
+    estava_aceita = solicitacao.status == "aceita"
     solicitacao.status = "cancelada"
     solicitacao.pin_embarque = None
     atualizar_lotacao(solicitacao.carona)  # libera a vaga (lotada -> ativa)
+    if estava_aceita:
+        notificar(solicitacao.carona.motorista, "pedido_cancelado", "Um passageiro desistiu",
+                  f"{usuario.nome} desistiu da vaga de {_quando(solicitacao.carona)}. A vaga voltou para a busca.",
+                  solicitacao.carona)
     db.session.commit()
     return solicitacao

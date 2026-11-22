@@ -12,7 +12,8 @@ if TYPE_CHECKING:
 
 # Tipos usados hoje (texto livre no banco, para nao exigir migracao a cada tipo novo)
 TIPOS_NOTIFICACAO = (
-    "novo_pedido", "vaga_confirmada", "vaga_recusada", "pedido_expirado",
+    "novo_pedido", "vaga_confirmada", "vaga_recusada", "pedido_expirado", "pedido_cancelado",
+    "viagem_iniciada", "embarque_confirmado", "pagamento_informado", "nova_avaliacao",
     "lembrete_saida", "motorista_chegando", "carona_cancelada",
     "avaliacao_pendente", "alerta_seguranca",
 )
@@ -37,6 +38,17 @@ class Notificacao(db.Model):
 
     usuario: Mapped["Usuario"] = relationship("Usuario")
     carona: Mapped[Optional["Carona"]] = relationship("Carona")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "tipo": self.tipo,
+            "titulo": self.titulo,
+            "texto": self.texto,
+            "carona_id": self.carona_id,
+            "lida": self.lida,
+            "criada_em": self.created_at.isoformat(timespec="minutes"),
+        }
 
     def __repr__(self) -> str:
         return f"<Notificacao id={self.id} tipo='{self.tipo}' lida={self.lida}>"

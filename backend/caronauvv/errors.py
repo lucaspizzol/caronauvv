@@ -13,10 +13,11 @@ class ApiError(Exception):
         {"error": "<mensagem>"}, status_code
     """
 
-    def __init__(self, mensagem: str, status_code: int = 400):
+    def __init__(self, mensagem: str, status_code: int = 400, campos: dict | None = None):
         super().__init__(mensagem)
         self.mensagem = mensagem
         self.status_code = status_code
+        self.campos = campos  # erro de cada campo do formulario (validacao.py)
 
 
 # ==========================================================
@@ -38,7 +39,10 @@ def init_app(app: Flask) -> None:
     def _erro_de_negocio(erro: ApiError):
         nivel = logging.WARNING if erro.status_code >= 500 else logging.INFO
         logger.log(nivel, "Regra de negocio (%s): %s", erro.status_code, erro.mensagem)
-        return {"error": erro.mensagem}, erro.status_code
+        corpo = {"error": erro.mensagem}
+        if erro.campos:
+            corpo["campos"] = erro.campos
+        return corpo, erro.status_code
 
     @app.errorhandler(HTTPException)
     def _erro_http(erro: HTTPException):

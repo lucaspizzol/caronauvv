@@ -1,5 +1,7 @@
 import logging
+import os
 import time
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask, g, request
 
@@ -19,14 +21,25 @@ def init_app(app: Flask) -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(FORMATO, datefmt="%Y-%m-%d %H:%M:%S"))
 
+    handlers = [handler]
+    # Opcional: tambem grava em arquivo (LOG_FILE no .env), com rotacao de 1 MB x 5 arquivos
+    caminho = app.config.get("LOG_FILE")
+    if caminho:
+        os.makedirs(os.path.dirname(os.path.abspath(caminho)), exist_ok=True)
+        arquivo = RotatingFileHandler(caminho, maxBytes=1_000_000, backupCount=5, encoding="utf-8")
+        arquivo.setFormatter(handler.formatter)
+        handlers.append(arquivo)
+
     logger = logging.getLogger("caronauvv")
     logger.handlers.clear()
-    logger.addHandler(handler)
+    for h in handlers:
+        logger.addHandler(h)
     logger.setLevel(nivel)
     logger.propagate = False
 
     app.logger.handlers.clear()
-    app.logger.addHandler(handler)
+    for h in handlers:
+        app.logger.addHandler(h)
     app.logger.setLevel(nivel)
 
     @app.before_request

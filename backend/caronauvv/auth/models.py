@@ -1,17 +1,25 @@
 from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 
+from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from caronauvv.ext.db import db
+from caronauvv.ext.db import check_valores, db
 
 if TYPE_CHECKING:
     from caronauvv.caronas.models import Carona, Solicitacao
 
 
+# Preferencias de viagem (inspiradas no "Bla / BlaBla / BlaBlaBla" do BlaBlaCar)
+NIVEIS_CONVERSA = ("quieto", "depende", "conversador")
+
+
 # === Usuario (aluno: pode ser motorista e passageiro) ===  [MVP]
 class Usuario(db.Model):
     __tablename__ = "usuarios"
+    __table_args__ = (
+        CheckConstraint(check_valores("pref_conversa", NIVEIS_CONVERSA), name="pref_conversa"),
+    )
 
     # ======================================================
     # IDENTIFICACAO
@@ -32,6 +40,25 @@ class Usuario(db.Model):
     casa_lng: Mapped[Optional[float]] = mapped_column(db.Float)
     foto_url: Mapped[Optional[str]] = mapped_column(db.String(500))
     chave_pix: Mapped[Optional[str]] = mapped_column(db.String(150))  # [EXTRA] Pix do rateio
+    bio: Mapped[Optional[str]] = mapped_column(db.String(300))  # "Curto rock e saio pontualmente"
+
+    # ======================================================
+    # PREFERENCIAS DE VIAGEM (aparecem no perfil publico)
+    # ======================================================
+    pref_conversa: Mapped[str] = mapped_column(db.String(15), nullable=False, default="depende", server_default="depende")
+    pref_musica: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    pref_animais: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    pref_fumar: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default=db.false())
+
+    # ======================================================
+    # CONFIANCA: e-mail institucional verificado por codigo
+    # e perfil verificado pelo admin (carteirinha da UVV)
+    # ======================================================
+    email_verificado: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    codigo_verificacao_hash: Mapped[Optional[str]] = mapped_column(db.String(255))
+    codigo_expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    codigo_tentativas: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0, server_default="0")
+    verificacao_solicitada_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
 
     # ======================================================
     # SENHA LOCAL
@@ -68,8 +95,11 @@ class Usuario(db.Model):
     # SENHA (hash com Werkzeug, que ja vem com o Flask)
     # ======================================================
     def set_senha(self, senha: str) -> None:
+        from flask import current_app, has_app_context
         from werkzeug.security import generate_password_hash
-        self.senha_hash = generate_password_hash(senha)
+        # Producao: scrypt (padrao do Werkzeug). Nos testes, um metodo mais leve deixa a suite rapida.
+        metodo = current_app.config.get("PASSWORD_HASH_METHOD", "scrypt") if has_app_context() else "scrypt"
+        self.senha_hash = generate_password_hash(senha, method=metodo)
 
     def check_senha(self, senha: str) -> bool:
         from werkzeug.security import check_password_hash
@@ -88,6 +118,10 @@ class Usuario(db.Model):
             "bairro": self.bairro,
             "foto_url": self.foto_url,
             "verificado": self.verificado,
+            "email_verificado": self.email_verificado,
+            "bio": self.bio,
+            "preferencias": self.preferencias(),
+            "membro_desde": self.created_at.date().isoformat() if self.created_at else None,
         }
         if privado:
             dados.update({
@@ -97,8 +131,20 @@ class Usuario(db.Model):
                 "endereco": self.endereco,
                 "chave_pix": self.chave_pix,
                 "is_admin": self.is_admin,
+                "verificacao_solicitada_em": (
+                    self.verificacao_solicitada_em.isoformat(timespec="minutes")
+                    if self.verificacao_solicitada_em else None
+                ),
             })
         return dados
+
+    def preferencias(self) -> dict:
+        return {
+            "conversa": self.pref_conversa,
+            "musica": self.pref_musica,
+            "animais": self.pref_animais,
+            "fumar": self.pref_fumar,
+        }
 
     def __repr__(self) -> str:
         return f"<Usuario id={self.id} matricula='{self.matricula}' nome='{self.nome}'>"
@@ -139,6 +185,9 @@ class ContatoConfianca(db.Model):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
 
     usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="contatos_confianca")
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "nome": self.nome, "telefone": self.telefone}
 
     def __repr__(self) -> str:
         return f"<ContatoConfianca id={self.id} nome='{self.nome}'>"

@@ -22,3 +22,16 @@ def login_required(view):
         return view(*args, **kwargs)
 
     return wrapper
+
+
+def admin_required(view):
+    """Como login_required, mas so deixa passar administradores (painel /admin)."""
+
+    @wraps(view)
+    @login_required
+    def wrapper(*args, **kwargs):
+        if not g.usuario.is_admin:
+            raise ApiError("Área restrita à administração.", 403)
+        return view(*args, **kwargs)
+
+    return wrapper

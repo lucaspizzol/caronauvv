@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 
 # Valores possiveis (guardados como texto)
 TAGS_SUGERIDAS = ("Pontual", "Dirige bem", "Carro limpo", "Boa conversa")  # tela 11 (texto livre no banco)
+# Elogios que cada lado pode dar (o motorista recebe TAGS_MOTORISTA; o passageiro, TAGS_PASSAGEIRO)
+TAGS_MOTORISTA = (*TAGS_SUGERIDAS, "Respeitou o trajeto", "Educado")
+TAGS_PASSAGEIRO = ("Pontual", "Boa conversa", "Educado", "Pagou certinho", "Cuidadoso com o carro")
 METODOS_PAGAMENTO = ("pix", "dinheiro")
 STATUS_PAGAMENTO = ("pendente", "pago", "cancelado")
 
@@ -43,6 +46,17 @@ class Avaliacao(db.Model):
     tags: Mapped[List["AvaliacaoTag"]] = relationship(
         "AvaliacaoTag", back_populates="avaliacao", cascade="all, delete-orphan"
     )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "nota": self.nota,
+            "comentario": self.comentario,
+            "tags": [t.tag for t in self.tags],
+            "avaliador": {"id": self.avaliador.id, "nome": self.avaliador.nome},
+            "papel_avaliado": "motorista" if self.avaliado_id == self.solicitacao.carona.motorista_id else "passageiro",
+            "criada_em": self.created_at.isoformat(timespec="minutes"),
+        }
 
     def __repr__(self) -> str:
         return f"<Avaliacao id={self.id} avaliado_id={self.avaliado_id} nota={self.nota}>"
@@ -85,6 +99,16 @@ class Pagamento(db.Model):
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), onupdate=datetime.now)
 
     solicitacao: Mapped["Solicitacao"] = relationship("Solicitacao", back_populates="pagamento")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "valor": float(self.valor),
+            "metodo": self.metodo,
+            "status": self.status,
+            "pix_copia_cola": self.pix_copia_cola,
+            "pago_em": self.pago_em.isoformat(timespec="minutes") if self.pago_em else None,
+        }
 
     def __repr__(self) -> str:
         return f"<Pagamento id={self.id} valor={self.valor} status='{self.status}'>"

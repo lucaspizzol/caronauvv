@@ -37,10 +37,18 @@ def create_app(config_class=Config):
     # ----------------------------------------------------------
     # Blueprints (um por modulo)
     # ----------------------------------------------------------
+    from .admin import init_app as init_admin
     from .auth import init_app as init_auth
+    from .avaliacoes import init_app as init_avaliacoes
     from .caronas import init_app as init_caronas
-    init_auth(app)
-    init_caronas(app)
+    from .notificacoes import init_app as init_notificacoes
+    from .seguranca import init_app as init_seguranca
+    init_auth(app)            # /api/auth, /api/usuarios, /api/veiculos, /api/contatos
+    init_caronas(app)         # /api/caronas, /api/solicitacoes
+    init_avaliacoes(app)      # avaliacoes, reputacao e pagamento Pix
+    init_notificacoes(app)    # /api/notificacoes
+    init_seguranca(app)       # link da familia, botao de emergencia, denuncias
+    init_admin(app)           # /api/admin (painel da administracao)
 
     # ----------------------------------------------------------
     # Erros -> JSON ({"error": "..."}), inclusive 404/405/500
@@ -49,7 +57,7 @@ def create_app(config_class=Config):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "message": "CaronaUVV API is running"}
+        return {"status": "ok", "message": "CaronaUVV API is running", "banco": db.engine.dialect.name}
 
     app.logger.info("CaronaUVV API iniciada (banco: %s)", app.config["SQLALCHEMY_DATABASE_URI"].split("@")[-1])
     return app

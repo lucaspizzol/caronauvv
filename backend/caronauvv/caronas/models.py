@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 SENTIDOS = ("ida", "volta")                     # Casa -> UVV / UVV -> Casa
 STATUS_CARONA = ("ativa", "lotada", "em_andamento", "concluida", "cancelada")
 STATUS_SOLICITACAO = ("pendente", "aceita", "recusada", "cancelada", "expirada")
-METODOS_EMBARQUE = ("pin+gps", "gps", "manual")
+METODOS_EMBARQUE = ("pin", "pin+gps", "gps", "manual")  # "pin": o motorista digitou o PIN do passageiro
 
 
 # === Carona (oferta do motorista) ===  [MVP]
@@ -55,6 +55,7 @@ class Carona(db.Model):
     vagas: Mapped[int] = mapped_column(db.Integer, nullable=False)
     valor_por_passageiro: Mapped[Decimal] = mapped_column(db.Numeric(6, 2), nullable=False, default=0)
     reserva_automatica: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA]
+    observacoes: Mapped[Optional[str]] = mapped_column(db.String(300))  # "Saio pontualmente; cabe mochila"
 
     # ------------------------------------------------------
     # STATUS / AUDITORIA
@@ -98,7 +99,14 @@ class Carona(db.Model):
         return any(s.passageiro_id == usuario.id and s.status == "aceita" for s in self.solicitacoes)
 
     def to_dict(self, usuario: Optional["Usuario"] = None) -> dict:
+        from caronauvv.avaliacoes.services import reputacao
+
+        def iso(valor: Optional[datetime]) -> Optional[str]:
+            return valor.isoformat(timespec="minutes") if valor else None
+
         ver_contato = self.pode_ver_contato(usuario)
+        motorista = self.motorista.to_dict(privado=ver_contato)
+        motorista["reputacao"] = reputacao(self.motorista)
         return {
             "id": self.id,
             "sentido": self.sentido,
@@ -114,8 +122,11 @@ class Carona(db.Model):
             "vagas_restantes": self.vagas_restantes,
             "valor_por_passageiro": float(self.valor_por_passageiro),
             "reserva_automatica": self.reserva_automatica,
+            "observacoes": self.observacoes,
             "status": self.status,
-            "motorista": self.motorista.to_dict(privado=ver_contato),
+            "iniciada_em": iso(self.iniciada_em),
+            "concluida_em": iso(self.concluida_em),
+            "motorista": motorista,
             "veiculo": self.veiculo.to_dict(com_placa=ver_contato) if self.veiculo else None,
         }
 
@@ -200,9 +211,16 @@ class Solicitacao(db.Model):
             "respondida_em": iso(self.respondida_em),
             "expira_em": iso(self.expira_em),
             "passageiro": self.passageiro.to_dict(privado=self.status == "aceita"),
+            "embarcou_em": iso(self.embarcou_em),
+            "faltou": self.faltou,
+            "pagamento": self.pagamento.to_dict() if self.pagamento else None,
         }
-        if usuario is not None and usuario.id == self.passageiro_id:
-            dados["pin_embarque"] = self.pin_embarque
+        from caronauvv.avaliacoes.services import reputacao
+        dados["passageiro"]["reputacao"] = reputacao(self.passageiro)
+        if usuario is not None:
+            dados["ja_avaliei"] = any(a.avaliador_id == usuario.id for a in self.avaliacoes)
+            if usuario.id == self.passageiro_id:
+                dados["pin_embarque"] = self.pin_embarque
         return dados
 
     def __repr__(self) -> str:

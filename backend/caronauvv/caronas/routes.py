@@ -1,22 +1,31 @@
 from flask import Blueprint, g, request
 
 from caronauvv.auth.decorators import login_required
+from caronauvv.errors import ApiError
+from caronauvv.validacao import validar
 
+from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema, PinSchema, PosicaoSchema
 from .services import (
     aceitar_solicitacao,
     buscar_carona,
     buscar_solicitacao,
     cancelar_carona,
     cancelar_solicitacao,
-    concluir_carona,
     caronas_do_motorista,
+    concluir_carona,
+    confirmar_embarque,
     criar_carona,
     editar_carona,
+    iniciar_carona,
     listar_caronas,
+    marcar_falta,
     pedir_vaga,
     recusar_solicitacao,
+    registrar_posicao,
     solicitacoes_da_carona,
     solicitacoes_do_passageiro,
+    teto_rateio,
+    valor_sugerido,
 )
 
 bp = Blueprint("caronas", __name__)                    # /api/caronas
@@ -33,7 +42,7 @@ def _json() -> dict:
 @bp.get("")
 @login_required
 def listar():
-    caronas = listar_caronas(request.args)
+    caronas = listar_caronas(request.args, g.usuario)
     return {"caronas": [c.to_dict(g.usuario) for c in caronas]}
 
 
@@ -42,6 +51,16 @@ def listar():
 def minhas():
     caronas = caronas_do_motorista(g.usuario, request.args.get("status"))
     return {"caronas": [c.to_dict(g.usuario) for c in caronas]}
+
+
+@bp.get("/valor-sugerido")
+@login_required
+def sugerir_valor():
+    distancia = request.args.get("distancia_km", type=float)
+    vagas = request.args.get("vagas", default=3, type=int)
+    if distancia is None or distancia < 0 or not 1 <= vagas <= 6:
+        raise ApiError("Informe distancia_km (>= 0) e vagas (1 a 6).")
+    return {"valor_sugerido": float(valor_sugerido(distancia, vagas)), "teto": float(teto_rateio())}
 
 
 @bp.get("/<int:carona_id>")
@@ -56,14 +75,15 @@ def detalhe(carona_id):
 @bp.post("")
 @login_required
 def criar():
-    carona = criar_carona(g.usuario, _json())
+    carona = criar_carona(g.usuario, validar(CaronaNovaSchema, _json()))
     return {"carona": carona.to_dict(g.usuario)}, 201
 
 
 @bp.put("/<int:carona_id>")
 @login_required
 def editar(carona_id):
-    carona = editar_carona(buscar_carona(carona_id), g.usuario, _json())
+    carona = buscar_carona(carona_id)
+    carona = editar_carona(carona, g.usuario, validar(CaronaEdicaoSchema, _json()))
     return {"carona": carona.to_dict(g.usuario)}
 
 
@@ -74,11 +94,29 @@ def cancelar(carona_id):
     return {"carona": carona.to_dict(g.usuario)}
 
 
+# ==========================================================
+# MOTORISTA: CICLO DA VIAGEM
+# ==========================================================
+@bp.post("/<int:carona_id>/iniciar")
+@login_required
+def iniciar(carona_id):
+    carona = iniciar_carona(buscar_carona(carona_id), g.usuario)
+    return {"carona": carona.to_dict(g.usuario)}
+
+
 @bp.post("/<int:carona_id>/concluir")
 @login_required
 def concluir(carona_id):
     carona = concluir_carona(buscar_carona(carona_id), g.usuario)
     return {"carona": carona.to_dict(g.usuario)}
+
+
+@bp.post("/<int:carona_id>/posicao")
+@login_required
+def posicao(carona_id):
+    dados = validar(PosicaoSchema, _json())
+    registrar_posicao(buscar_carona(carona_id), g.usuario, dados.lat, dados.lng)
+    return {"message": "Posição registrada."}, 201
 
 
 # ==========================================================
@@ -87,7 +125,8 @@ def concluir(carona_id):
 @bp.post("/<int:carona_id>/solicitacoes")
 @login_required
 def pedir(carona_id):
-    solicitacao = pedir_vaga(buscar_carona(carona_id), g.usuario, _json())
+    carona = buscar_carona(carona_id)
+    solicitacao = pedir_vaga(carona, g.usuario, validar(PedidoVagaSchema, _json()))
     return {"solicitacao": solicitacao.to_dict(g.usuario)}, 201
 
 
@@ -99,7 +138,7 @@ def pedidos_recebidos(carona_id):
 
 
 # ==========================================================
-# PASSAGEIRO: "MINHAS CARONAS" / MOTORISTA: ACEITAR E RECUSAR
+# PASSAGEIRO: "MEUS PEDIDOS" / MOTORISTA: ACEITAR, RECUSAR, EMBARQUE
 # ==========================================================
 @bp_solicitacoes.get("/minhas")
 @login_required
@@ -128,4 +167,19 @@ def recusar(solicitacao_id):
 @login_required
 def cancelar_pedido(solicitacao_id):
     solicitacao = cancelar_solicitacao(buscar_solicitacao(solicitacao_id), g.usuario)
+    return {"solicitacao": solicitacao.to_dict(g.usuario)}
+
+
+@bp_solicitacoes.post("/<int:solicitacao_id>/embarque")
+@login_required
+def embarque(solicitacao_id):
+    pin = validar(PinSchema, _json()).pin
+    solicitacao = confirmar_embarque(buscar_solicitacao(solicitacao_id), g.usuario, pin)
+    return {"solicitacao": solicitacao.to_dict(g.usuario)}
+
+
+@bp_solicitacoes.post("/<int:solicitacao_id>/falta")
+@login_required
+def falta(solicitacao_id):
+    solicitacao = marcar_falta(buscar_solicitacao(solicitacao_id), g.usuario)
     return {"solicitacao": solicitacao.to_dict(g.usuario)}

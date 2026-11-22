@@ -1,80 +1,157 @@
-import re
-from datetime import datetime
+import hashlib
+import hmac
+import secrets
+import time
+from collections import defaultdict, deque
+from datetime import datetime, timedelta
 
 from flask import current_app
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import or_
 
+from caronauvv.email import enviar_email
 from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
 
-from .models import Usuario, Veiculo
+from .models import ContatoConfianca, Usuario, Veiculo
+from .schemas import CadastroSchema, ContatoSchema, PerfilSchema, VeiculoEdicaoSchema, VeiculoSchema
 
-
-CAMPOS_OBRIGATORIOS = ("matricula", "email", "nome", "telefone", "bairro", "senha")
-CAMPOS_PERFIL_OBRIGATORIOS = ("nome", "telefone", "bairro")
-CAMPOS_PERFIL_OPCIONAIS = ("curso", "endereco", "foto_url", "chave_pix")
-SENHA_MINIMA = 6
-
-
-def _texto(dados: dict, campo: str) -> str:
-    valor = dados.get(campo)
-    return str(valor).strip() if valor is not None else ""
-
-
-def _validar_senha(senha: str) -> None:
-    if len(senha) < SENHA_MINIMA:
-        raise ApiError(f"A senha precisa ter pelo menos {SENHA_MINIMA} caracteres.")
+STATUS_CARONA_EM_ABERTO = ("ativa", "lotada", "em_andamento")
+MAX_CONTATOS = 5
+MAX_TENTATIVAS_CODIGO = 5
 
 
 # ==========================================================
-# CADASTRO
+# CADASTRO (os dados ja chegam validados pelo CadastroSchema)
 # ==========================================================
-def cadastrar_usuario(dados: dict) -> Usuario:
-    faltando = [campo for campo in CAMPOS_OBRIGATORIOS if not _texto(dados, campo)]
-    if faltando:
-        raise ApiError(f"Campos obrigatórios: {', '.join(faltando)}.")
-
-    matricula = _texto(dados, "matricula")
-    email = _texto(dados, "email").lower()
-    senha = str(dados["senha"])
-
-    if "@" not in email:
-        raise ApiError("E-mail inválido.")
-    _validar_senha(senha)
-
+def cadastrar_usuario(dados: CadastroSchema) -> tuple[Usuario, str]:
     existente = db.session.scalar(
-        db.select(Usuario).where(or_(Usuario.matricula == matricula, Usuario.email == email))
+        db.select(Usuario).where(or_(Usuario.matricula == dados.matricula, Usuario.email == dados.email))
     )
     if existente:
         raise ApiError("Já existe um usuário com essa matrícula ou e-mail.", 409)
 
     usuario = Usuario(
-        matricula=matricula,
-        email=email,
-        nome=_texto(dados, "nome"),
-        telefone=_texto(dados, "telefone"),
-        bairro=_texto(dados, "bairro"),
-        curso=_texto(dados, "curso") or None,
+        matricula=dados.matricula,
+        email=dados.email,
+        nome=dados.nome,
+        telefone=dados.telefone,
+        bairro=dados.bairro,
+        curso=dados.curso,
     )
-    usuario.set_senha(senha)
+    usuario.set_senha(dados.senha)
     db.session.add(usuario)
+    codigo = _novo_codigo(usuario)
+    db.session.commit()
+    _enviar_codigo(usuario, codigo)
+    return usuario, codigo
+
+
+# ==========================================================
+# VERIFICACAO DO E-MAIL UVV (codigo de 6 digitos, como no BlaBlaCar)
+# O codigo nunca fica salvo em texto: guardamos um HMAC-SHA256 dele
+# (assinado com a SECRET_KEY). Vence em 30 min e aceita 5 tentativas.
+# ==========================================================
+def _hash_codigo(usuario: Usuario, codigo: str) -> str:
+    chave = current_app.config["SECRET_KEY"].encode()
+    return hmac.new(chave, f"{usuario.email}:{codigo}".encode(), hashlib.sha256).hexdigest()
+
+
+def _novo_codigo(usuario: Usuario) -> str:
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    usuario.codigo_verificacao_hash = _hash_codigo(usuario, codigo)
+    usuario.codigo_tentativas = 0
+    usuario.codigo_expira_em = datetime.now() + timedelta(minutes=current_app.config["CODIGO_VALIDADE_MIN"])
+    return codigo
+
+
+def _enviar_codigo(usuario: Usuario, codigo: str) -> None:
+    enviar_email(
+        usuario.email,
+        "CaronaUVV - seu código de verificação",
+        f"Olá, {usuario.nome.split()[0]}! Seu código para confirmar o e-mail no CaronaUVV é {codigo}. "
+        f"Ele vale por {current_app.config['CODIGO_VALIDADE_MIN']} minutos.",
+    )
+
+
+def reenviar_codigo(usuario: Usuario) -> str:
+    if usuario.email_verificado:
+        raise ApiError("Seu e-mail já está confirmado.")
+    codigo = _novo_codigo(usuario)
+    db.session.commit()
+    _enviar_codigo(usuario, codigo)
+    return codigo
+
+
+def verificar_email(usuario: Usuario, codigo: str) -> Usuario:
+    if usuario.email_verificado:
+        return usuario
+    if not usuario.codigo_verificacao_hash or not usuario.codigo_expira_em:
+        raise ApiError("Peça um novo código.")
+    if usuario.codigo_expira_em < datetime.now():
+        raise ApiError("O código venceu. Peça um novo.")
+    if usuario.codigo_tentativas >= MAX_TENTATIVAS_CODIGO:
+        raise ApiError("Muitas tentativas erradas. Peça um novo código.", 429)
+    if not hmac.compare_digest(usuario.codigo_verificacao_hash, _hash_codigo(usuario, codigo)):
+        usuario.codigo_tentativas += 1
+        db.session.commit()
+        raise ApiError("Código incorreto.")
+    usuario.email_verificado = True
+    usuario.codigo_verificacao_hash = None
+    usuario.codigo_expira_em = None
+    db.session.commit()
+    return usuario
+
+
+def exigir_email_verificado(usuario: Usuario, acao: str) -> None:
+    """Regra de confianca: so quem confirmou o e-mail UVV pode oferecer ou pedir carona."""
+    if not usuario.email_verificado:
+        raise ApiError(f"Confirme seu e-mail UVV antes de {acao}.", 403)
+
+
+def solicitar_verificacao_perfil(usuario: Usuario) -> Usuario:
+    """O aluno pede o selo "Perfil verificado"; o admin confere a matricula e aprova."""
+    exigir_email_verificado(usuario, "pedir a verificação do perfil")
+    if usuario.verificado:
+        raise ApiError("Seu perfil já é verificado.")
+    usuario.verificacao_solicitada_em = datetime.now()
     db.session.commit()
     return usuario
 
 
 # ==========================================================
-# LOGIN (por e-mail ou matricula)
+# LOGIN (por e-mail ou matricula) com protecao contra forca bruta:
+# depois de N senhas erradas em X minutos, o login fica bloqueado.
+# (Em memoria, por app: basta para um servidor. Com varios, usar Redis.)
 # ==========================================================
+def _falhas_login() -> dict[str, deque]:
+    return current_app.extensions.setdefault("caronauvv_falhas_login", defaultdict(deque))
+
+
+def _bloqueado(chave: str) -> bool:
+    janela = current_app.config["LOGIN_JANELA_MIN"] * 60
+    falhas = _falhas_login()[chave]
+    while falhas and falhas[0] < time.monotonic() - janela:
+        falhas.popleft()
+    return len(falhas) >= current_app.config["LOGIN_MAX_TENTATIVAS"]
+
+
 def autenticar(login: str, senha: str) -> Usuario:
     login = (login or "").strip()
+    chave = login.lower()
+    if _bloqueado(chave):
+        raise ApiError(
+            f"Muitas tentativas erradas. Espere {current_app.config['LOGIN_JANELA_MIN']} minutos e tente de novo.", 429
+        )
     usuario = db.session.scalar(
-        db.select(Usuario).where(or_(Usuario.email == login.lower(), Usuario.matricula == login))
+        db.select(Usuario).where(or_(Usuario.email == chave, Usuario.matricula == login))
     )
     if usuario is None or not usuario.check_senha(senha or ""):
+        _falhas_login()[chave].append(time.monotonic())
         raise ApiError("Login ou senha inválidos.", 401)
     if not usuario.is_active:
-        raise ApiError("Conta desativada.", 403)
+        raise ApiError("Conta suspensa. Procure a administração do CaronaUVV.", 403)
+    _falhas_login().pop(chave, None)
     usuario.ultimo_login_em = datetime.now()
     db.session.commit()
     return usuario
@@ -109,43 +186,45 @@ def usuario_do_token(token: str) -> Usuario:
 # ==========================================================
 # PERFIL
 # ==========================================================
-def atualizar_perfil(usuario: Usuario, dados: dict) -> Usuario:
-    for campo in CAMPOS_PERFIL_OBRIGATORIOS:
-        if campo in dados:
-            valor = _texto(dados, campo)
-            if not valor:
-                raise ApiError(f"O campo {campo} não pode ficar vazio.")
-            setattr(usuario, campo, valor)
+def atualizar_perfil(usuario: Usuario, dados: PerfilSchema) -> Usuario:
+    campos = dados.preenchidos()
+    senha_atual = campos.pop("senha_atual", None)
+    nova_senha = campos.pop("nova_senha", None)
 
-    for campo in CAMPOS_PERFIL_OPCIONAIS:
-        if campo in dados:
-            setattr(usuario, campo, _texto(dados, campo) or None)
+    for campo, valor in campos.items():
+        setattr(usuario, campo, valor)
 
-    if "nova_senha" in dados:
-        if not usuario.check_senha(str(dados.get("senha_atual") or "")):
+    if nova_senha is not None:
+        if not usuario.check_senha(senha_atual or ""):
             raise ApiError("Senha atual incorreta.", 403)
-        nova_senha = str(dados["nova_senha"] or "")
-        _validar_senha(nova_senha)
         usuario.set_senha(nova_senha)
 
     db.session.commit()
     return usuario
 
 
+def buscar_usuario(usuario_id: int) -> Usuario:
+    usuario = db.session.get(Usuario, usuario_id)
+    if usuario is None or not usuario.is_active:
+        raise ApiError("Usuário não encontrado.", 404)
+    return usuario
+
+
+def perfil_publico(usuario: Usuario) -> dict:
+    """Perfil que qualquer aluno ve antes de pedir vaga (reputacao estilo BlaBlaCar)."""
+    from caronauvv.avaliacoes.services import avaliacoes_reveladas, reputacao
+
+    return {
+        **usuario.to_dict(),
+        "reputacao": reputacao(usuario),
+        "avaliacoes": [a.to_dict() for a in avaliacoes_reveladas(usuario, limite=10)],
+        "veiculos": [v.to_dict() for v in usuario.veiculos],
+    }
+
+
 # ==========================================================
 # VEICULOS DO MOTORISTA
 # ==========================================================
-PLACA_REGEX = re.compile(r"^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")  # ABC1234 ou Mercosul ABC1D23
-STATUS_CARONA_EM_ABERTO = ("ativa", "lotada", "em_andamento")
-
-
-def _placa(valor) -> str:
-    placa = re.sub(r"[\s-]", "", str(valor or "")).upper()
-    if not PLACA_REGEX.match(placa):
-        raise ApiError("Placa inválida (ex.: ABC1234 ou ABC1D23).")
-    return placa
-
-
 def buscar_veiculo(veiculo_id: int, usuario: Usuario) -> Veiculo:
     veiculo = db.session.get(Veiculo, veiculo_id)
     if veiculo is None or veiculo.usuario_id != usuario.id:
@@ -153,32 +232,25 @@ def buscar_veiculo(veiculo_id: int, usuario: Usuario) -> Veiculo:
     return veiculo
 
 
-def _aplicar_veiculo(veiculo: Veiculo, dados: dict, obrigatorio: bool) -> None:
-    for campo in ("modelo", "cor"):
-        if obrigatorio or campo in dados:
-            valor = _texto(dados, campo)
-            if not valor:
-                raise ApiError(f"O campo {campo} não pode ficar vazio.")
-            setattr(veiculo, campo, valor)
-
-    if obrigatorio or "placa" in dados:
-        placa = _placa(dados.get("placa"))
-        outro = db.session.scalar(db.select(Veiculo).where(Veiculo.placa == placa))
+def _aplicar_veiculo(veiculo: Veiculo, campos: dict) -> None:
+    if "placa" in campos:
+        outro = db.session.scalar(db.select(Veiculo).where(Veiculo.placa == campos["placa"]))
         if outro is not None and outro.id != veiculo.id:
             raise ApiError("Já existe um veículo com essa placa.", 409)
-        veiculo.placa = placa
+    for campo, valor in campos.items():
+        setattr(veiculo, campo, valor)
 
 
-def cadastrar_veiculo(usuario: Usuario, dados: dict) -> Veiculo:
+def cadastrar_veiculo(usuario: Usuario, dados: VeiculoSchema) -> Veiculo:
     veiculo = Veiculo(usuario_id=usuario.id)
-    _aplicar_veiculo(veiculo, dados, obrigatorio=True)
+    _aplicar_veiculo(veiculo, dados.model_dump())
     db.session.add(veiculo)
     db.session.commit()
     return veiculo
 
 
-def editar_veiculo(veiculo: Veiculo, dados: dict) -> Veiculo:
-    _aplicar_veiculo(veiculo, dados, obrigatorio=False)
+def editar_veiculo(veiculo: Veiculo, dados: VeiculoEdicaoSchema) -> Veiculo:
+    _aplicar_veiculo(veiculo, dados.preenchidos())
     db.session.commit()
     return veiculo
 
@@ -193,4 +265,24 @@ def remover_veiculo(veiculo: Veiculo) -> None:
     for carona in caronas:
         carona.veiculo_id = None
     db.session.delete(veiculo)
+    db.session.commit()
+
+
+# ==========================================================
+# CONTATOS DE CONFIANCA ("Mae", "Julia")
+# ==========================================================
+def adicionar_contato(usuario: Usuario, dados: ContatoSchema) -> ContatoConfianca:
+    if len(usuario.contatos_confianca) >= MAX_CONTATOS:
+        raise ApiError(f"Você pode ter no máximo {MAX_CONTATOS} contatos de confiança.")
+    contato = ContatoConfianca(usuario=usuario, nome=dados.nome, telefone=dados.telefone)
+    db.session.add(contato)
+    db.session.commit()
+    return contato
+
+
+def remover_contato(usuario: Usuario, contato_id: int) -> None:
+    contato = db.session.get(ContatoConfianca, contato_id)
+    if contato is None or contato.usuario_id != usuario.id:
+        raise ApiError("Contato não encontrado.", 404)
+    db.session.delete(contato)
     db.session.commit()

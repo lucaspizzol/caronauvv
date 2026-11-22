@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 # Valores possiveis (guardados como texto)
-TIPOS_ALERTA = ("parada_longa", "sinal_perdido", "desvio_rota", "pin_sem_gps")
+TIPOS_ALERTA = ("parada_longa", "sinal_perdido", "desvio_rota", "pin_sem_gps", "botao_panico")
 RESPOSTAS_ALERTA = ("tudo_bem", "preciso_ajuda", "sem_resposta")
 STATUS_ALERTA = ("aguardando", "em_revisao", "resolvido")
 STATUS_DENUNCIA = ("aberta", "em_analise", "encerrada")
@@ -44,6 +44,21 @@ class Alerta(db.Model):
     carona: Mapped["Carona"] = relationship("Carona")
     usuario: Mapped[Optional["Usuario"]] = relationship("Usuario")
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "carona_id": self.carona_id,
+            "usuario": self.usuario.to_dict() if self.usuario else None,
+            "tipo": self.tipo,
+            "detalhe": self.detalhe,
+            "lat": self.lat,
+            "lng": self.lng,
+            "resposta": self.resposta,
+            "status": self.status,
+            "criado_em": self.created_at.isoformat(timespec="minutes"),
+            "resolvido_em": self.resolvido_em.isoformat(timespec="minutes") if self.resolvido_em else None,
+        }
+
     def __repr__(self) -> str:
         return f"<Alerta id={self.id} tipo='{self.tipo}' status='{self.status}'>"
 
@@ -70,6 +85,15 @@ class LinkCompartilhado(db.Model):
     @property
     def ativo(self) -> bool:
         return self.revogado_em is None and self.expira_em is not None and self.expira_em > datetime.now()
+
+    def to_dict(self) -> dict:
+        return {
+            "token": self.token,
+            "carona_id": self.carona_id,
+            "expira_em": self.expira_em.isoformat(timespec="minutes"),
+            "ativo": self.ativo,
+            "acessos": self.acessos,
+        }
 
     def __repr__(self) -> str:
         return f"<LinkCompartilhado id={self.id} carona_id={self.carona_id} expira_em={self.expira_em}>"
@@ -103,6 +127,20 @@ class Denuncia(db.Model):
     denunciado: Mapped["Usuario"] = relationship("Usuario", foreign_keys=[denunciado_id])
     analisada_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[analisada_por_id])
     carona: Mapped[Optional["Carona"]] = relationship("Carona")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "denunciante": self.denunciante.to_dict(),
+            "denunciado": {**self.denunciado.to_dict(), "is_active": self.denunciado.is_active},
+            "carona_id": self.carona_id,
+            "motivo": self.motivo,
+            "descricao": self.descricao,
+            "status": self.status,
+            "resolucao": self.resolucao,
+            "criada_em": self.created_at.isoformat(timespec="minutes"),
+            "encerrada_em": self.encerrada_em.isoformat(timespec="minutes") if self.encerrada_em else None,
+        }
 
     def __repr__(self) -> str:
         return f"<Denuncia id={self.id} denunciado_id={self.denunciado_id} status='{self.status}'>"

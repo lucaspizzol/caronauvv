@@ -34,6 +34,16 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _url_banco("sqlite:///caronauvv.db")
     # pool_pre_ping: reconecta sozinho se o PostgreSQL derrubar a conexao ociosa
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    # Serverless (Vercel): cada chamada pode ser uma maquina nova, entao nao guardamos
+    # conexoes abertas; o pooler do PostgreSQL (Neon) cuida disso.
+    if _bool("DB_SEM_POOL", bool(os.getenv("VERCEL"))):
+        from sqlalchemy.pool import NullPool
+        SQLALCHEMY_ENGINE_OPTIONS = {"poolclass": NullPool}
+
+    # Fuso horario da aplicacao. O banco guarda horario local (sem fuso), entao o
+    # servidor precisa estar no horario de Brasilia mesmo rodando em UTC (Vercel).
+    # Padrao POSIX "<-03>3" = UTC-3 (Brasilia nao tem mais horario de verao).
+    APP_TZ = os.getenv("APP_TZ", "")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

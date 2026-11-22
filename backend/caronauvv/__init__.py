@@ -1,3 +1,6 @@
+import os
+import time
+
 from flask import Flask
 
 from .config import Config
@@ -12,9 +15,17 @@ from .logs import init_app as init_logs
 # ==========================================================
 # APPLICATION FACTORY
 # ==========================================================
+def _aplicar_fuso(fuso: str) -> None:
+    """Faz datetime.now() devolver o horario de Brasilia em servidores em UTC."""
+    if fuso and hasattr(time, "tzset"):  # tzset so existe em Linux/Mac (a Vercel e Linux)
+        os.environ["TZ"] = fuso
+        time.tzset()
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    _aplicar_fuso(app.config.get("APP_TZ", ""))
 
     # ----------------------------------------------------------
     # Logging (nivel definido por LOG_LEVEL no .env)

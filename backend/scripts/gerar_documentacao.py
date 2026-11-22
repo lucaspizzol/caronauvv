@@ -647,9 +647,6 @@ python -m pytest                          # testes do back-end</pre>
 npm install
 npm run dev                        # abre em http://localhost:5173
 npm test                           # testes do front-end (Vitest)</pre>
-  <p><b>PostgreSQL (opcional):</b> <code>pip install -e .[postgres]</code>, defina
-  <code>DATABASE_URL=postgresql://usuario:senha@localhost:5432/caronauvv</code> no <code>.env</code> e rode
-  <code>db upgrade</code> e <code>seed-db</code>.</p>
   <h3>Usuários de exemplo (senha 123456)</h3>
   <table>
     <thead><tr><th>Login</th><th>Para que usar</th></tr></thead>
@@ -662,12 +659,13 @@ npm test                           # testes do front-end (Vitest)</pre>
     </tbody>
   </table>
   <h3>Roteiro de demonstração</h3>
+  <p class="pequeno">Logo antes de apresentar: <code>invoke resetdb</code> (local) ou <code>invoke resetvercel</code> (online) recriam o banco com o seed.</p>
   <ol>
-    <li><code>invoke resetdb</code> logo antes de apresentar (recria o banco com o seed).</li>
     <li><b>Cadastro:</b> tentar um e-mail <code>@gmail.com</code> (bloqueado), depois um <code>@uvv.br</code> e confirmar o código.</li>
     <li><b>Aba 1, Kauã:</b> Minhas caronas → carona de hoje → Iniciar viagem → PIN errado e depois 4821 → Compartilhar viagem (abrir o link numa janela anônima) → Concluir → Avaliações.</li>
     <li><b>Aba 2, Lucas:</b> buscar "Itapuã", ver a nota do Kauã e abrir o perfil dele → Pedir vaga. Na aba 1 o pedido chega sozinho; aceitar. Em Meus pedidos: PIN, Pix com QR Code e Emergência.</li>
-    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, ver a emergência em Alertas e mostrar o diagrama na aba Banco de dados.</li>
+    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas e o diagrama na aba Banco de dados.</li>
+
   </ol>
 </section>""")
 
@@ -771,6 +769,7 @@ figcaption { font-size: 9pt; color: #5b6880; margin-top: 4px; }
 h3, h2 { break-after: avoid; }
 .codigo pre { margin: 0; padding: 8px; background: #f6f8fb; font-size: 8pt; line-height: 1.35; white-space: pre-wrap; }
 pre.diagrama { font-size: 7.4pt !important; line-height: 1.2 !important; }
+pre.terminal { font-size: 7.6pt !important; line-height: 1.25 !important; padding: 6px 10px !important; }
 pre.diagrama, pre.terminal { background: #0f1a2e; color: #e6edf7; padding: 8px 10px; border-radius: 6px; font-size: 8pt; line-height: 1.3; white-space: pre-wrap; page-break-inside: avoid; }
 .mermaid { text-align: center; margin: 8px 0; }
 .mermaid svg { max-width: 100%; height: auto; }

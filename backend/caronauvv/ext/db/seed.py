@@ -49,6 +49,7 @@ def _configuracoes_padrao() -> int:
 
 
 def _usuario(matricula, email, nome, bairro, **extra) -> Usuario:
+    extra.setdefault("email_verificado", True)  # contas de exemplo ja confirmaram o e-mail UVV
     u = Usuario(matricula=matricula, email=email, nome=nome, bairro=bairro,
                 telefone=extra.pop("telefone", "27999990000"), **extra)
     u.set_senha(SENHA_EXEMPLO)
@@ -72,23 +73,41 @@ def _dados_de_exemplo() -> None:
     kaua = _usuario("202416377", "kaua@uvv.br", "Kauã Araujo", "Itapuã",
                     curso="Ciência da Computação", telefone="27999991111",
                     endereco="Rua Itaúnas, 120", casa_lat=ITAPUA[0], casa_lng=ITAPUA[1],
-                    chave_pix="kaua@uvv.br", verificado=True)
+                    chave_pix="kaua@uvv.br", verificado=True,
+                    bio="Estudo à noite e saio de Itapuã todo dia às 18h30. Pontualidade é comigo!",
+                    pref_conversa="conversador", pref_musica=True)
     lucas = _usuario("202416378", "lucas@uvv.br", "Lucas Pizzol", "Praia da Costa",
                      curso="Ciência da Computação", telefone="27999992222",
                      endereco="Av. Antônio Gil Veloso, 900",
                      casa_lat=PRAIA_DA_COSTA[0], casa_lng=PRAIA_DA_COSTA[1],
-                     chave_pix="27999992222", verificado=True)
+                     chave_pix="27999992222", verificado=True,
+                     bio="Curto um rock baixinho no caminho. Aceito mochila e notebook.",
+                     pref_conversa="depende", pref_musica=True, pref_animais=True)
     ana = _usuario("202310001", "ana@uvv.br", "Ana Souza", "Itapuã",
                    curso="Direito", telefone="27999993333", endereco="Rua Goiânia, 45",
-                   casa_lat=-20.3490, casa_lng=-40.2960)
+                   casa_lat=-20.3490, casa_lng=-40.2960, pref_conversa="quieto",
+                   bio="Gosto de ir lendo no caminho.")
     pedro = _usuario("202310002", "pedro@uvv.br", "Pedro Lima", "Praia da Costa",
                      curso="Engenharia Civil", telefone="27999994444")
+    marina = _usuario("202410003", "marina@uvv.br", "Marina Costa", "Glória",
+                      curso="Psicologia", telefone="27999995555", pref_conversa="conversador",
+                      verificacao_solicitada_em=datetime.now() - timedelta(hours=5))  # aguardando o admin
+    joao = _usuario("202210004", "joao@uvv.br", "João Pereira", "Jardim Camburi",
+                    curso="Engenharia de Software", telefone="27999996666", chave_pix="27999996666",
+                    verificado=True, pref_conversa="quieto", pref_musica=False,
+                    bio="Saio cedo de Camburi para as aulas da manhã.")
+    beatriz = _usuario("202410005", "beatriz@uvv.br", "Beatriz Nunes", "Praia de Itaparica",
+                       curso="Medicina Veterinária", telefone="27999997777", chave_pix="beatriz@uvv.br",
+                       pref_animais=True, bio="Volto da UVV depois da aula das 22h.")
 
     hb20 = Veiculo(dono=kaua, modelo="HB20", cor="Branco", placa="KAU2B34")
     onix = Veiculo(dono=lucas, modelo="Onix", cor="Prata", placa="LUC4E56")
+    gol = Veiculo(dono=joao, modelo="Gol", cor="Vermelho", placa="JOA1B23")
+    kwid = Veiculo(dono=beatriz, modelo="Kwid", cor="Azul", placa="BEA9C87")
     mae_da_ana = ContatoConfianca(usuario=ana, nome="Mãe", telefone="27988887777")
     julia = ContatoConfianca(usuario=ana, nome="Júlia", telefone="27988886666")
-    db.session.add_all([hb20, onix, mae_da_ana, julia])
+    db.session.add_all([hb20, onix, gol, kwid, mae_da_ana, julia,
+                        ContatoConfianca(usuario=lucas, nome="Mãe", telefone="27988885555")])
 
     # ------------------------------------------------------
     # CARONA 1 - amanha 18:30, Itapua -> UVV (Ana aceita, Pedro pendente)
@@ -194,6 +213,85 @@ def _dados_de_exemplo() -> None:
     ])
 
     # ------------------------------------------------------
+    # CARONA 5 - HOJE, daqui a 20 min (demonstracao do ciclo da viagem):
+    # Kaua inicia a viagem, digita o PIN da Ana (4821) e conclui.
+    # ------------------------------------------------------
+    agora = datetime.now().replace(second=0, microsecond=0)
+    c_agora = Carona(
+        motorista=kaua, veiculo=hb20, sentido="ida",
+        bairro_origem="Itapuã", endereco_origem="Rua Itaúnas, 120",
+        origem_lat=ITAPUA[0], origem_lng=ITAPUA[1], destino_lat=UVV[0], destino_lng=UVV[1],
+        distancia_km=6.2, duracao_min=18, data_hora_saida=agora + timedelta(minutes=20),
+        vagas=2, valor_por_passageiro=1.00, observacoes="Saio pontualmente. Cabe mochila no porta-malas.",
+    )
+    ana_agora = Solicitacao(
+        carona=c_agora, passageiro=ana, status="aceita", endereco_embarque="Rua Goiânia, 45",
+        respondida_em=agora - timedelta(hours=1), expira_em=agora, pin_embarque="4821",
+    )
+
+    # ------------------------------------------------------
+    # CARONAS 6 e 7 - amanha, outros bairros (a busca fica mais rica)
+    # ------------------------------------------------------
+    c_camburi = Carona(
+        motorista=joao, veiculo=gol, sentido="ida", bairro_origem="Jardim Camburi",
+        endereco_origem="Av. Dante Michelini, 2000", distancia_km=17.0, duracao_min=35,
+        data_hora_saida=as_(amanha, 7, 0), vagas=3, valor_por_passageiro=3.00,
+        observacoes="Passo pela Terceira Ponte. Sem paradas no caminho.",
+    )
+    c_volta_bia = Carona(
+        motorista=beatriz, veiculo=kwid, sentido="volta", bairro_origem="Praia de Itaparica",
+        endereco_origem="UVV - Entrada principal", destino="Rua Itapemirim, 500 - Praia de Itaparica",
+        distancia_km=5.0, duracao_min=14, data_hora_saida=as_(amanha, 22, 10), vagas=2,
+        valor_por_passageiro=2.00, reserva_automatica=True,
+    )
+    db.session.add_all([c_agora, ana_agora, c_camburi, c_volta_bia])
+
+    # ------------------------------------------------------
+    # HISTORICO DO KAUA (reputacao de motorista "Veterano" e "Super pontual")
+    # - ha 3 dias: Ana, Marina e Lucas (Lucas ainda nao avaliou: aparece em "Avaliar")
+    # - ha 5 dias: Ana viajou, Pedro faltou
+    # ------------------------------------------------------
+    dia3, dia5 = hoje - timedelta(days=3), hoje - timedelta(days=5)
+    c_3dias = Carona(
+        motorista=kaua, veiculo=hb20, sentido="ida", bairro_origem="Itapuã",
+        endereco_origem="Rua Itaúnas, 120", distancia_km=6.2, duracao_min=18,
+        data_hora_saida=as_(dia3, 18, 30), vagas=3, valor_por_passageiro=1.00,
+        status="concluida", iniciada_em=as_(dia3, 18, 30), concluida_em=as_(dia3, 18, 50),
+    )
+    c_5dias = Carona(
+        motorista=kaua, veiculo=hb20, sentido="ida", bairro_origem="Itapuã",
+        endereco_origem="Rua Itaúnas, 120", distancia_km=6.2, duracao_min=18,
+        data_hora_saida=as_(dia5, 18, 30), vagas=3, valor_por_passageiro=1.00,
+        status="concluida", iniciada_em=as_(dia5, 18, 31), concluida_em=as_(dia5, 18, 49),
+    )
+
+    def viagem(carona, passageiro, dia, faltou=False):
+        return Solicitacao(carona=carona, passageiro=passageiro, status="aceita",
+                           respondida_em=as_(dia, 12, 0), pin_embarque="1111", faltou=faltou,
+                           embarcou_em=None if faltou else as_(dia, 18, 35),
+                           metodo_embarque=None if faltou else "pin")
+
+    ana_3, marina_3, lucas_3 = viagem(c_3dias, ana, dia3), viagem(c_3dias, marina, dia3), viagem(c_3dias, lucas, dia3)
+    ana_5, pedro_5 = viagem(c_5dias, ana, dia5), viagem(c_5dias, pedro, dia5, faltou=True)
+
+    def nota(solicitacao, de, para, valor, dia, tags=(), comentario=None):
+        a = Avaliacao(solicitacao=solicitacao, avaliador=de, avaliado=para, nota=valor,
+                      comentario=comentario, created_at=as_(dia, 19, 0))
+        a.tags = [AvaliacaoTag(tag=t) for t in tags]
+        return a
+
+    db.session.add_all([
+        c_3dias, c_5dias, ana_3, marina_3, lucas_3, ana_5, pedro_5,
+        nota(ana_3, ana, kaua, 5, dia3, ("Pontual", "Carro limpo"), "Sempre no horário!"),
+        nota(ana_3, kaua, ana, 5, dia3, ("Pontual", "Educado")),
+        nota(marina_3, marina, kaua, 5, dia3, ("Pontual", "Boa conversa"), "Conversa ótima, chegamos rapidinho."),
+        nota(marina_3, kaua, marina, 4, dia3, ("Boa conversa",)),
+        nota(ana_5, ana, kaua, 5, dia5, ("Pontual", "Dirige bem")),
+        nota(ana_5, kaua, ana, 5, dia5, ("Pagou certinho",)),
+        Pagamento(solicitacao=marina_3, valor=1.00, metodo="dinheiro", status="pago", pago_em=as_(dia3, 18, 50)),
+    ])
+
+    # ------------------------------------------------------
     # NOTIFICACOES (tela 4), DENUNCIA E BUSCAS (painel admin)
     # ------------------------------------------------------
     db.session.add_all([
@@ -215,4 +313,8 @@ def _dados_de_exemplo() -> None:
         Busca(usuario=pedro, bairro="Glória", sentido="volta", data_desejada=hoje,
               hora_inicio=time(22, 0), hora_fim=time(23, 0), qtd_resultados=0),
         Busca(bairro="Cobilândia", sentido="ida", data_desejada=hoje, qtd_resultados=0),
+        Busca(usuario=marina, bairro="Glória", sentido="ida", data_desejada=amanha, qtd_resultados=0),
+        Busca(usuario=marina, bairro="Glória", sentido="volta", data_desejada=amanha, qtd_resultados=0),
+        Notificacao(usuario=lucas, carona=c_3dias, tipo="avaliacao_pendente", titulo="Como foi a viagem?",
+                    texto="Avalie Kauã e ajude a comunidade a confiar no CaronaUVV."),
     ])

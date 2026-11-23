@@ -10,6 +10,7 @@ declare module 'vue-router' {
     titulo?: string // nome da tela na aba do navegador
     publica?: boolean
     livre?: boolean
+    comMenu?: boolean // publica, mas mostra o menu para quem esta logado (ex.: perguntas frequentes)
     admin?: boolean
   }
 }
@@ -20,6 +21,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { titulo: 'Entrar', publica: true } },
   { path: '/cadastro', name: 'cadastro', component: () => import('../views/CadastroView.vue'), meta: { titulo: 'Criar conta', publica: true } },
   { path: '/recuperar-senha', name: 'recuperar-senha', component: () => import('../views/RecuperarSenhaView.vue'), meta: { titulo: 'Esqueci minha senha', publica: true } },
+  { path: '/perguntas-frequentes', name: 'faq', component: () => import('../views/FaqView.vue'), meta: { titulo: 'Perguntas frequentes', publica: true, livre: true, comMenu: true } },
   { path: '/acompanhar/:token', name: 'acompanhar', component: () => import('../views/AcompanharView.vue'), props: true, meta: { titulo: 'Acompanhar viagem', publica: true, livre: true } },
   { path: '/verificar-email', name: 'verificar-email', component: () => import('../views/VerificarEmailView.vue'), meta: { titulo: 'Confirmar e-mail' } },
   { path: '/caronas', name: 'buscar', component: () => import('../views/BuscarView.vue'), meta: { titulo: 'Buscar caronas' } },

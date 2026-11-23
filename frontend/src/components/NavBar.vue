@@ -22,6 +22,9 @@
         <RouterLink v-if="auth.usuario?.is_admin" to="/admin" class="btn btn-sm btn-link text-white d-lg-none" title="Painel da administração" aria-label="Painel da administração">
           <i class="bi bi-speedometer2 fs-5"></i>
         </RouterLink>
+        <RouterLink to="/perguntas-frequentes" class="btn btn-sm btn-link text-white" title="Perguntas frequentes" aria-label="Perguntas frequentes">
+          <i class="bi bi-question-circle fs-5"></i>
+        </RouterLink>
         <RouterLink to="/notificacoes" class="btn btn-sm btn-link text-white position-relative sino" title="Notificações" aria-label="Notificações">
           <i class="bi bi-bell-fill fs-5"></i>
           <span v-if="naoLidas > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-warning">

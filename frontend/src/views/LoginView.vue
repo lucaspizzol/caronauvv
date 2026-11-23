@@ -35,6 +35,7 @@
 
         <p class="text-center small mt-3 mb-0">
           Ainda não tem conta? <RouterLink to="/cadastro" class="fw-semibold">Cadastre-se</RouterLink>
+          <span class="d-block mt-2"><RouterLink to="/perguntas-frequentes"><i class="bi bi-question-circle me-1"></i>Perguntas frequentes</RouterLink></span>
         </p>
       </div>
 

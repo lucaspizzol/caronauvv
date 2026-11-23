@@ -27,7 +27,8 @@ import { atualizarUsuario, auth, avisoGlobal, logado } from './stores/auth'
 import type { UsuarioLogado } from './types/api'
 
 const route = useRoute()
-const mostrarMenu = computed(() => logado.value && !route.meta.publica)
+// Paginas publicas escondem o menu; a FAQ (comMenu) mostra o menu para quem esta logado
+const mostrarMenu = computed(() => logado.value && (!route.meta.publica || Boolean(route.meta.comMenu)))
 
 // Ao abrir/recarregar a pagina, busca os dados atuais do usuario
 // (ex.: o admin aprovou o selo de verificado enquanto ele estava fora)

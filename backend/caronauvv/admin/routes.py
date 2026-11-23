@@ -3,6 +3,9 @@ from flask import Blueprint, Response, g, request
 from caronauvv.auth.decorators import admin_required
 from caronauvv.auth.documentos import analisar_documento, buscar_documento, imagem_do_documento, listar_documentos
 
+from caronauvv.avaliacoes.moderacao import media_recebida
+
+from .monitor import avaliacoes_ao_vivo, viagens_ao_vivo
 from .services import (
     analisar_denuncia,
     atualizar_configuracoes,
@@ -27,10 +30,15 @@ def _json() -> dict:
 
 
 def _usuario_admin(u) -> dict:
+    media, avaliacoes = media_recebida(u.id)
     return {
         **u.to_dict(privado=True),
         "is_active": u.is_active,
         "ultimo_login_em": u.ultimo_login_em.isoformat(timespec="minutes") if u.ultimo_login_em else None,
+        "suspenso_em": u.suspenso_em.isoformat(timespec="minutes") if u.suspenso_em else None,
+        "suspenso_motivo": u.suspenso_motivo,
+        "media_recebida": media,
+        "avaliacoes_recebidas": avaliacoes,
     }
 
 
@@ -90,6 +98,21 @@ def analisar(denuncia_id):
         (str(dados.get("resolucao") or "").strip() or None), bool(dados.get("suspender", False)),
     )
     return {"denuncia": denuncia.to_dict()}
+
+
+# ---------------- tempo real: viagens e controle de avaliacoes ----------------
+@bp.get("/viagens")
+@admin_required
+def viagens():
+    return viagens_ao_vivo()
+
+
+@bp.get("/avaliacoes")
+@admin_required
+def avaliacoes():
+    nota_maxima = request.args.get("nota_maxima", type=int)
+    limite = request.args.get("limite", default=60, type=int)
+    return avaliacoes_ao_vivo(nota_maxima, limite)
 
 
 # ---------------- alertas ----------------

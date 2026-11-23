@@ -12,7 +12,8 @@ if TYPE_CHECKING:
 
 
 # Valores possiveis (guardados como texto)
-TIPOS_ALERTA = ("parada_longa", "sinal_perdido", "desvio_rota", "pin_sem_gps", "botao_panico")
+TIPOS_ALERTA = ("parada_longa", "sinal_perdido", "desvio_rota", "pin_sem_gps", "botao_panico",
+                "avaliacao_baixa", "exclusao_automatica")   # controle de avaliacoes (avaliacoes/moderacao.py)
 RESPOSTAS_ALERTA = ("tudo_bem", "preciso_ajuda", "sem_resposta")
 STATUS_ALERTA = ("aguardando", "em_revisao", "resolvido")
 STATUS_DENUNCIA = ("aberta", "em_analise", "encerrada")

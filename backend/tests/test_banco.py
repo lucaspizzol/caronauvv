@@ -60,7 +60,9 @@ def test_apagar_veiculo_deixa_carona_sem_veiculo(populado):
 def test_apagar_carona_apaga_pedidos_e_gps(populado):
     db.session.execute(db.delete(Carona).where(Carona.status == "concluida"))
     db.session.commit()
-    assert contar(PosicaoGps) == 0
+    # sobram so os pontos da viagem que esta acontecendo agora (painel "ao vivo")
+    restantes = set(db.session.scalars(db.select(PosicaoGps.carona_id)))
+    assert restantes and all(db.session.get(Carona, cid).status == "em_andamento" for cid in restantes)
     assert db.session.scalar(db.select(db.func.count()).where(Solicitacao.faltou)) == 0
 
 

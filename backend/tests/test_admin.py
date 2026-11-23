@@ -19,7 +19,7 @@ def admin_do_seed(client):
 
 def test_resumo_com_dados_de_exemplo(client):
     r = client.get("/api/admin/resumo", headers=admin_do_seed(client)).get_json()["resumo"]
-    assert r["viagens"]["concluidas"] == 3
+    assert r["viagens"]["concluidas"] == 4
     assert r["viagens"]["km_compartilhados"] > 0
     assert r["confianca"]["denuncias_abertas"] == 1
     assert r["usuarios"]["verificacoes_pendentes"] == 1          # Marina

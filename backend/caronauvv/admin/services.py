@@ -79,6 +79,7 @@ def resumo() -> dict:
         "caronas": {"total": sum(por_status.values()), "por_status": por_status},
         "viagens": {
             "concluidas": len(concluidas),
+            "em_andamento_agora": _contar(Carona, Carona.status == "em_andamento"),
             "passageiros_transportados": passageiros_viajaram,
             "taxa_ocupacao": round(passageiros_viajaram / assentos, 2) if assentos else 0.0,
             "km_compartilhados": round(km_compartilhados, 1),
@@ -90,6 +91,8 @@ def resumo() -> dict:
             "avaliacoes": _contar(Avaliacao),
             "denuncias_abertas": _contar(Denuncia, Denuncia.status != "encerrada"),
             "alertas_aguardando": _contar(Alerta, Alerta.status != "resolvido"),
+            "avaliacoes_baixas_abertas": _contar(Alerta, Alerta.tipo == "avaliacao_baixa", Alerta.status != "resolvido"),
+            "excluidos_automaticamente": _contar(Usuario, Usuario.suspenso_motivo.like("Exclusão automática%")),
         },
         "medias": medias_das_viagens(),   # tempo de viagem, atraso na saida, velocidade, tempo a bordo
         "demanda_sem_oferta": [{"bairro": b, "buscas": n} for b, n in sem_resultado],
@@ -152,18 +155,14 @@ def suspender_usuario(usuario_id: int, admin: Usuario, ativo: bool) -> Usuario:
     usuario = _usuario(usuario_id)
     if usuario.id == admin.id:
         raise ApiError("Você não pode suspender a própria conta.")
-    usuario.is_active = ativo
-    if not ativo:
-        # Caronas futuras do usuario suspenso sao canceladas e os passageiros avisados
-        for carona in usuario.caronas_oferecidas:
-            if carona.status in ("ativa", "lotada"):
-                carona.status = "cancelada"
-                carona.cancelada_em = datetime.now()
-                for s in carona.solicitacoes:
-                    if s.status in ("pendente", "aceita"):
-                        s.status = "cancelada"
-                        notificar(s.passageiro, "carona_cancelada", "Carona cancelada",
-                                  "A carona foi cancelada pela administração. Busque outra opção.", carona)
+    if ativo:
+        usuario.is_active = True
+        usuario.suspenso_em = None
+        usuario.suspenso_motivo = None
+    else:
+        # Caronas futuras e pedidos em aberto sao cancelados (passageiros e motoristas avisados)
+        from caronauvv.avaliacoes.moderacao import suspender_conta
+        suspender_conta(usuario, f"Suspenso(a) pela administração ({admin.nome}).")
     db.session.commit()
     return usuario
 

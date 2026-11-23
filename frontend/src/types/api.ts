@@ -338,6 +338,10 @@ export interface ViagemAcompanhada {
 export interface UsuarioAdmin extends UsuarioLogado {
   is_active: boolean
   ultimo_login_em: DataIso | null
+  suspenso_em: DataIso | null
+  suspenso_motivo: string | null // "Exclusão automática: média 2,0..." ou suspensão pela administração
+  media_recebida: number | null // média de TODAS as avaliações recebidas (o admin vê as "às cegas")
+  avaliacoes_recebidas: number
 }
 
 /** GET /api/admin/resumo */
@@ -353,13 +357,21 @@ export interface ResumoAdmin {
   caronas: { total: number; por_status: Partial<Record<StatusCarona, number>> }
   viagens: {
     concluidas: number
+    em_andamento_agora: number
     passageiros_transportados: number
     taxa_ocupacao: number
     km_compartilhados: number
     co2_evitado_kg: number
     taxa_faltas: number
   }
-  confianca: { nota_media: number | null; avaliacoes: number; denuncias_abertas: number; alertas_aguardando: number }
+  confianca: {
+    nota_media: number | null
+    avaliacoes: number
+    denuncias_abertas: number
+    alertas_aguardando: number
+    avaliacoes_baixas_abertas: number
+    excluidos_automaticamente: number
+  }
   medias: MediasViagens
   demanda_sem_oferta: { bairro: string; buscas: number }[]
   bairros_com_mais_oferta: { bairro: string; caronas: number }[]
@@ -503,4 +515,80 @@ export interface MediasViagens {
   atraso_medio_saida_min: number | null
   velocidade_media_kmh: number | null
   tempo_medio_a_bordo_min: number | null
+}
+
+// ---------------- painel em tempo real (admin/monitor.py) ----------------
+export type SituacaoPassageiro = 'aguardando' | 'a_bordo' | 'desembarcou' | 'faltou'
+
+export interface PessoaMonitor {
+  id: number
+  nome: string
+  foto_url: string | null
+  telefone: string
+  is_active: boolean
+}
+
+/** GET /api/admin/viagens: uma viagem acontecendo agora (ou saindo / recém-concluída). */
+export interface ViagemAoVivo {
+  id: number
+  status: StatusCarona
+  sentido: Sentido
+  bairro_origem: string
+  endereco_origem: string | null
+  destino: string
+  data_hora_saida: DataIso
+  iniciada_em: DataIso | null
+  concluida_em: DataIso | null
+  minutos_em_viagem: number | null
+  motorista: PessoaMonitor
+  veiculo: Veiculo | null
+  passageiros: (PessoaMonitor & { solicitacao_id: number; situacao: SituacaoPassageiro; entrou_em: DataIso | null; saiu_em: DataIso | null })[]
+  ultima_posicao: { lat: number; lng: number; em: DataIso; segundos_atras: number } | null
+  velocidade_kmh: number | null
+  trilha: [number, number][]
+  alertas_abertos: number
+}
+
+export interface PainelViagens {
+  atualizado_em: DataIso
+  viagens: ViagemAoVivo[]
+  totais: { em_andamento: number; saindo_em_breve: number; concluidas_recentes: number; passageiros_a_bordo: number }
+}
+
+/** GET /api/admin/avaliacoes: avaliação vista pelo admin (inclusive as "às cegas"). */
+export interface AvaliacaoAdmin {
+  id: number
+  nota: number
+  comentario: string | null
+  tags: string[]
+  criada_em: DataIso
+  revelada: boolean
+  papel_avaliado: Papel
+  avaliador: { id: number; nome: string; foto_url: string | null }
+  avaliado: { id: number; nome: string; foto_url: string | null; is_active: boolean }
+  carona: { id: number; bairro_origem: string; destino: string; sentido: Sentido; data_hora_saida: DataIso }
+}
+
+export interface UsuarioEmRisco {
+  id: number
+  nome: string
+  foto_url: string | null
+  media: number
+  avaliacoes: number
+  is_active: boolean
+  suspenso_motivo: string | null
+}
+
+export interface PainelAvaliacoes {
+  regras: { nota_alerta: number; media_minima: number; minimo_avaliacoes: number }
+  estatisticas: {
+    total: number
+    media_geral: number | null
+    ultimas_24h: number
+    distribuicao: Record<'1' | '2' | '3' | '4' | '5', number>
+    alertas_abertos: number
+  }
+  avaliacoes: AvaliacaoAdmin[]
+  em_risco: UsuarioEmRisco[]
+  excluidos: { id: number; nome: string; foto_url: string | null; suspenso_em: DataIso | null; motivo: string | null; is_active: boolean }[]
 }

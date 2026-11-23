@@ -1,12 +1,38 @@
 <template>
   <div class="container py-4">
-    <h1 class="titulo-pagina h3 mb-1">Painel da administração</h1>
-    <p class="text-secondary">Indicadores, moderação, segurança e regras do CaronaUVV.</p>
+    <div class="painel-topo mb-3">
+      <div>
+        <div class="small text-uppercase fw-semibold opacity-75">CaronaUVV · Administração</div>
+        <h1 class="h3 fw-bold mb-1">Painel da administração</h1>
+        <div class="small opacity-75">Viagens ao vivo, controle de avaliações, moderação, segurança e regras.</div>
+      </div>
+      <div v-if="r" class="d-flex flex-wrap gap-2">
+        <button type="button" class="chip-topo" @click="trocarAba('aovivo')">
+          <span class="ponto" :class="{ ativo: r.viagens.em_andamento_agora }"></span>{{ r.viagens.em_andamento_agora }} em viagem agora
+        </button>
+        <button type="button" class="chip-topo" @click="trocarAba('avaliacoes')">
+          <i class="bi bi-star-fill text-warning"></i>média {{ nota(r.confianca.nota_media) }}
+        </button>
+        <button type="button" :class="['chip-topo', { perigo: r.confianca.alertas_aguardando }]" @click="trocarAba('alertas')">
+          <i class="bi bi-bell-fill"></i>{{ r.confianca.alertas_aguardando }} alerta(s)
+        </button>
+      </div>
+    </div>
+
+    <!-- Alerta em qualquer aba: chegou avaliacao abaixo do limite -->
+    <div v-if="novaNotaBaixa && aba !== 'avaliacoes'" class="alert alert-danger d-flex flex-wrap align-items-center gap-2 shadow-sm" role="alert" aria-live="assertive">
+      <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+      <span class="flex-grow-1"><strong>Nova avaliação baixa.</strong> {{ novaNotaBaixa }}</span>
+      <button type="button" class="btn btn-sm btn-danger" @click="novaNotaBaixa = ''; trocarAba('avaliacoes')">Ver avaliações</button>
+      <button type="button" class="btn-close" aria-label="Fechar aviso" @click="novaNotaBaixa = ''"></button>
+    </div>
 
     <ul class="nav nav-pills mb-3 flex-nowrap flex-md-wrap gap-1 overflow-auto">
       <li v-for="a in ABAS" :key="a.id" class="nav-item">
         <button :class="['nav-link text-nowrap', { active: aba === a.id }]" @click="trocarAba(a.id)">
           <i :class="['bi me-1', a.icone]"></i>{{ a.texto }}
+          <span v-if="a.id === 'aovivo' && r?.viagens.em_andamento_agora" class="badge text-bg-success ms-1">{{ r.viagens.em_andamento_agora }}</span>
+          <span v-if="a.id === 'avaliacoes' && r?.confianca.avaliacoes_baixas_abertas" class="badge text-bg-danger ms-1">{{ r.confianca.avaliacoes_baixas_abertas }}</span>
           <span v-if="a.id === 'usuarios' && r?.usuarios.verificacoes_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.verificacoes_pendentes }}</span>
           <span v-if="a.id === 'documentos' && r?.usuarios.documentos_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.documentos_pendentes }}</span>
           <span v-if="a.id === 'denuncias' && r?.confianca.denuncias_abertas" class="badge text-bg-danger ms-1">{{ r.confianca.denuncias_abertas }}</span>
@@ -63,6 +89,12 @@
       </div>
     </template>
 
+    <!-- ===================== AO VIVO (todas as viagens com GPS) ===================== -->
+    <AdminAoVivo v-else-if="aba === 'aovivo'" />
+
+    <!-- ===================== CONTROLE DE AVALIACOES ===================== -->
+    <AdminAvaliacoes v-else-if="aba === 'avaliacoes'" @abrir="trocarAba" />
+
     <!-- ===================== USUARIOS ===================== -->
     <template v-else-if="aba === 'usuarios'">
       <form class="d-flex gap-2 mb-3" @submit.prevent="carregarUsuarios">
@@ -76,7 +108,7 @@
       <div class="card">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0 small">
-            <thead><tr><th>Aluno</th><th>Matrícula</th><th>Situação</th><th class="text-end">Ações</th></tr></thead>
+            <thead><tr><th>Aluno</th><th>Matrícula</th><th>Média</th><th>Situação</th><th class="text-end">Ações</th></tr></thead>
             <tbody>
               <tr v-for="u in usuarios" :key="u.id">
                 <td>
@@ -89,6 +121,15 @@
                   </div>
                 </td>
                 <td class="font-monospace">{{ u.matricula }}</td>
+                <td class="text-nowrap">
+                  <template v-if="u.media_recebida !== null">
+                    <span :class="u.media_recebida < 3 ? 'text-danger fw-bold' : u.media_recebida < 4 ? 'text-warning-emphasis fw-semibold' : ''">
+                      <i class="bi bi-star-fill text-warning"></i> {{ nota(u.media_recebida) }}
+                    </span>
+                    <span class="text-secondary">({{ u.avaliacoes_recebidas }})</span>
+                  </template>
+                  <span v-else class="text-secondary">—</span>
+                </td>
                 <td>
                   <span v-if="!u.is_active" class="badge text-bg-danger">Suspenso</span>
                   <span v-else-if="u.verificado" class="badge text-bg-primary"><i class="bi bi-patch-check-fill me-1"></i>Verificado</span>
@@ -97,6 +138,7 @@
                   <span v-if="!u.email_verificado" class="badge text-bg-light border ms-1">e-mail pendente</span>
                   <span v-if="u.is_admin" class="badge text-bg-dark ms-1">admin</span>
                   <span v-if="u.dois_fatores" class="badge text-bg-light border ms-1" title="Usa aplicativo autenticador"><i class="bi bi-shield-lock-fill me-1"></i>2 etapas</span>
+                  <div v-if="!u.is_active && u.suspenso_motivo" class="text-danger mt-1" style="max-width: 18rem">{{ u.suspenso_motivo }}</div>
                 </td>
                 <td class="text-end text-nowrap">
                   <button v-if="u.verificacao_solicitada_em && !u.verificado" class="btn btn-sm btn-success me-1" @click="verificar(u, true)">Aprovar selo</button>
@@ -107,7 +149,7 @@
                   <button v-if="!u.is_active" class="btn btn-sm btn-outline-success" @click="suspender(u, true)">Reativar</button>
                 </td>
               </tr>
-              <tr v-if="!usuarios.length"><td colspan="4" class="text-center text-secondary py-4">Nenhum usuário encontrado.</td></tr>
+              <tr v-if="!usuarios.length"><td colspan="5" class="text-center text-secondary py-4">Nenhum usuário encontrado.</td></tr>
             </tbody>
           </table>
         </div>
@@ -203,8 +245,8 @@
       <div v-for="a in alertas" :key="a.id" :class="['card p-3 mb-2', { 'border border-danger': a.status !== 'resolvido' }]">
         <div class="d-flex flex-wrap justify-content-between gap-2">
           <div>
-            <i :class="['bi me-1', a.tipo === 'botao_panico' ? 'bi-exclamation-octagon-fill text-danger' : 'bi-exclamation-triangle-fill text-warning']"></i>
-            <strong>{{ a.tipo === 'botao_panico' ? 'Botão de emergência' : a.tipo.replace('_', ' ') }}</strong>
+            <i :class="['bi me-1', ICONE_ALERTA[a.tipo] ?? 'bi-exclamation-triangle-fill text-warning']"></i>
+            <strong>{{ NOME_ALERTA[a.tipo] ?? a.tipo }}</strong>
             <span class="small text-secondary"> · carona #{{ a.carona_id }} · {{ dataHora(a.criado_em) }}</span>
           </div>
           <span :class="['badge', a.status === 'resolvido' ? 'text-bg-success' : 'text-bg-danger']">{{ a.status }}</span>
@@ -280,21 +322,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
+import AdminAoVivo from '../components/admin/AdminAoVivo.vue'
+import AdminAvaliacoes from '../components/admin/AdminAvaliacoes.vue'
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'
 import { auth, type TipoAviso } from '../stores/auth'
 import type { Alerta, Configuracao, Denuncia, DocumentoAdmin, EstruturaBanco, ResumoAdmin, StatusDocumento, UsuarioAdmin } from '../types/api'
 import { dataCurtaNumerica, dataHora, nota, porcentagem, textoMotivo } from '../utils/formato'
 
-type IdAba = 'resumo' | 'usuarios' | 'documentos' | 'denuncias' | 'alertas' | 'regras' | 'banco'
+type IdAba = 'resumo' | 'aovivo' | 'avaliacoes' | 'usuarios' | 'documentos' | 'denuncias' | 'alertas' | 'regras' | 'banco'
 
 const ABAS: { id: IdAba; texto: string; icone: string }[] = [
   { id: 'resumo', texto: 'Visão geral', icone: 'bi-speedometer2' },
+  { id: 'aovivo', texto: 'Ao vivo', icone: 'bi-geo-alt' },
+  { id: 'avaliacoes', texto: 'Avaliações', icone: 'bi-star-half' },
   { id: 'usuarios', texto: 'Usuários', icone: 'bi-people' },
   { id: 'documentos', texto: 'Documentos', icone: 'bi-person-vcard' },
   { id: 'denuncias', texto: 'Denúncias', icone: 'bi-flag' },
@@ -393,6 +440,9 @@ async function carregarUsuarios(): Promise<void> {
 // Cada aba sabe carregar os proprios dados. `Record<IdAba, ...>` garante que nenhuma aba fique sem carregador.
 const CARREGADORES: Record<IdAba, () => Promise<unknown>> = {
   resumo: carregarResumo,
+  // as abas em tempo real carregam (e atualizam) os proprios dados
+  aovivo: async () => undefined,
+  avaliacoes: async () => undefined,
   usuarios: carregarUsuarios,
   documentos: async () =>
     (documentos.value = (await api.get<{ documentos: DocumentoAdmin[] }>('/admin/documentos', { params: { status: filtroDoc.value } })).data.documentos),
@@ -580,10 +630,88 @@ async function desenhar(completo: boolean): Promise<void> {
   }
 }
 
+// Alertas com nome legivel na aba Alertas
+const NOME_ALERTA: Record<string, string> = {
+  botao_panico: 'Botão de emergência',
+  parada_longa: 'Parada longa',
+  sinal_perdido: 'Sinal perdido',
+  desvio_rota: 'Desvio de rota',
+  pin_sem_gps: 'PIN sem GPS',
+  avaliacao_baixa: 'Avaliação baixa',
+  exclusao_automatica: 'Exclusão automática'
+}
+const ICONE_ALERTA: Record<string, string> = {
+  botao_panico: 'bi-exclamation-octagon-fill text-danger',
+  avaliacao_baixa: 'bi-star-half text-danger',
+  exclusao_automatica: 'bi-person-x-fill text-danger'
+}
+
+// Resumo atualizado a cada 10 s: se chegar avaliacao baixa nova, avisa em qualquer aba do painel
+const novaNotaBaixa = ref('')
+watch(
+  () => r.value?.confianca.avaliacoes_baixas_abertas,
+  (agora, antes) => {
+    if (antes !== undefined && agora !== undefined && agora > antes) {
+      const novas = agora - antes
+      novaNotaBaixa.value = `${novas} ${novas === 1 ? 'avaliação abaixo do limite chegou' : 'avaliações abaixo do limite chegaram'} agora.`
+    }
+  }
+)
+useAoVivo(carregarResumo, 10000)
+
 onMounted(() => trocarAba('resumo'))
 </script>
 
 <style scoped>
+/* Cabecalho do painel: faixa azul UVV com os numeros do momento */
+.painel-topo {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  color: #fff;
+  background: linear-gradient(120deg, var(--uvv-azul) 0%, var(--uvv-azul-2) 70%, #1f56a8 100%);
+  box-shadow: 0 0.5rem 1.5rem rgba(11, 42, 91, 0.18);
+}
+
+.chip-topo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chip-topo:hover,
+.chip-topo:focus-visible {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.chip-topo.perigo {
+  background: #dc3545;
+  border-color: #dc3545;
+}
+
+.chip-topo .ponto {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.chip-topo .ponto.ativo {
+  background: #3ddc84;
+  box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.35);
+}
+
 /* Documento enviado para conferencia (ocupa a largura do cartao, sem passar da tela) */
 .doc-imagem {
   display: block;

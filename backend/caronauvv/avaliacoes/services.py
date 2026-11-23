@@ -211,6 +211,10 @@ def avaliar(solicitacao, usuario, dados) -> Avaliacao:
     avaliacao.tags = [AvaliacaoTag(tag=t) for t in dados.tags]
     db.session.add(avaliacao)
 
+    # Controle de avaliacoes: alerta de nota baixa e exclusao automatica por media baixa
+    from .moderacao import moderar_avaliacao
+    moderar_avaliacao(avaliacao)
+
     notificar(
         avaliado, "nova_avaliacao", "Você recebeu uma avaliação",
         "As duas notas já estão no perfil de vocês." if outro_lado_avaliou

@@ -1,6 +1,6 @@
 <template>
   <div class="mapa-trilha-caixa">
-    <div ref="alvo" class="mapa-trilha" role="img" :aria-label="descricao"></div>
+    <div ref="alvo" class="mapa-trilha" role="img" :aria-label="descricao" :style="{ height: `${altura}px` }"></div>
     <p class="small text-secondary mb-0 mt-1">
       Mapa © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
     </p>
@@ -24,10 +24,14 @@ export interface MarcaMapa {
   tipo: 'entrada' | 'saida' | 'carro'
 }
 
-const props = withDefaults(defineProps<{ trilha: [number, number][]; marcas?: MarcaMapa[]; descricao?: string }>(), {
-  marcas: () => [],
-  descricao: 'Mapa com o trajeto da viagem'
-})
+const props = withDefaults(
+  defineProps<{ trilha: [number, number][]; marcas?: MarcaMapa[]; descricao?: string; altura?: number }>(),
+  {
+    marcas: () => [],
+    descricao: 'Mapa com o trajeto da viagem',
+    altura: 260
+  }
+)
 
 const CORES: Record<MarcaMapa['tipo'], string> = { entrada: '#198754', saida: '#dc3545', carro: '#163f82' }
 const UVV: [number, number] = [-20.3617, -40.3075]
@@ -70,7 +74,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mapa-trilha {
-  height: 260px;
   border-radius: var(--bs-border-radius-lg);
   border: 1px solid var(--bs-border-color);
   z-index: 0;

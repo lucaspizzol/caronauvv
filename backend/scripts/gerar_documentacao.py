@@ -388,6 +388,8 @@ def montar(app) -> str:
       <tr><td>Entrada e saída com GPS</td><td>Hora e local de entrada (PIN) e de saída ("Desembarquei"); resumo da viagem com tempo a bordo, distância pela trilha, velocidade, atraso na saída e mapa (Leaflet + OpenStreetMap). Médias no painel.</td></tr>
       <tr><td>Trânsito no valor</td><td>Horário de pico (+25%) e trechos críticos da Grande Vitória (+10% cada: Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101), até +50%, mostrados na conta.</td></tr>
       <tr><td>Meus pedidos, FAQ e visual</td><td>Abas Próximas/Aguardando/Histórico, PIN em destaque, página pública de perguntas frequentes, tela de entrada como vitrine, foco do teclado visível e contraste AA.</td></tr>
+      <tr><td><b>Controle de avaliações</b> (painel admin)</td><td>A aba Avaliações mostra todas as notas na hora (atualiza a cada 5 s), inclusive as que o aluno ainda não vê, com média geral, distribuição 1–5, alunos em risco e excluídos. <b>Nota abaixo de 4</b> gera alerta para a administração (aviso na tela, no sino e na aba Alertas). <b>Média abaixo de 3</b> exclui o aluno do aplicativo automaticamente (conta suspensa, caronas e pedidos cancelados), com a opção de reativar. Os limites ficam na aba Regras.</td></tr>
+      <tr><td><b>Viagens ao vivo</b> (painel admin)</td><td>Todas as viagens acontecendo agora, saindo nas próximas 3 h e concluídas há pouco: motorista, carro e placa, passageiros (aguardando, a bordo, desembarcou, faltou), tempo de viagem, velocidade, último sinal do GPS e o mapa com os carros e o trajeto.</td></tr>
     </tbody>
   </table>
 
@@ -468,6 +470,10 @@ def montar(app) -> str:
       {imagem("22_faq.jpg", "Perguntas frequentes (página pública): acordeão acessível com busca.")}
     </div>
   </div>
+</section>
+<section class="quebra">
+  {imagem("24_admin_avaliacoes.jpg", "Painel da administração, aba Avaliações: notas em tempo real (a nota 1 acabou de chegar e gerou alerta), média geral, distribuição e alunos em risco.")}
+  {imagem("25_admin_ao_vivo.jpg", "Painel da administração, aba Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa.")}
 </section>
 <section class="quebra">
   <div class="lado-a-lado">
@@ -709,6 +715,7 @@ Flask ── create_app()   (Application Factory)
       <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
       <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
       <tr><td><code>test_combustivel.py</code></td><td>Conta do rateio (metros, cada energia, consumo médio, preço do painel), dados inválidos, teto, e o servidor recalculando ao salvar e editar</td></tr>
+      <tr><td><code>test_controle_avaliacoes.py</code></td><td>Alerta de nota baixa, exclusão automática (passageiro e motorista), mínimo de avaliações, admin nunca excluído, reativação, feed em tempo real e viagens ao vivo com GPS, só para administrador</td></tr>
       <tr><td><code>test_documentos.py</code></td><td>Envio, CNH vencida, arquivo inválido, análise pelo admin, imagem apagada depois (LGPD), selos e as regras de exigir documento</td></tr>
       <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
       <tr><td><code>test_caronas.py</code>, <code>test_solicitacoes.py</code></td><td>Criar, buscar, editar, cancelar; pedir, aceitar, recusar, lotação, expiração</td></tr>
@@ -757,6 +764,18 @@ Flask ── create_app()   (Application Factory)
   <p>A distância percorrida por cada passageiro é a soma dos trechos da trilha GPS entre a entrada e a saída
   (fórmula de Haversine):</p>
   {codigo(funcao("backend/caronauvv/caronas/viagem.py", "distancia_trilha_km"), "backend/caronauvv/caronas/viagem.py")}
+</section>
+<section>
+  <h3>5.17 Controle de avaliações (moderação automática)</h3>
+  <p>Toda avaliação nova passa por <code>moderar_avaliacao()</code> na mesma transação em que é gravada. Nota abaixo do
+  limite vira um <code>Alerta</code> do tipo <code>avaliacao_baixa</code> e uma notificação para os administradores; se a
+  média de todas as avaliações recebidas cair abaixo do mínimo, a conta é suspensa na hora (o token deixa de valer,
+  as caronas futuras e os pedidos em aberto são cancelados) e a administração recebe o alerta
+  <code>exclusao_automatica</code>. É suspensão, não exclusão de dados: o admin pode reativar.</p>
+  {codigo(funcao("backend/caronauvv/avaliacoes/moderacao.py", "moderar_avaliacao"), "backend/caronauvv/avaliacoes/moderacao.py")}
+  <p>O painel em tempo real usa duas rotas só de administrador (<code>GET /api/admin/avaliacoes</code> e
+  <code>GET /api/admin/viagens</code>, em <code>admin/monitor.py</code>) consultadas a cada 5 segundos pelo composable
+  <code>useAoVivo</code>. Quando chega uma nota baixa, a tela compara com a consulta anterior e mostra o alerta.</p>
 </section>
 <section>
   <h3>5.16 Revisão de segurança</h3>
@@ -863,7 +882,7 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
       <tr><td><code>ana@uvv.br</code> / <code>pedro@uvv.br</code></td><td>Passageira com contatos de confiança / passageiro com 2 faltas</td></tr>
       <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado e enviou a identidade (aprovar no painel); ainda não mandou a CNH</td></tr>
       <tr><td><code>beatriz@uvv.br</code></td><td>Já usa a verificação em duas etapas: o login pede o código. Use um código de reserva de exemplo (<code>UVVA-2026</code>, <code>UVVB-2026</code>, <code>UVVC-2026</code>, <code>UVVD-2026</code>; cada um vale uma vez)</td></tr>
-      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração (documentos na fila: identidade da Marina e CNH da Beatriz)</td></tr>
+      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração: viagens ao vivo (Lucas dirigindo com o João a bordo), controle de avaliações (nota 3 do Pedro já gerou alerta), documentos na fila (identidade da Marina e CNH da Beatriz)</td></tr>
     </tbody>
   </table>
   <h3>Roteiro de demonstração</h3>
@@ -877,6 +896,8 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>Documentos:</b> como Marina, enviar a foto da CNH no Perfil. Como admin, aba Documentos: ver a imagem, aprovar uma e recusar outra com o motivo; o selo aparece no perfil e a imagem some.</li>
     <li><b>Pedir carona:</b> como Marina, aba Pedir carona: ela é a 1ª da fila da Glória amanhã cedo (o João é o 2º) e o card "Que horas você vai sair?" mostra caronas e ônibus. Como Kauã, Oferecer carona com bairro "gloria" amanhã 07:15: aparece "2 alunos esperando" e, se for dia útil, +25% de trânsito na conta. Publicar; como Pedro (fora da fila), pedir vaga é bloqueado por 15 min.</li>
     <li><b>30 min e resumo:</b> como Pedro, Meus pedidos → Aguardando: contagem regressiva. Como Ana, Histórico → Resumo da viagem de ontem: entrada 18:33, saída 18:41, mapa.</li>
+    <li><b>Controle de avaliações (tempo real):</b> deixe o admin aberto na aba Avaliações; em outra aba, como Lucas, avalie o Kauã com 1 estrela (Avaliações → carona de 3 dias atrás). Em até 5 s o alerta aparece no painel. Para ver a exclusão automática, suba a "média mínima" para 4,5 na aba Regras antes de avaliar: o Kauã sai do app e aparece em "Excluídos automaticamente", com o botão Reativar.</li>
+    <li><b>Viagens ao vivo:</b> aba Ao vivo mostra a viagem do Lucas com o João a bordo; clique nela para ver o trajeto no mapa.</li>
     <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem e atraso na saída), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
@@ -886,6 +907,10 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     a("""
 <section class="quebra compacto">
   <h2>8. Principais desafios e como foram resolvidos</h2>
+  <p><b>Moderar sem punir por engano.</b> Excluir alguém do app por média baixa é sério. A regra roda no servidor, na
+  mesma transação da avaliação (não dá para burlar pelo navegador), usa a média de todas as notas recebidas, nunca
+  atinge administradores, pode exigir um número mínimo de avaliações e é uma suspensão reversível: o painel mostra o
+  motivo e tem o botão Reativar.</p>
   <p><b>Confiança entre desconhecidos.</b> Num grupo de WhatsApp, não dá para saber quem é a pessoa. Estudamos como
   BlaBlaCar e Uber resolvem isso e adaptamos para a faculdade: comunidade fechada por e-mail institucional,
   reputação pública, avaliação mútua às cegas, PIN de embarque, link da família e botão de emergência.</p>

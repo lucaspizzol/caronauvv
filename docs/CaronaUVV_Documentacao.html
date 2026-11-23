@@ -66,9 +66,9 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h1>Plataforma de caronas entre alunos da Universidade Vila Velha</h1>
   <p class="sub">Documentação do projeto final · Entrega do 2º bimestre (auditoria técnica)</p>
   <div class="numeros">
-    <div><b>88</b><span>rotas da API REST</span></div>
+    <div><b>90</b><span>rotas da API REST</span></div>
     <div><b>19</b><span>tabelas no banco</span></div>
-    <div><b>402</b><span>testes automatizados</span></div>
+    <div><b>417</b><span>testes automatizados</span></div>
     <div><b>17</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
@@ -161,6 +161,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
       <tr><td>Entrada e saída com GPS</td><td>Hora e local de entrada (PIN) e de saída ("Desembarquei"); resumo da viagem com tempo a bordo, distância pela trilha, velocidade, atraso na saída e mapa (Leaflet + OpenStreetMap). Médias no painel.</td></tr>
       <tr><td>Trânsito no valor</td><td>Horário de pico (+25%) e trechos críticos da Grande Vitória (+10% cada: Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101), até +50%, mostrados na conta.</td></tr>
       <tr><td>Meus pedidos, FAQ e visual</td><td>Abas Próximas/Aguardando/Histórico, PIN em destaque, página pública de perguntas frequentes, tela de entrada como vitrine, foco do teclado visível e contraste AA.</td></tr>
+      <tr><td><b>Controle de avaliações</b> (painel admin)</td><td>A aba Avaliações mostra todas as notas na hora (atualiza a cada 5 s), inclusive as que o aluno ainda não vê, com média geral, distribuição 1–5, alunos em risco e excluídos. <b>Nota abaixo de 4</b> gera alerta para a administração (aviso na tela, no sino e na aba Alertas). <b>Média abaixo de 3</b> exclui o aluno do aplicativo automaticamente (conta suspensa, caronas e pedidos cancelados), com a opção de reativar. Os limites ficam na aba Regras.</td></tr>
+      <tr><td><b>Viagens ao vivo</b> (painel admin)</td><td>Todas as viagens acontecendo agora, saindo nas próximas 3 h e concluídas há pouco: motorista, carro e placa, passageiros (aguardando, a bordo, desembarcou, faltou), tempo de viagem, velocidade, último sinal do GPS e o mapa com os carros e o trajeto.</td></tr>
     </tbody>
   </table>
 
@@ -241,6 +243,10 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   </div>
 </section>
 <section class="quebra">
+  <figure class=""><img src="img/24_admin_avaliacoes.jpg" alt="Painel da administração, aba Avaliações: notas em tempo real (a nota 1 acabou de chegar e gerou alerta), média geral, distribuição e alunos em risco."><figcaption>Painel da administração, aba Avaliações: notas em tempo real (a nota 1 acabou de chegar e gerou alerta), média geral, distribuição e alunos em risco.</figcaption></figure>
+  <figure class=""><img src="img/25_admin_ao_vivo.jpg" alt="Painel da administração, aba Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa."><figcaption>Painel da administração, aba Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa.</figcaption></figure>
+</section>
+<section class="quebra">
   <div class="lado-a-lado">
     <figure class="celular"><img src="img/10_celular.jpg" alt="No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo."><figcaption>No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo.</figcaption></figure>
     <div>
@@ -263,11 +269,11 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 <section class="quebra">
   <h2>3. Banco de dados</h2>
   <p>O banco tem <b>19 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
-  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 7 migrações).</p>
+  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 8 migrações).</p>
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
-  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 364 testes do back-end
+  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 379 testes do back-end
   e as migrações (upgrade, downgrade e upgrade de novo, com dados) foram executados nos dois bancos</b>.</p>
 
   <h3>Núcleo do modelo (principais colunas)</h3>
@@ -569,7 +575,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h3>Tabelas</h3>
   <p class="pequeno">O dicionário de dados completo (cada coluna, tipo e restrição) está em <code>docs/banco_de_dados.md</code>,
   e o esquema SQL do PostgreSQL em <code>docs/schema_postgresql.sql</code> (ambos gerados por <code>invoke docsdb</code>).</p>
-  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>documentos</code></td><td>Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)</td><td class='c'>12</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>8</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>32</td><td>usuarios, veiculos</td><td class='c'>5</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>pedidos_carona</code></td><td>Fila do Pedir carona: bairro, sentido, dia e faixa de horário (prioridade nas caronas novas)</td><td class='c'>12</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>23</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
+  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>42</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>documentos</code></td><td>Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)</td><td class='c'>12</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>8</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>32</td><td>usuarios, veiculos</td><td class='c'>5</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>pedidos_carona</code></td><td>Fila do Pedir carona: bairro, sentido, dia e faixa de horário (prioridade nas caronas novas)</td><td class='c'>12</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>23</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
   <h3>Integridade garantida pelo próprio banco</h3>
   <ul>
     <li><b>Chaves estrangeiras</b> com <code>ON DELETE CASCADE / SET NULL</code> conforme o caso (apagar uma carona apaga pedidos e GPS; apagar um carro deixa a carona antiga sem carro). No SQLite elas são ligadas com <code>PRAGMA foreign_keys=ON</code>.</li>
@@ -1227,7 +1233,7 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
 </section>
 <section>
   <h3>5.11 Testes automatizados</h3>
-  <p><b>364 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  <p><b>379 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
   regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos, cálculo do combustível com trânsito, fila do Pedir carona, bairros/APIs externas e resumo da viagem. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
   No front-end, <b>38 testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
@@ -1270,6 +1276,7 @@ def viagem(client, novo_aluno, nova_carona):
       <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
       <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
       <tr><td><code>test_combustivel.py</code></td><td>Conta do rateio (metros, cada energia, consumo médio, preço do painel), dados inválidos, teto, e o servidor recalculando ao salvar e editar</td></tr>
+      <tr><td><code>test_controle_avaliacoes.py</code></td><td>Alerta de nota baixa, exclusão automática (passageiro e motorista), mínimo de avaliações, admin nunca excluído, reativação, feed em tempo real e viagens ao vivo com GPS, só para administrador</td></tr>
       <tr><td><code>test_documentos.py</code></td><td>Envio, CNH vencida, arquivo inválido, análise pelo admin, imagem apagada depois (LGPD), selos e as regras de exigir documento</td></tr>
       <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
       <tr><td><code>test_caronas.py</code>, <code>test_solicitacoes.py</code></td><td>Criar, buscar, editar, cancelar; pedir, aceitar, recusar, lotação, expiração</td></tr>
@@ -1393,6 +1400,54 @@ def viagem(client, novo_aluno, nova_carona):
                   and (fim is None or p.registrada_em &lt;= fim)]
     total = sum(haversine_km(a.lat, a.lng, b.lat, b.lng) for a, b in zip(escolhidos, escolhidos[1:]))
     return round(total, 1)</code></pre></div>
+</section>
+<section>
+  <h3>5.17 Controle de avaliações (moderação automática)</h3>
+  <p>Toda avaliação nova passa por <code>moderar_avaliacao()</code> na mesma transação em que é gravada. Nota abaixo do
+  limite vira um <code>Alerta</code> do tipo <code>avaliacao_baixa</code> e uma notificação para os administradores; se a
+  média de todas as avaliações recebidas cair abaixo do mínimo, a conta é suspensa na hora (o token deixa de valer,
+  as caronas futuras e os pedidos em aberto são cancelados) e a administração recebe o alerta
+  <code>exclusao_automatica</code>. É suspensão, não exclusão de dados: o admin pode reativar.</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/avaliacoes/moderacao.py</div><pre><code class="language-python">def moderar_avaliacao(avaliacao: Avaliacao) -&gt; None:
+    &quot;&quot;&quot;Chamada logo depois de gravar a avaliacao (antes do commit).&quot;&quot;&quot;
+    from caronauvv.seguranca.models import Alerta
+
+    db.session.flush()   # a nova nota entra na media
+    regras = limites()
+    avaliado, avaliador = avaliacao.avaliado, avaliacao.avaliador
+    carona = avaliacao.solicitacao.carona
+    papel = &quot;motorista&quot; if avaliado.id == carona.motorista_id else &quot;passageiro&quot;
+
+    if avaliacao.nota &lt; regras[&quot;nota_alerta&quot;]:
+        detalhe = f&quot;Nota {avaliacao.nota} de {avaliador.nome} para {avaliado.nome} ({papel})&quot;
+        if avaliacao.comentario:
+            detalhe += f&#x27;: &quot;{avaliacao.comentario}&quot;&#x27;
+        db.session.add(Alerta(carona=carona, usuario=avaliado, tipo=&quot;avaliacao_baixa&quot;, detalhe=detalhe[:300]))
+        notificar_admins(&quot;avaliacao_baixa&quot;, f&quot;Avaliação baixa: nota {avaliacao.nota}&quot;,
+                         f&quot;{avaliado.nome} ({papel}) recebeu nota {avaliacao.nota} de {avaliador.nome}.&quot;, carona)
+
+    media, total = media_recebida(avaliado.id)
+    if (avaliado.is_active and not avaliado.is_admin and media is not None
+            and total &gt;= regras[&quot;minimo_avaliacoes&quot;] and media &lt; regras[&quot;media_minima&quot;]):
+        media_br = f&quot;{media:.1f}&quot;.replace(&quot;.&quot;, &quot;,&quot;)
+        minima_br = f&quot;{regras[&#x27;media_minima&#x27;]:.1f}&quot;.replace(&quot;.&quot;, &quot;,&quot;)
+        suspender_conta(avaliado, f&quot;Exclusão automática: média {media_br} em {total} avaliação(ões) (mínimo {minima_br}).&quot;)
+        db.session.add(Alerta(
+            carona=carona, usuario=avaliado, tipo=&quot;exclusao_automatica&quot;,
+            detalhe=f&quot;{avaliado.nome} ({papel}) foi excluído(a) automaticamente: média {media_br} em {total} avaliação(ões).&quot;[:300],
+        ))
+        notificar_admins(&quot;exclusao_automatica&quot;, &quot;Usuário excluído automaticamente&quot;,
+                         f&quot;{avaliado.nome} ficou com média {media_br} (abaixo de {minima_br}) e foi removido(a) do aplicativo.&quot;,
+                         carona)
+        enviar_email(
+            avaliado.email, &quot;CaronaUVV - sua conta foi suspensa&quot;,
+            f&quot;Olá, {avaliado.nome.split()[0]}. Sua média de avaliações ficou em {media_br}, abaixo do mínimo de &quot;
+            f&quot;{minima_br} exigido pelo CaronaUVV, e sua conta foi suspensa automaticamente. Se achar que houve &quot;
+            &quot;engano, procure a administração.&quot;,
+        )</code></pre></div>
+  <p>O painel em tempo real usa duas rotas só de administrador (<code>GET /api/admin/avaliacoes</code> e
+  <code>GET /api/admin/viagens</code>, em <code>admin/monitor.py</code>) consultadas a cada 5 segundos pelo composable
+  <code>useAoVivo</code>. Quando chega uma nota baixa, a tela compara com a consulta anterior e mostra o alerta.</p>
 </section>
 <section>
   <h3>5.16 Revisão de segurança</h3>
@@ -1599,7 +1654,7 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
       <tr><td><code>ana@uvv.br</code> / <code>pedro@uvv.br</code></td><td>Passageira com contatos de confiança / passageiro com 2 faltas</td></tr>
       <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado e enviou a identidade (aprovar no painel); ainda não mandou a CNH</td></tr>
       <tr><td><code>beatriz@uvv.br</code></td><td>Já usa a verificação em duas etapas: o login pede o código. Use um código de reserva de exemplo (<code>UVVA-2026</code>, <code>UVVB-2026</code>, <code>UVVC-2026</code>, <code>UVVD-2026</code>; cada um vale uma vez)</td></tr>
-      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração (documentos na fila: identidade da Marina e CNH da Beatriz)</td></tr>
+      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração: viagens ao vivo (Lucas dirigindo com o João a bordo), controle de avaliações (nota 3 do Pedro já gerou alerta), documentos na fila (identidade da Marina e CNH da Beatriz)</td></tr>
     </tbody>
   </table>
   <h3>Roteiro de demonstração</h3>
@@ -1613,6 +1668,8 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>Documentos:</b> como Marina, enviar a foto da CNH no Perfil. Como admin, aba Documentos: ver a imagem, aprovar uma e recusar outra com o motivo; o selo aparece no perfil e a imagem some.</li>
     <li><b>Pedir carona:</b> como Marina, aba Pedir carona: ela é a 1ª da fila da Glória amanhã cedo (o João é o 2º) e o card "Que horas você vai sair?" mostra caronas e ônibus. Como Kauã, Oferecer carona com bairro "gloria" amanhã 07:15: aparece "2 alunos esperando" e, se for dia útil, +25% de trânsito na conta. Publicar; como Pedro (fora da fila), pedir vaga é bloqueado por 15 min.</li>
     <li><b>30 min e resumo:</b> como Pedro, Meus pedidos → Aguardando: contagem regressiva. Como Ana, Histórico → Resumo da viagem de ontem: entrada 18:33, saída 18:41, mapa.</li>
+    <li><b>Controle de avaliações (tempo real):</b> deixe o admin aberto na aba Avaliações; em outra aba, como Lucas, avalie o Kauã com 1 estrela (Avaliações → carona de 3 dias atrás). Em até 5 s o alerta aparece no painel. Para ver a exclusão automática, suba a "média mínima" para 4,5 na aba Regras antes de avaliar: o Kauã sai do app e aparece em "Excluídos automaticamente", com o botão Reativar.</li>
+    <li><b>Viagens ao vivo:</b> aba Ao vivo mostra a viagem do Lucas com o João a bordo; clique nela para ver o trajeto no mapa.</li>
     <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem e atraso na saída), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
@@ -1620,6 +1677,10 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
 
 <section class="quebra compacto">
   <h2>8. Principais desafios e como foram resolvidos</h2>
+  <p><b>Moderar sem punir por engano.</b> Excluir alguém do app por média baixa é sério. A regra roda no servidor, na
+  mesma transação da avaliação (não dá para burlar pelo navegador), usa a média de todas as notas recebidas, nunca
+  atinge administradores, pode exigir um número mínimo de avaliações e é uma suspensão reversível: o painel mostra o
+  motivo e tem o botão Reativar.</p>
   <p><b>Confiança entre desconhecidos.</b> Num grupo de WhatsApp, não dá para saber quem é a pessoa. Estudamos como
   BlaBlaCar e Uber resolvem isso e adaptamos para a faculdade: comunidade fechada por e-mail institucional,
   reputação pública, avaliação mútua às cegas, PIN de embarque, link da família e botão de emergência.</p>
@@ -1699,11 +1760,11 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <thead><tr><th>Critério</th><th>Onde conferir</th></tr></thead>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
-      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 88 rotas (seção 4).</td></tr>
+      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 90 rotas (seção 4).</td></tr>
       <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulários com envio de arquivo (foto de perfil e documentos, seções 5.7 e 5.9).</td></tr>
       <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 17 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>364 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 38 testes Vitest (seção 5.11).</td></tr>
-      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 19 tabelas com FK, CHECK, UNIQUE e índices; 7 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>379 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 38 testes Vitest (seção 5.11).</td></tr>
+      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 19 tabelas com FK, CHECK, UNIQUE e índices; 8 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>
   </table>

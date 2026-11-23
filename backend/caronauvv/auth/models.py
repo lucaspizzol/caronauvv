@@ -101,6 +101,9 @@ class Usuario(db.Model):
     is_admin: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA] painel
     verificado: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=True)
+    # Quando e por que a conta saiu do app (suspensao pelo admin ou exclusao automatica por media baixa)
+    suspenso_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    suspenso_motivo: Mapped[Optional[str]] = mapped_column(db.String(255))
     ultimo_login_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)  # [EXTRA] KPI "usuarios que voltaram"
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), onupdate=datetime.now)

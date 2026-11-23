@@ -39,6 +39,8 @@ Table usuarios {
   is_admin boolean [not null, default: false]
   verificado boolean [not null, default: false]
   is_active boolean [not null, default: true]
+  suspenso_em timestamp
+  suspenso_motivo varchar(255)
   ultimo_login_em timestamp
   created_at timestamp [not null, default: `now()`]
   updated_at timestamp [not null, default: `now()`]
@@ -256,7 +258,7 @@ Table alertas {
   contatos_avisados_em timestamp
   created_at timestamp [not null, default: `now()`]
   resolvido_em timestamp
-  Note: 'CHECK resposta IN (\'tudo_bem\', \'preciso_ajuda\', \'sem_resposta\')\nCHECK status IN (\'aguardando\', \'em_revisao\', \'resolvido\')\nCHECK tipo IN (\'parada_longa\', \'sinal_perdido\', \'desvio_rota\', \'pin_sem_gps\', \'botao_panico\')'
+  Note: 'CHECK resposta IN (\'tudo_bem\', \'preciso_ajuda\', \'sem_resposta\')\nCHECK status IN (\'aguardando\', \'em_revisao\', \'resolvido\')\nCHECK tipo IN (\'parada_longa\', \'sinal_perdido\', \'desvio_rota\', \'pin_sem_gps\', \'botao_panico\', \'avaliacao_baixa\', \'exclusao_automatica\')'
 }
 
 Table links_compartilhados {

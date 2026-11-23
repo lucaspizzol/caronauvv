@@ -20,6 +20,8 @@ transporte (BlaBlaCar, Uber, 99):
 
 | Recurso | Como funciona | Inspiração |
 |---|---|---|
+| **Controle de avaliações** (painel admin) | Todas as notas em tempo real (inclusive as "às cegas"), média, distribuição e alunos em risco. **Nota abaixo de 4** gera alerta para a administração na hora; **média abaixo de 3** exclui o aluno do app automaticamente (conta suspensa, reversível pelo admin). Limites na aba Regras | Uber/99 (desativação por nota baixa) |
+| **Viagens ao vivo** (painel admin) | Todas as viagens acontecendo agora, com motorista, carro e placa, passageiros a bordo, velocidade, último sinal do GPS e mapa | Uber (central de segurança) |
 | Só alunos da UVV | Cadastro aceita apenas e-mail `@uvv.br` e confirma o e-mail com código de 6 números | BlaBlaCar (e-mail verificado) |
 | Perfil verificado | O aluno pede o selo e a administração confere a matrícula | BlaBlaCar (perfil verificado) |
 | Foto de perfil | O aluno envia a foto pelo perfil; ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família. O admin pode remover foto inadequada | Uber / BlaBlaCar |
@@ -50,8 +52,8 @@ transporte (BlaBlaCar, Uber, 99):
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 364 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 364 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 379 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 379 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -85,9 +87,9 @@ backend/
     seguranca/            # link da familia, botao de emergencia, denuncias
     admin/                # painel: indicadores, moderacao, configuracoes, estrutura do banco
     (cada modulo: models.py, schemas.py, services.py, routes.py)
-  migrations/             # Flask-Migrate (Alembic): 7 versoes
+  migrations/             # Flask-Migrate (Alembic): 8 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 364 testes (pytest + pytest-flask)
+  tests/                  # 379 testes (pytest + pytest-flask)
 frontend/
   src/
     types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
@@ -128,7 +130,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 364 testes
+python -m pytest                           # 379 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
@@ -197,7 +199,7 @@ assim que a administração aprova ou recusa.
 | `marina@uvv.br` | Pediu o selo de verificado e enviou a identidade (aprovar no painel); ainda não mandou a CNH |
 | `joao@uvv.br` | Outro motorista (Jardim Camburi) |
 | `beatriz@uvv.br` | Motorista (Praia de Itaparica) que **já usa a verificação em duas etapas**: o login pede o código. Use um código de reserva de exemplo (`UVVA-2026`, `UVVB-2026`, `UVVC-2026`, `UVVD-2026`; cada um vale uma vez) ou cadastre a chave `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` num aplicativo autenticador |
-| `admin@uvv.br` | Painel da administração (`/admin`); na aba Documentos estão a identidade da Marina e a CNH da Beatriz |
+| `admin@uvv.br` | Painel da administração (`/admin`): **Ao vivo** (Lucas dirigindo agora com o João a bordo), **Avaliações** (a nota 3 do Pedro já gerou alerta) e, em Documentos, a identidade da Marina e a CNH da Beatriz |
 
 Kauã, Lucas, Ana e João já vêm com foto de perfil (avatares desenhados, não são fotos de pessoas reais); os
 outros aparecem com as iniciais. Também dá para entrar com a matrícula no lugar do e-mail. Sem servidor de e-mail configurado, o
@@ -236,7 +238,12 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
    +10% Terceira Ponte".
 10. **Resumo da viagem:** como Ana, **Meus pedidos** → Histórico → **Resumo da viagem** da carona de ontem: entrou
    18:33, saiu 18:41, 8 min a bordo, mapa com a trilha.
-11. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
+11. **Controle de avaliações em tempo real:** deixe `admin@uvv.br` aberto na aba **Avaliações**. Em outra aba,
+   como Lucas, avalie o Kauã com 1 estrela (Avaliações → carona de 3 dias atrás): em até 5 s o alerta aparece no
+   painel. Para ver a **exclusão automática**, antes suba a "média mínima" para 4,5 na aba Regras: o Kauã sai do app
+   (o login é recusado) e aparece em "Excluídos automaticamente", com o botão **Reativar**.
+12. **Viagens ao vivo:** aba **Ao vivo** → viagem do Lucas com o João a bordo; clique para ver o trajeto no mapa.
+13. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
    autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui), **Regras**
    (preço da gasolina, etanol, diesel e kWh; exigir CNH/identidade) e **Banco de dados** (diagrama ER ao vivo).
 
@@ -258,7 +265,7 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 | Lugares | `GET /api/lugares/bairros?q=` (público), `/cep/<cep>`, `/ruas?q=&cidade=`, `/distancia?bairro=`, `/onibus?bairro=&sentido=&hora=` |
 | Pedir carona (fila) | `POST /api/pedidos-carona`, `GET /api/pedidos-carona/minhas`, `POST /api/pedidos-carona/<id>/cancelar`, `GET /api/pedidos-carona/demanda` |
 | Viagem | `POST /api/solicitacoes/<id>/desembarque`, `GET /api/caronas/<id>/resumo` (entrada/saída, tempo a bordo, trilha) |
-| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
+| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); tempo real: `GET /api/admin/viagens`, `GET /api/admin/avaliacoes?nota_maxima=`; documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
 
@@ -296,6 +303,9 @@ Cada requisição é registrada no log com método, rota, status e tempo (`LOG_L
   mesma exista a conta ou não. Trocar ou redefinir a senha encerra os logins dos outros aparelhos.
 - Documentos: a imagem só é entregue ao próprio aluno e ao administrador, sem cache, e é apagada depois da
   análise; CNH vencida não é aceita e perde o selo quando vence.
+- Controle de avaliações: a regra roda no servidor, na mesma transação da avaliação; nota abaixo do limite gera
+  alerta e média abaixo do mínimo suspende a conta (o token deixa de valer na hora); administradores nunca são
+  excluídos e o admin pode reativar.
 - Rateio: com o cálculo ligado, o servidor refaz a conta ao salvar (não confia no valor do navegador); a conta usa
   `Decimal` e combustível + adicional nunca passa do teto do painel.
 

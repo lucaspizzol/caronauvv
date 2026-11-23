@@ -58,6 +58,9 @@ class Configuracao(db.Model):
         "transito_pico_percentual": ("25", "Trânsito: % a mais de consumo no horário de pico (dia útil, 6h30-8h30 e 17h-19h30)"),
         "transito_trecho_percentual": ("10", "Trânsito: % a mais por trecho crítico no pico (pontes, Rod. do Sol, BR-101)"),
         "transito_maximo_percentual": ("50", "Trânsito: acréscimo máximo no consumo (%)"),
+        "nota_alerta_avaliacao": ("4", "Avaliação com nota abaixo deste valor gera alerta para a administração"),
+        "media_minima_usuario": ("3", "Quem fica com média abaixo deste valor é excluído automaticamente do aplicativo"),
+        "avaliacoes_minimas_exclusao": ("1", "Avaliações recebidas necessárias antes de aplicar a exclusão automática"),
         "exigir_cnh_motorista": ("0", "1 = só oferece carona quem tem a CNH verificada; 0 = não exige"),
         "exigir_identidade_passageiro": ("0", "1 = só pede vaga quem tem a identidade verificada; 0 = não exige"),
     }

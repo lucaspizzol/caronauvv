@@ -126,6 +126,8 @@ erDiagram
         boolean is_admin
         boolean verificado
         boolean is_active
+        datetime suspenso_em
+        string suspenso_motivo
         datetime ultimo_login_em
         datetime created_at
         datetime updated_at
@@ -393,6 +395,8 @@ erDiagram
 | `is_admin` | BOOLEAN | não |  | `False` |
 | `verificado` | BOOLEAN | não |  | `False` |
 | `is_active` | BOOLEAN | não |  | `True` |
+| `suspenso_em` | DATETIME | sim |  |  |
+| `suspenso_motivo` | STRING(255) | sim |  |  |
 | `ultimo_login_em` | DATETIME | sim |  |  |
 | `created_at` | DATETIME | não |  | agora |
 | `updated_at` | DATETIME | não |  | agora |
@@ -675,7 +679,7 @@ erDiagram
 
 - CHECK `ck_alertas_resposta`: `resposta IN ('tudo_bem', 'preciso_ajuda', 'sem_resposta')`
 - CHECK `ck_alertas_status`: `status IN ('aguardando', 'em_revisao', 'resolvido')`
-- CHECK `ck_alertas_tipo`: `tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps', 'botao_panico')`
+- CHECK `ck_alertas_tipo`: `tipo IN ('parada_longa', 'sinal_perdido', 'desvio_rota', 'pin_sem_gps', 'botao_panico', 'avaliacao_baixa', 'exclusao_automatica')`
 
 ### `links_compartilhados` (módulo `seguranca`)
 

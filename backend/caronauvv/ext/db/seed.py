@@ -413,6 +413,51 @@ def _dados_de_exemplo() -> None:
     ])
 
     # ------------------------------------------------------
+    # PAINEL "AO VIVO": Lucas esta dirigindo AGORA da Praia da Costa para a UVV,
+    # com o Joao a bordo e o GPS mandando a posicao a cada minuto
+    # ------------------------------------------------------
+    c_rodando = Carona(
+        motorista=lucas, veiculo=onix, sentido="ida",
+        bairro_origem="Praia da Costa", endereco_origem="Av. Antônio Gil Veloso, 900",
+        origem_lat=PRAIA_DA_COSTA[0], origem_lng=PRAIA_DA_COSTA[1], destino_lat=UVV[0], destino_lng=UVV[1],
+        distancia_km=7.5, duracao_min=22, data_hora_saida=agora - timedelta(minutes=10), vagas=2,
+        valor_por_passageiro=1.50, status="em_andamento", iniciada_em=agora - timedelta(minutes=9),
+    )
+    joao_rodando = Solicitacao(
+        carona=c_rodando, passageiro=joao, status="aceita", respondida_em=agora - timedelta(hours=2),
+        pin_embarque="7302", embarcou_em=agora - timedelta(minutes=7), metodo_embarque="pin+gps",
+        embarque_gps_lat=-20.3352, embarque_gps_lng=-40.2862,
+    )
+    caminho = [(-20.3330, -40.2840), (-20.3352, -40.2862), (-20.3381, -40.2895), (-20.3417, -40.2931),
+               (-20.3452, -40.2968), (-20.3486, -40.3002), (-20.3519, -40.3031), (-20.3547, -40.3052)]
+    trilha_ao_vivo = [PosicaoGps(carona=c_rodando, lat=lat, lng=lng,
+                                 registrada_em=agora - timedelta(minutes=len(caminho) - i))
+                      for i, (lat, lng) in enumerate(caminho)]
+
+    # ------------------------------------------------------
+    # CONTROLE DE AVALIACOES: ha 2 dias o Joao levou o Pedro e deu nota 3
+    # (abaixo de 4: gera alerta no painel). Media do Pedro = 3,0, no limite.
+    # ------------------------------------------------------
+    dia2 = hoje - timedelta(days=2)
+    c_2dias = Carona(
+        motorista=joao, veiculo=gol, sentido="ida", bairro_origem="Jardim Camburi",
+        endereco_origem="Av. Dante Michelini, 2000", distancia_km=17.0, duracao_min=35,
+        data_hora_saida=as_(dia2, 7, 0), vagas=3, valor_por_passageiro=3.00,
+        status="concluida", iniciada_em=as_(dia2, 7, 2), concluida_em=as_(dia2, 7, 40),
+    )
+    pedro_2 = Solicitacao(carona=c_2dias, passageiro=pedro, status="aceita", respondida_em=as_(dia2 - timedelta(days=1), 20, 0),
+                          pin_embarque="2222", embarcou_em=as_(dia2, 7, 12), desembarcou_em=as_(dia2, 7, 40),
+                          metodo_embarque="pin")
+    nota_pedro = Avaliacao(solicitacao=pedro_2, avaliador=joao, avaliado=pedro, nota=3,
+                           comentario="Atrasou 10 min e não avisou.", created_at=as_(dia2, 8, 0))
+    nota_joao = Avaliacao(solicitacao=pedro_2, avaliador=pedro, avaliado=joao, nota=5, created_at=as_(dia2, 8, 5))
+    nota_joao.tags = [AvaliacaoTag(tag="Pontual")]
+    alerta_nota = Alerta(carona=c_2dias, usuario=pedro, tipo="avaliacao_baixa",
+                         detalhe='Nota 3 de João Pereira para Pedro Lima (passageiro): "Atrasou 10 min e não avisou."',
+                         created_at=as_(dia2, 8, 0))
+    db.session.add_all([c_rodando, joao_rodando, *trilha_ao_vivo, c_2dias, pedro_2, nota_pedro, nota_joao, alerta_nota])
+
+    # ------------------------------------------------------
     # NOTIFICACOES (tela 4), DENUNCIA E BUSCAS (painel admin)
     # ------------------------------------------------------
     db.session.add_all([

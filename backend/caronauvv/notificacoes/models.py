@@ -20,6 +20,8 @@ TIPOS_NOTIFICACAO = (
     "desembarque",       # motorista ou passageiro registrou a saida do carro
     "carona_da_fila",    # apareceu carona compativel com o "Pedir carona" do aluno
     "documento",         # identidade/CNH enviada (para o admin), aprovada ou recusada (para o aluno)
+    "avaliacao_baixa",   # para o admin: alguem recebeu nota abaixo do limite
+    "exclusao_automatica",  # para o admin: alguem saiu do app por media baixa
 )
 
 

@@ -104,7 +104,10 @@ def moderar_avaliacao(avaliacao: Avaliacao) -> None:
             and total >= regras["minimo_avaliacoes"] and media < regras["media_minima"]):
         media_br = f"{media:.1f}".replace(".", ",")
         minima_br = f"{regras['media_minima']:.1f}".replace(".", ",")
-        suspender_conta(avaliado, f"Exclusão automática: média {media_br} em {total} avaliação(ões) (mínimo {minima_br}).")
+        motivo = f"Exclusão automática: média {media_br} em {total} avaliação(ões) (mínimo {minima_br})."
+        suspender_conta(avaliado, motivo)
+        from caronauvv.admin.historico import registrar_acao
+        registrar_acao(None, "exclusao_automatica", avaliado, motivo)   # feita pelo sistema, sem admin
         db.session.add(Alerta(
             carona=carona, usuario=avaliado, tipo="exclusao_automatica",
             detalhe=f"{avaliado.nome} ({papel}) foi excluído(a) automaticamente: média {media_br} em {total} avaliação(ões)."[:300],

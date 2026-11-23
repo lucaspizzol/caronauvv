@@ -132,6 +132,10 @@ def analisar_documento(doc: Documento, admin: Usuario, aprovado: bool, motivo: s
     # LGPD: depois da analise a imagem nao e mais necessaria
     doc.dados, doc.mime, doc.tamanho = None, None, None
 
+    from caronauvv.admin.historico import registrar_acao
+    registrar_acao(admin, "aprovar_documento" if aprovado else "recusar_documento", doc.usuario,
+                   NOMES[doc.tipo] + ("" if aprovado else f": {doc.motivo_recusa}"))
+
     nome = NOMES[doc.tipo]
     if aprovado:
         notificar(doc.usuario, "documento", f"{nome[0].upper() + nome[1:]} verificada!",

@@ -21,6 +21,8 @@ transporte (BlaBlaCar, Uber, 99):
 | Recurso | Como funciona | Inspiração |
 |---|---|---|
 | **Controle de avaliações** (painel admin) | Todas as notas em tempo real (inclusive as "às cegas"), média, distribuição e alunos em risco. **Nota abaixo de 4** gera alerta para a administração na hora; **média abaixo de 3** exclui o aluno do app automaticamente (conta suspensa, reversível pelo admin). Limites na aba Regras | Uber/99 (desativação por nota baixa) |
+| **Histórico da administração** (painel admin) | Quem aprovou, recusou, suspendeu, reativou ou mudou uma regra (com valor antigo e novo), e quando; inclui as exclusões automáticas e os downloads de planilhas. Filtro por tipo e período | Rastreabilidade (LGPD) |
+| **Exportar dados** e gráfico (painel admin) | Planilhas CSV de usuários, avaliações e viagens para Excel/Google Planilhas, sem dados sensíveis e protegidas contra injeção de fórmula; gráfico de caronas por dia nos últimos 30 dias | — |
 | **Viagens ao vivo** (painel admin) | Todas as viagens acontecendo agora, com motorista, carro e placa, passageiros a bordo, velocidade, último sinal do GPS e mapa | Uber (central de segurança) |
 | Só alunos da UVV | Cadastro aceita apenas e-mail `@uvv.br` e confirma o e-mail com código de 6 números | BlaBlaCar (e-mail verificado) |
 | Perfil verificado | O aluno pede o selo e a administração confere a matrícula | BlaBlaCar (perfil verificado) |
@@ -52,8 +54,8 @@ transporte (BlaBlaCar, Uber, 99):
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 382 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 382 testes, 96% de cobertura) e Vitest (front-end, 42 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 401 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 401 testes, 96% de cobertura) e Vitest (front-end, 49 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -89,7 +91,7 @@ backend/
     (cada modulo: models.py, schemas.py, services.py, routes.py)
   migrations/             # Flask-Migrate (Alembic): 8 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 382 testes (pytest + pytest-flask)
+  tests/                  # 401 testes (pytest + pytest-flask)
 frontend/
   src/
     types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
@@ -130,7 +132,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 382 testes
+python -m pytest                           # 401 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
@@ -145,7 +147,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 42 testes do front (Vitest)
+npm test                         # 49 testes do front (Vitest)
 npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 
@@ -245,7 +247,8 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 12. **Viagens ao vivo:** aba **Ao vivo** → viagem do Lucas com o João a bordo; clique para ver o trajeto no mapa.
 13. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
    autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui), **Regras**
-   (preço da gasolina, etanol, diesel e kWh; exigir CNH/identidade) e **Banco de dados** (diagrama ER ao vivo).
+   (preço da gasolina, etanol, diesel e kWh; exigir CNH/identidade), **Histórico** (cada ação acima aparece na hora),
+   **Exportar dados** (planilhas CSV) e **Banco de dados** (diagrama ER ao vivo).
 
 ## API
 
@@ -265,7 +268,7 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 | Lugares | `GET /api/lugares/bairros?q=` (público), `/cep/<cep>`, `/ruas?q=&cidade=`, `/distancia?bairro=`, `/onibus?bairro=&sentido=&hora=` |
 | Pedir carona (fila) | `POST /api/pedidos-carona`, `GET /api/pedidos-carona/minhas`, `POST /api/pedidos-carona/<id>/cancelar`, `GET /api/pedidos-carona/demanda` |
 | Viagem | `POST /api/solicitacoes/<id>/desembarque`, `GET /api/caronas/<id>/resumo` (entrada/saída, tempo a bordo, trilha) |
-| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); tempo real: `GET /api/admin/viagens`, `GET /api/admin/avaliacoes?nota_maxima=`; documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
+| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); tempo real: `GET /api/admin/viagens`, `GET /api/admin/avaliacoes?nota_maxima=`; histórico: `GET /api/admin/historico?acao=&dias=`; planilhas: `GET /api/admin/exportar/<usuarios|avaliacoes|viagens>`; documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
 
@@ -324,6 +327,6 @@ continua funcionando com a lista local e a estimativa.
 
 ## Banco de dados
 
-19 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
+20 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
 Para ver o diagrama: no painel admin, aba **Banco de dados** (gerado ao vivo dos modelos), ou cole
 [`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).

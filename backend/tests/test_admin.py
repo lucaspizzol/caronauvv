@@ -128,7 +128,7 @@ def test_configuracao_invalida(client, admin):
 def test_estrutura_do_banco_ao_vivo(client):
     banco = client.get("/api/admin/banco", headers=admin_do_seed(client)).get_json()
     nomes = {t["nome"]: t for t in banco["tabelas"]}
-    assert len(nomes) == 19
+    assert len(nomes) == 20
     assert nomes["usuarios"]["linhas"] >= 8
     solicitacoes = {c["nome"]: c for c in nomes["solicitacoes"]["colunas"]}
     assert solicitacoes["carona_id"]["fk"] == "caronas.id"

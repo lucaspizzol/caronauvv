@@ -88,6 +88,8 @@ erDiagram
     caronas |o--o{ denuncias : "carona_id"
     usuarios |o--o{ denuncias : "analisada_por_id"
     usuarios |o--o{ buscas : "usuario_id"
+    usuarios |o--o{ acoes_admin : "admin_id"
+    usuarios |o--o{ acoes_admin : "alvo_id"
     usuarios {
         integer id PK
         string matricula UK
@@ -349,6 +351,15 @@ erDiagram
         string valor
         string descricao
         datetime updated_at
+    }
+    acoes_admin {
+        integer id PK
+        integer admin_id FK
+        string acao
+        integer alvo_id FK
+        string alvo_nome
+        string detalhe
+        datetime created_at
     }
 ```
 
@@ -742,3 +753,19 @@ erDiagram
 | `valor` | STRING(255) | não |  |  |
 | `descricao` | STRING(255) | sim |  |  |
 | `updated_at` | DATETIME | não |  | agora |
+
+### `acoes_admin` (módulo `admin`)
+
+| Coluna | Tipo | Nulo | Chave | Padrão |
+|---|---|---|---|---|
+| `id` | INTEGER | não | PK |  |
+| `admin_id` | INTEGER | sim | FK → `usuarios.id`, ON DELETE SET NULL; índice |  |
+| `acao` | STRING(30) | não | índice |  |
+| `alvo_id` | INTEGER | sim | FK → `usuarios.id`, ON DELETE SET NULL; índice |  |
+| `alvo_nome` | STRING(120) | sim |  |  |
+| `detalhe` | STRING(300) | sim |  |  |
+| `created_at` | DATETIME | não | índice | agora |
+
+**Restrições:**
+
+- CHECK `ck_acoes_admin_acao`: `acao IN ('aprovar_selo', 'recusar_selo', 'suspender', 'reativar', 'remover_foto', 'resetar_2fa', 'aprovar_documento', 'recusar_documento', 'analisar_denuncia', 'encerrar_denuncia', 'resolver_alerta', 'alterar_regras', 'exportar_dados', 'exclusao_automatica')`

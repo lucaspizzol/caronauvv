@@ -85,6 +85,14 @@
           </section>
         </div>
 
+        <!-- Grafico: caronas por dia nos ultimos 30 dias -->
+        <div class="col-12">
+          <section class="bloco" aria-labelledby="t-grafico">
+            <h2 id="t-grafico" class="bloco-titulo"><i class="bi bi-bar-chart-fill"></i>Caronas por dia</h2>
+            <GraficoCaronas :dias="r.caronas_por_dia" />
+          </section>
+        </div>
+
         <!-- Bairros: onde falta carona x onde mais tem -->
         <div class="col-12">
           <section class="bloco" aria-labelledby="t-bairros">
@@ -119,6 +127,10 @@
 
     <!-- ===================== CONTROLE DE AVALIACOES ===================== -->
     <AdminAvaliacoes v-else-if="aba === 'avaliacoes'" @abrir="trocarAba" />
+
+    <!-- ===================== HISTORICO E EXPORTAR ===================== -->
+    <AdminHistorico v-else-if="aba === 'historico'" />
+    <AdminExportar v-else-if="aba === 'exportar'" />
 
     <!-- ===================== USUARIOS ===================== -->
     <template v-else-if="aba === 'usuarios'">
@@ -352,6 +364,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AdminAoVivo from '../components/admin/AdminAoVivo.vue'
 import AdminAvaliacoes from '../components/admin/AdminAvaliacoes.vue'
+import AdminExportar from '../components/admin/AdminExportar.vue'
+import AdminHistorico from '../components/admin/AdminHistorico.vue'
+import GraficoCaronas from '../components/admin/GraficoCaronas.vue'
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
@@ -489,6 +504,8 @@ const CARREGADORES: Record<IdAba, () => Promise<unknown>> = {
   // as abas em tempo real carregam (e atualizam) os proprios dados
   aovivo: async () => undefined,
   avaliacoes: async () => undefined,
+  historico: async () => undefined,
+  exportar: async () => undefined,
   usuarios: carregarUsuarios,
   documentos: async () =>
     (documentos.value = (await api.get<{ documentos: DocumentoAdmin[] }>('/admin/documentos', { params: { status: filtroDoc.value } })).data.documentos),

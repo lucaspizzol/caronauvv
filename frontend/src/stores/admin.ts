@@ -16,7 +16,18 @@ export async function carregarResumo(): Promise<void> {
 }
 
 /** Secoes do painel: o menu lateral e a tela usam a mesma lista. */
-export type IdAba = 'resumo' | 'aovivo' | 'avaliacoes' | 'usuarios' | 'documentos' | 'denuncias' | 'alertas' | 'regras' | 'banco'
+export type IdAba =
+  | 'resumo'
+  | 'aovivo'
+  | 'avaliacoes'
+  | 'usuarios'
+  | 'documentos'
+  | 'denuncias'
+  | 'alertas'
+  | 'historico'
+  | 'exportar'
+  | 'regras'
+  | 'banco'
 
 export interface SecaoAdmin {
   id: IdAba
@@ -34,6 +45,8 @@ export const SECOES: SecaoAdmin[] = [
   { id: 'documentos', texto: 'Documentos', icone: 'bi-person-vcard', descricao: 'Identidade e CNH enviadas para conferência.', grupo: 'Moderar' },
   { id: 'denuncias', texto: 'Denúncias', icone: 'bi-flag', descricao: 'Denúncias feitas pelos alunos.', grupo: 'Moderar' },
   { id: 'alertas', texto: 'Alertas', icone: 'bi-shield-exclamation', descricao: 'Botão de pânico, notas baixas e exclusões automáticas.', grupo: 'Moderar' },
+  { id: 'historico', texto: 'Histórico', icone: 'bi-clock-history', descricao: 'Tudo o que a administração fez (e as exclusões automáticas), com data, hora e quem fez.', grupo: 'Moderar' },
+  { id: 'exportar', texto: 'Exportar dados', icone: 'bi-download', descricao: 'Planilhas de usuários, avaliações e viagens para abrir no Excel ou no Google Planilhas.', grupo: 'Sistema' },
   { id: 'regras', texto: 'Regras', icone: 'bi-sliders', descricao: 'Limites do aplicativo, como a nota mínima e o tempo de resposta.', grupo: 'Sistema' },
   { id: 'banco', texto: 'Banco de dados', icone: 'bi-database', descricao: 'Tabelas, quantidade de linhas e o diagrama do banco.', grupo: 'Sistema' }
 ]

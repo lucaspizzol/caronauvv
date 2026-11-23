@@ -389,6 +389,8 @@ def montar(app) -> str:
       <tr><td>Trânsito no valor</td><td>Horário de pico (+25%) e trechos críticos da Grande Vitória (+10% cada: Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101), até +50%, mostrados na conta.</td></tr>
       <tr><td>Meus pedidos, FAQ e visual</td><td>Abas Próximas/Aguardando/Histórico, PIN em destaque, página pública de perguntas frequentes, tela de entrada como vitrine, foco do teclado visível e contraste AA.</td></tr>
       <tr><td><b>Controle de avaliações</b> (painel admin)</td><td>A aba Avaliações mostra todas as notas na hora (atualiza a cada 5 s), inclusive as que o aluno ainda não vê, com média geral, distribuição 1–5, alunos em risco e excluídos. <b>Nota abaixo de 4</b> gera alerta para a administração (aviso na tela, no sino e na aba Alertas). <b>Média abaixo de 3</b> exclui o aluno do aplicativo automaticamente (conta suspensa, caronas e pedidos cancelados), com a opção de reativar. Os limites ficam na aba Regras.</td></tr>
+      <tr><td><b>Histórico da administração</b> (painel admin)</td><td>Linha do tempo de tudo o que a administração fez (aprovar ou recusar selo e documento, suspender, reativar, remover foto, desligar duas etapas, denúncias, alertas, mudança de regras com o valor antigo e o novo, exportações) e das exclusões automáticas feitas pelo sistema, com filtro por tipo e período. Cada registro é gravado na mesma transação da ação.</td></tr>
+      <tr><td><b>Exportar dados</b> e <b>gráfico</b> (painel admin)</td><td>Planilhas CSV de usuários, avaliações e viagens no formato do Excel em português (";" e vírgula decimal), sem telefone, Pix, senha ou documento, e protegidas contra "injeção de fórmula"; cada download fica no histórico. Na visão geral, gráfico de caronas por dia nos últimos 30 dias (com detalhe ao passar o mouse e versão em tabela).</td></tr>
       <tr><td><b>Viagens ao vivo</b> (painel admin)</td><td>Todas as viagens acontecendo agora, saindo nas próximas 3 h e concluídas há pouco: motorista, carro e placa, passageiros (aguardando, a bordo, desembarcou, faltou), tempo de viagem, velocidade, último sinal do GPS e o mapa com os carros e o trajeto.</td></tr>
     </tbody>
   </table>
@@ -474,6 +476,9 @@ def montar(app) -> str:
 <section class="quebra">
   {imagem("24_admin_avaliacoes.jpg", "Painel da administração, seção Avaliações: notas em tempo real, média geral, distribuição e alunos em risco.")}
   {imagem("25_admin_ao_vivo.jpg", "Painel da administração, seção Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa.")}
+  {imagem("26_admin_grafico.jpg", "Visão geral: gráfico de caronas por dia nos últimos 30 dias, com o detalhe do dia ao passar o mouse.")}
+  {imagem("27_admin_historico.jpg", "Histórico da administração: cada ação com quem fez, sobre quem, o detalhe e o horário, agrupada por dia.")}
+  {imagem("28_admin_exportar.jpg", "Exportar dados: planilhas CSV de usuários, avaliações e viagens; cada download fica registrado no histórico.")}
 </section>
 <section class="quebra">
   <div class="lado-a-lado">
@@ -715,6 +720,7 @@ Flask ── create_app()   (Application Factory)
       <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
       <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
       <tr><td><code>test_combustivel.py</code></td><td>Conta do rateio (metros, cada energia, consumo médio, preço do painel), dados inválidos, teto, e o servidor recalculando ao salvar e editar</td></tr>
+      <tr><td><code>test_admin_historico.py</code></td><td>Histórico de cada ação do admin (e da exclusão automática), ação que falha não deixa registro, filtro e período; CSV (BOM, separador, sem dados sensíveis, proteção contra fórmula, registro no histórico) e gráfico dos 30 dias</td></tr>
       <tr><td><code>test_controle_avaliacoes.py</code></td><td>Alerta de nota baixa, exclusão automática (passageiro e motorista), mínimo de avaliações, admin nunca excluído, reativação, feed em tempo real e viagens ao vivo com GPS, só para administrador</td></tr>
       <tr><td><code>test_documentos.py</code></td><td>Envio, CNH vencida, arquivo inválido, análise pelo admin, imagem apagada depois (LGPD), selos e as regras de exigir documento</td></tr>
       <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
@@ -776,6 +782,11 @@ Flask ── create_app()   (Application Factory)
   <p>O painel em tempo real usa duas rotas só de administrador (<code>GET /api/admin/avaliacoes</code> e
   <code>GET /api/admin/viagens</code>, em <code>admin/monitor.py</code>) consultadas a cada 5 segundos pelo composable
   <code>useAoVivo</code>. Quando chega uma nota baixa, a tela compara com a consulta anterior e mostra o alerta.</p>
+  <p><b>Histórico e exportação.</b> Cada serviço de moderação chama <code>registrar_acao()</code> antes do
+  <code>commit</code>, então a ação e o registro entram juntos no banco (se a ação falhar, nada fica no histórico). A
+  exportação gera o CSV no servidor e neutraliza texto que começa com <code>= + - @</code>, para uma avaliação maliciosa
+  não virar fórmula no Excel.</p>
+  {codigo(funcao("backend/caronauvv/admin/historico.py", "registrar_acao"), "backend/caronauvv/admin/historico.py")}
 </section>
 <section>
   <h3>5.16 Revisão de segurança</h3>
@@ -898,7 +909,8 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>30 min e resumo:</b> como Pedro, Meus pedidos → Aguardando: contagem regressiva. Como Ana, Histórico → Resumo da viagem de ontem: entrada 18:33, saída 18:41, mapa.</li>
     <li><b>Controle de avaliações (tempo real):</b> deixe o admin aberto na aba Avaliações; em outra aba, como Lucas, avalie o Kauã com 1 estrela (Avaliações → carona de 3 dias atrás). Em até 5 s o alerta aparece no painel. Para ver a exclusão automática, suba a "média mínima" para 4,5 na aba Regras antes de avaliar: o Kauã sai do app e aparece em "Excluídos automaticamente", com o botão Reativar.</li>
     <li><b>Viagens ao vivo:</b> aba Ao vivo mostra a viagem do Lucas com o João a bordo; clique nela para ver o trajeto no mapa.</li>
-    <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem e atraso na saída), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
+    <li><b>Histórico e exportação:</b> aprove o selo da Marina em Usuários e abra Histórico: a ação aparece no topo. Em Exportar dados, baixe a planilha de viagens e abra no Excel; o download também entra no histórico.</li>
+    <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem, atraso na saída e o gráfico dos últimos 30 dias), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
 </section>""")
@@ -1091,7 +1103,7 @@ def gerar(pdf: bool) -> Path:
 </script>
 </body></html>"""
     saida = DOCS / "CaronaUVV_Documentacao.html"
-    saida.write_text(pagina, encoding="utf-8")
+    saida.write_text(pagina, encoding="utf-8", newline="\n")   # LF tambem no Windows
     print(f"HTML: {saida}")
     if pdf:
         navegador = (shutil.which("msedge") or shutil.which("chrome") or shutil.which("google-chrome")

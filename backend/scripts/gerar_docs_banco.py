@@ -29,7 +29,7 @@ MODULOS = {
     "avaliacoes": ["avaliacoes", "avaliacao_tags", "pagamentos"],
     "notificacoes": ["notificacoes"],
     "seguranca": ["alertas", "links_compartilhados", "denuncias"],
-    "admin": ["buscas", "configuracoes"],
+    "admin": ["buscas", "configuracoes", "acoes_admin"],
 }
 ORDEM = [t for tabelas in MODULOS.values() for t in tabelas]
 
@@ -198,9 +198,10 @@ def main() -> None:
 
         md = DOCS / "banco_de_dados.md"
         cabecalho = md.read_text(encoding="utf-8").split(MARCADOR)[0] if md.exists() else "# Banco de dados\n\n"
-        md.write_text(cabecalho + markdown(esquema), encoding="utf-8")
-        (DOCS / "banco.dbml").write_text(dbml(esquema), encoding="utf-8")
-        (DOCS / "schema_postgresql.sql").write_text(sql_postgresql(), encoding="utf-8")
+        # newline="\n": LF tambem no Windows (igual ao repositorio, ver .gitattributes)
+        md.write_text(cabecalho + markdown(esquema), encoding="utf-8", newline="\n")
+        (DOCS / "banco.dbml").write_text(dbml(esquema), encoding="utf-8", newline="\n")
+        (DOCS / "schema_postgresql.sql").write_text(sql_postgresql(), encoding="utf-8", newline="\n")
 
         if "--json" in sys.argv:  # usado para montar a pagina interativa do diagrama
             sys.stdout.reconfigure(encoding="utf-8")

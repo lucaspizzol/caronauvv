@@ -61,6 +61,25 @@ CREATE INDEX ix_usuarios_bairro ON usuarios (bairro);
 CREATE UNIQUE INDEX ix_usuarios_email ON usuarios (email);
 CREATE UNIQUE INDEX ix_usuarios_matricula ON usuarios (matricula);
 
+CREATE TABLE acoes_admin (
+	id SERIAL NOT NULL, 
+	admin_id INTEGER, 
+	acao VARCHAR(30) NOT NULL, 
+	alvo_id INTEGER, 
+	alvo_nome VARCHAR(120), 
+	detalhe VARCHAR(300), 
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
+	CONSTRAINT pk_acoes_admin PRIMARY KEY (id), 
+	CONSTRAINT ck_acoes_admin_acao CHECK (acao IN ('aprovar_selo', 'recusar_selo', 'suspender', 'reativar', 'remover_foto', 'resetar_2fa', 'aprovar_documento', 'recusar_documento', 'analisar_denuncia', 'encerrar_denuncia', 'resolver_alerta', 'alterar_regras', 'exportar_dados', 'exclusao_automatica')), 
+	CONSTRAINT fk_acoes_admin_admin_id_usuarios FOREIGN KEY(admin_id) REFERENCES usuarios (id) ON DELETE SET NULL, 
+	CONSTRAINT fk_acoes_admin_alvo_id_usuarios FOREIGN KEY(alvo_id) REFERENCES usuarios (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_acoes_admin_acao ON acoes_admin (acao);
+CREATE INDEX ix_acoes_admin_admin_id ON acoes_admin (admin_id);
+CREATE INDEX ix_acoes_admin_alvo_id ON acoes_admin (alvo_id);
+CREATE INDEX ix_acoes_admin_created_at ON acoes_admin (created_at);
+
 CREATE TABLE buscas (
 	id SERIAL NOT NULL, 
 	usuario_id INTEGER, 

@@ -92,3 +92,44 @@ class Configuracao(db.Model):
 
     def __repr__(self) -> str:
         return f"<Configuracao {self.chave}='{self.valor}'>"
+
+
+# === AcaoAdmin (historico do que a administracao fez) ===  [EXTRA - painel]
+# Rastreabilidade da moderacao: quem aprovou, recusou, suspendeu, reativou ou mudou uma regra, e quando.
+# admin_id vazio = acao do proprio sistema (exclusao automatica por media baixa).
+ACOES_ADMIN = (
+    "aprovar_selo", "recusar_selo", "suspender", "reativar", "remover_foto", "resetar_2fa",
+    "aprovar_documento", "recusar_documento", "analisar_denuncia", "encerrar_denuncia",
+    "resolver_alerta", "alterar_regras", "exportar_dados", "exclusao_automatica",
+)
+
+
+class AcaoAdmin(db.Model):
+    __tablename__ = "acoes_admin"
+    __table_args__ = (
+        CheckConstraint(check_valores("acao", ACOES_ADMIN), name="acao"),
+    )
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    admin_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    acao: Mapped[str] = mapped_column(db.String(30), nullable=False, index=True)
+    alvo_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    alvo_nome: Mapped[Optional[str]] = mapped_column(db.String(120))   # copia do nome: o historico continua legivel
+    detalhe: Mapped[Optional[str]] = mapped_column(db.String(300))
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), index=True)
+
+    admin: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[admin_id])
+    alvo: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[alvo_id])
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "acao": self.acao,
+            "admin": {"id": self.admin.id, "nome": self.admin.nome} if self.admin else None,
+            "alvo": {"id": self.alvo_id, "nome": self.alvo_nome} if self.alvo_nome else None,
+            "detalhe": self.detalhe,
+            "criado_em": self.created_at.isoformat(timespec="seconds"),
+        }
+
+    def __repr__(self) -> str:
+        return f"<AcaoAdmin id={self.id} acao='{self.acao}' admin={self.admin_id} alvo={self.alvo_id}>"

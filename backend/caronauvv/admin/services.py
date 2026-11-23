@@ -15,6 +15,7 @@ from caronauvv.ext.db import db
 from caronauvv.notificacoes.services import notificar
 from caronauvv.seguranca.models import STATUS_DENUNCIA, Alerta, Denuncia
 
+from .historico import registrar_acao
 from .models import Busca, Configuracao
 
 KG_CO2_POR_KM = 0.12  # emissao media de um carro popular (kg de CO2 por km)
@@ -102,10 +103,29 @@ def resumo() -> dict:
             "avaliacoes_baixas_abertas": _contar(Alerta, Alerta.tipo == "avaliacao_baixa", Alerta.status != "resolvido"),
             "excluidos_automaticamente": _contar(Usuario, Usuario.suspenso_motivo.like("Exclusão automática%")),
         },
+        "caronas_por_dia": caronas_por_dia(),
         "medias": medias_das_viagens(),   # tempo de viagem, atraso na saida, velocidade, tempo a bordo
         "demanda_sem_oferta": [{"bairro": b, "buscas": n} for b, n in sem_resultado],
         "bairros_com_mais_oferta": [{"bairro": b, "caronas": n} for b, n in bairros_oferta],
     }
+
+
+def caronas_por_dia(dias: int = 30) -> list[dict]:
+    """Grafico da visao geral: caronas por dia de saida nos ultimos `dias` dias (hoje incluido).
+    Agrupa em Python para funcionar igual no SQLite e no PostgreSQL."""
+    hoje = datetime.now().date()
+    inicio = hoje - timedelta(days=dias - 1)
+    contagem = {inicio + timedelta(days=i): {"concluidas": 0, "canceladas": 0, "outras": 0} for i in range(dias)}
+    linhas = db.session.execute(
+        db.select(Carona.data_hora_saida, Carona.status).where(
+            Carona.data_hora_saida >= datetime.combine(inicio, datetime.min.time()),
+            Carona.data_hora_saida < datetime.combine(hoje + timedelta(days=1), datetime.min.time()),
+        )
+    ).all()
+    for saida, status in linhas:
+        grupo = "concluidas" if status == "concluida" else "canceladas" if status == "cancelada" else "outras"
+        contagem[saida.date()][grupo] += 1
+    return [{"dia": dia.isoformat(), **valores, "total": sum(valores.values())} for dia, valores in contagem.items()]
 
 
 # ==========================================================
@@ -129,10 +149,12 @@ def _usuario(usuario_id: int) -> Usuario:
     return usuario
 
 
-def verificar_usuario(usuario_id: int, aprovado: bool = True) -> Usuario:
+def verificar_usuario(usuario_id: int, aprovado: bool = True, admin: Usuario | None = None) -> Usuario:
     usuario = _usuario(usuario_id)
     usuario.verificado = aprovado
     usuario.verificacao_solicitada_em = None
+    registrar_acao(admin, "aprovar_selo" if aprovado else "recusar_selo", usuario,
+                   f"Matrícula {usuario.matricula}" if usuario.matricula else None)
     if aprovado:
         notificar(usuario, "perfil_verificado", "Perfil verificado!",
                   "A administração conferiu sua matrícula. Agora seu perfil mostra o selo de verificado.")
@@ -140,23 +162,26 @@ def verificar_usuario(usuario_id: int, aprovado: bool = True) -> Usuario:
     return usuario
 
 
-def remover_foto_usuario(usuario_id: int) -> Usuario:
+def remover_foto_usuario(usuario_id: int, admin: Usuario | None = None) -> Usuario:
     """Moderacao: tira uma foto de perfil inadequada e avisa o aluno."""
     from caronauvv.auth.foto import remover_foto
 
     usuario = _usuario(usuario_id)
     if not usuario.foto_url:
         raise ApiError("Este usuário não tem foto de perfil.")
+    registrar_acao(admin, "remover_foto", usuario, "Foto de perfil inadequada")
     notificar(usuario, "seguranca_conta", "Foto de perfil removida",
               "A administração removeu sua foto de perfil. Envie uma foto em que apareça o seu rosto.")
     return remover_foto(usuario)
 
 
-def resetar_dois_fatores(usuario_id: int) -> Usuario:
+def resetar_dois_fatores(usuario_id: int, admin: Usuario | None = None) -> Usuario:
     """Aluno ficou sem o celular e sem os codigos de reserva: desliga o autenticador da conta."""
     from caronauvv.auth.dois_fatores import resetar_pelo_admin
 
-    return resetar_pelo_admin(_usuario(usuario_id))
+    usuario = _usuario(usuario_id)
+    registrar_acao(admin, "resetar_2fa", usuario, "Verificação em duas etapas desligada a pedido do aluno")
+    return resetar_pelo_admin(usuario)
 
 
 def suspender_usuario(usuario_id: int, admin: Usuario, ativo: bool) -> Usuario:
@@ -164,10 +189,15 @@ def suspender_usuario(usuario_id: int, admin: Usuario, ativo: bool) -> Usuario:
     if usuario.id == admin.id:
         raise ApiError("Você não pode suspender a própria conta.")
     if ativo:
+        if not usuario.is_active:
+            registrar_acao(admin, "reativar", usuario, f"Motivo anterior: {usuario.suspenso_motivo}"
+                           if usuario.suspenso_motivo else None)
         usuario.is_active = True
         usuario.suspenso_em = None
         usuario.suspenso_motivo = None
     else:
+        if usuario.is_active:
+            registrar_acao(admin, "suspender", usuario, "Suspenso(a) pela administração")
         # Caronas futuras e pedidos em aberto sao cancelados (passageiros e motoristas avisados)
         from caronauvv.avaliacoes.moderacao import suspender_conta
         suspender_conta(usuario, f"Suspenso(a) pela administração ({admin.nome}).")
@@ -198,6 +228,8 @@ def analisar_denuncia(denuncia_id: int, admin: Usuario, status: str,
     denuncia.analisada_por_id = admin.id
     denuncia.resolucao = resolucao
     denuncia.encerrada_em = datetime.now() if status == "encerrada" else None
+    registrar_acao(admin, "encerrar_denuncia" if status == "encerrada" else "analisar_denuncia",
+                   denuncia.denunciado, f"Denúncia #{denuncia.id}" + (f": {resolucao}" if resolucao else ""))
     if suspender:
         suspender_usuario(denuncia.denunciado_id, admin, ativo=False)
     db.session.commit()
@@ -213,10 +245,12 @@ def listar_alertas() -> list[Alerta]:
     ))
 
 
-def resolver_alerta(alerta_id: int) -> Alerta:
+def resolver_alerta(alerta_id: int, admin: Usuario | None = None) -> Alerta:
     alerta = db.session.get(Alerta, alerta_id)
     if alerta is None:
         raise ApiError("Alerta não encontrado.", 404)
+    if alerta.status != "resolvido":
+        registrar_acao(admin, "resolver_alerta", alerta.usuario, f"Alerta #{alerta.id} ({alerta.tipo.replace('_', ' ')})")
     alerta.status = "resolvido"
     alerta.resolvido_em = datetime.now()
     db.session.commit()
@@ -238,7 +272,8 @@ def listar_configuracoes() -> list[Configuracao]:
     return list(db.session.scalars(db.select(Configuracao).order_by(Configuracao.chave)))
 
 
-def atualizar_configuracoes(valores: dict) -> list[Configuracao]:
+def atualizar_configuracoes(valores: dict, admin: Usuario | None = None) -> list[Configuracao]:
+    mudancas = []
     for chave, valor in valores.items():
         if chave not in Configuracao.PADROES:
             raise ApiError(f"Configuração desconhecida: {chave}.")
@@ -252,7 +287,13 @@ def atualizar_configuracoes(valores: dict) -> list[Configuracao]:
         if config is None:
             config = Configuracao(chave=chave, descricao=Configuracao.PADROES[chave][1])
             db.session.add(config)
-        config.valor = str(valor).replace(",", ".")
+        novo = str(valor).replace(",", ".")
+        antes = config.valor if config.valor is not None else Configuracao.PADROES[chave][0]
+        if antes != novo:
+            mudancas.append(f"{chave}: {antes} → {novo}")
+        config.valor = novo
+    if mudancas:
+        registrar_acao(admin, "alterar_regras", None, "; ".join(mudancas))
     db.session.commit()
     return listar_configuracoes()
 

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flask import current_app
 
-from caronauvv.admin.models import Busca, Configuracao
+from caronauvv.admin.models import AcaoAdmin, Busca, Configuracao
 from caronauvv.auth.dois_fatores import _hash_reserva
 from caronauvv.auth.models import CodigoReserva, ContatoConfianca, Documento, FotoPerfil, Usuario, Veiculo
 from caronauvv.avaliacoes.models import Avaliacao, AvaliacaoTag, Pagamento
@@ -483,6 +483,23 @@ def _dados_de_exemplo() -> None:
         Busca(usuario=marina, bairro="Glória", sentido="volta", data_desejada=amanha, qtd_resultados=0),
         Notificacao(usuario=lucas, carona=c_3dias, tipo="avaliacao_pendente", titulo="Como foi a viagem?",
                     texto="Avalie Kauã e ajude a comunidade a confiar no CaronaUVV."),
+    ])
+
+    # ------------------------------------------------------
+    # HISTORICO DA ADMINISTRACAO (painel > Historico): o que o admin ja fez
+    # ------------------------------------------------------
+    def acao(acao, alvo, detalhe, horas_atras, quem=admin):
+        return AcaoAdmin(admin=quem, acao=acao, alvo=alvo, alvo_nome=alvo.nome if alvo else None,
+                         detalhe=detalhe, created_at=datetime.now() - timedelta(hours=horas_atras))
+
+    db.session.add_all([
+        acao("aprovar_selo", kaua, "Matrícula 202416377", 24 * 6),
+        acao("aprovar_documento", kaua, "CNH", 24 * 6 - 1),
+        acao("aprovar_selo", lucas, "Matrícula 202416378", 24 * 5),
+        acao("aprovar_documento", beatriz, "identidade", 24 * 4),
+        acao("recusar_documento", pedro, "identidade: A foto ficou desfocada e não dá para ler o nome.", 24 * 3),
+        acao("alterar_regras", None, "preco_gasolina: 6.19 → 6.29", 24 * 2),
+        acao("exportar_dados", None, "Viagens: 9 linha(s)", 20),
     ])
 
     # ------------------------------------------------------

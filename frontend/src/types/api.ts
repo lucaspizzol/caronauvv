@@ -373,6 +373,8 @@ export interface ResumoAdmin {
     excluidos_automaticamente: number
   }
   medias: MediasViagens
+  /** Grafico da visao geral: ultimos 30 dias, do mais antigo para hoje. */
+  caronas_por_dia: CaronasDoDia[]
   demanda_sem_oferta: { bairro: string; buscas: number }[]
   bairros_com_mais_oferta: { bairro: string; caronas: number }[]
 }
@@ -591,4 +593,39 @@ export interface PainelAvaliacoes {
   avaliacoes: AvaliacaoAdmin[]
   em_risco: UsuarioEmRisco[]
   excluidos: { id: number; nome: string; foto_url: string | null; suspenso_em: DataIso | null; motivo: string | null; is_active: boolean }[]
+}
+
+/** Um dia do grafico "Caronas nos ultimos 30 dias" (pela data de saida). */
+export interface CaronasDoDia {
+  dia: string // AAAA-MM-DD
+  concluidas: number
+  canceladas: number
+  outras: number // ativas, lotadas ou em andamento
+  total: number
+}
+
+/** GET /api/admin/historico: uma acao da administracao (admin null = feita pelo sistema). */
+export type TipoAcaoAdmin =
+  | 'aprovar_selo'
+  | 'recusar_selo'
+  | 'suspender'
+  | 'reativar'
+  | 'remover_foto'
+  | 'resetar_2fa'
+  | 'aprovar_documento'
+  | 'recusar_documento'
+  | 'analisar_denuncia'
+  | 'encerrar_denuncia'
+  | 'resolver_alerta'
+  | 'alterar_regras'
+  | 'exportar_dados'
+  | 'exclusao_automatica'
+
+export interface AcaoAdmin {
+  id: number
+  acao: TipoAcaoAdmin
+  admin: { id: number; nome: string } | null
+  alvo: { id: number | null; nome: string } | null
+  detalhe: string | null
+  criado_em: string
 }

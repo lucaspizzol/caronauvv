@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, Response, g, request
 
 from caronauvv.auth.decorators import admin_required
@@ -5,6 +7,11 @@ from caronauvv.auth.documentos import analisar_documento, buscar_documento, imag
 
 from caronauvv.avaliacoes.moderacao import media_recebida
 
+from caronauvv.ext.db import db
+
+from .exportar import exportar
+from .historico import listar_acoes, registrar_acao
+from .models import ACOES_ADMIN
 from .monitor import avaliacoes_ao_vivo, viagens_ao_vivo
 from .services import (
     analisar_denuncia,
@@ -60,7 +67,7 @@ def usuarios():
 @admin_required
 def verificar(usuario_id):
     aprovado = bool(_json().get("aprovado", True))
-    return {"usuario": _usuario_admin(verificar_usuario(usuario_id, aprovado))}
+    return {"usuario": _usuario_admin(verificar_usuario(usuario_id, aprovado, g.usuario))}
 
 
 @bp.post("/usuarios/<int:usuario_id>/suspender")
@@ -73,13 +80,13 @@ def suspender(usuario_id):
 @bp.delete("/usuarios/<int:usuario_id>/foto")
 @admin_required
 def remover_foto(usuario_id):
-    return {"usuario": _usuario_admin(remover_foto_usuario(usuario_id))}
+    return {"usuario": _usuario_admin(remover_foto_usuario(usuario_id, g.usuario))}
 
 
 @bp.post("/usuarios/<int:usuario_id>/resetar-2fa")
 @admin_required
 def resetar_2fa(usuario_id):
-    return {"usuario": _usuario_admin(resetar_dois_fatores(usuario_id))}
+    return {"usuario": _usuario_admin(resetar_dois_fatores(usuario_id, g.usuario))}
 
 
 # ---------------- denuncias ----------------
@@ -125,7 +132,7 @@ def alertas():
 @bp.post("/alertas/<int:alerta_id>/resolver")
 @admin_required
 def resolver(alerta_id):
-    return {"alerta": resolver_alerta(alerta_id).to_dict()}
+    return {"alerta": resolver_alerta(alerta_id, g.usuario).to_dict()}
 
 
 # ---------------- documentos (identidade e CNH) ----------------
@@ -175,7 +182,31 @@ def configuracoes():
 @bp.put("/configuracoes")
 @admin_required
 def salvar_configuracoes():
-    return {"configuracoes": _configs(atualizar_configuracoes(_json()))}
+    return {"configuracoes": _configs(atualizar_configuracoes(_json(), g.usuario))}
+
+
+# ---------------- historico das acoes da administracao ----------------
+@bp.get("/historico")
+@admin_required
+def historico():
+    acoes = listar_acoes(request.args.get("acao", ""), request.args.get("dias", default=30, type=int))
+    return {"acoes": [a.to_dict() for a in acoes], "tipos": list(ACOES_ADMIN)}
+
+
+# ---------------- exportar dados (CSV para Excel / Google Planilhas) ----------------
+@bp.get("/exportar/<tipo>")
+@admin_required
+def exportar_csv(tipo):
+    nome, conteudo, linhas = exportar(tipo)
+    # Quem tirou dados do sistema fica registrado (LGPD: rastreabilidade)
+    registrar_acao(g.usuario, "exportar_dados", None, f"{nome}: {linhas} linha(s)")
+    db.session.commit()
+    arquivo = f"caronauvv_{tipo}_{datetime.now():%Y-%m-%d}.csv"
+    return Response(conteudo.encode("utf-8"), mimetype="text/csv", headers={
+        "Content-Disposition": f'attachment; filename="{arquivo}"',
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 # ---------------- banco de dados ----------------

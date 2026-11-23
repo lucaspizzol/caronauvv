@@ -308,6 +308,17 @@ Table configuracoes {
   updated_at timestamp [not null, default: `now()`]
 }
 
+Table acoes_admin {
+  id integer [pk]
+  admin_id integer
+  acao varchar(30) [not null]
+  alvo_id integer
+  alvo_nome varchar(120)
+  detalhe varchar(300)
+  created_at timestamp [not null, default: `now()`]
+  Note: 'CHECK acao IN (\'aprovar_selo\', \'recusar_selo\', \'suspender\', \'reativar\', \'remover_foto\', \'resetar_2fa\', \'aprovar_documento\', \'recusar_documento\', \'analisar_denuncia\', \'encerrar_denuncia\', \'resolver_alerta\', \'alterar_regras\', \'exportar_dados\', \'exclusao_automatica\')'
+}
+
 Ref: veiculos.usuario_id > usuarios.id [delete: cascade]
 Ref: contatos_confianca.usuario_id > usuarios.id [delete: cascade]
 Ref: fotos_perfil.usuario_id - usuarios.id [delete: cascade]
@@ -338,6 +349,8 @@ Ref: denuncias.denunciado_id > usuarios.id
 Ref: denuncias.carona_id > caronas.id [delete: set null]
 Ref: denuncias.analisada_por_id > usuarios.id [delete: set null]
 Ref: buscas.usuario_id > usuarios.id [delete: set null]
+Ref: acoes_admin.admin_id > usuarios.id [delete: set null]
+Ref: acoes_admin.alvo_id > usuarios.id [delete: set null]
 
 TableGroup auth {
   usuarios
@@ -374,4 +387,5 @@ TableGroup seguranca {
 TableGroup admin {
   buscas
   configuracoes
+  acoes_admin
 }

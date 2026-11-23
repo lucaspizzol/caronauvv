@@ -1,0 +1,11 @@
+{
+  // Arquivos que rodam no Node (configuracao do Vite e do Vitest)
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

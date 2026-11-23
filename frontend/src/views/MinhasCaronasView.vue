@@ -162,7 +162,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -175,57 +175,59 @@ import ReputacaoResumo from '../components/ReputacaoResumo.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
-import api from '../services/api'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
+import type { TipoAviso } from '../stores/auth'
+import type { Carona, Solicitacao, StatusCarona } from '../types/api'
 import { jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
 import { regras } from '../utils/validacao'
 
 const route = useRoute()
 
-const caronas = ref([])
-const pedidos = reactive({}) // carona_id -> lista de solicitacoes
-const abertas_ = reactive(new Set()) // caronas com a lista de pedidos aberta
-const aba = ref('abertas')
+const caronas = ref<Carona[]>([])
+const pedidos = reactive<Record<number, Solicitacao[]>>({}) // carona_id -> lista de solicitacoes
+const abertas_ = reactive(new Set<number>()) // caronas com a lista de pedidos aberta
+const aba = ref<'abertas' | 'historico'>('abertas')
 const carregando = ref(true)
-const respondendo = ref(null)
-const aviso = reactive({ texto: '', tipo: 'success' })
-const destacados = reactive(new Set()) // pedidos que acabaram de chegar (piscam em amarelo)
+const respondendo = ref<number | null>(null)
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
+const destacados = reactive(new Set<number>()) // pedidos que acabaram de chegar (piscam em amarelo)
 
-const EM_ABERTO = ['ativa', 'lotada', 'em_andamento']
+const EM_ABERTO: StatusCarona[] = ['ativa', 'lotada', 'em_andamento']
 const abertas = computed(() =>
   caronas.value.filter((c) => EM_ABERTO.includes(c.status)).sort((a, b) => a.data_hora_saida.localeCompare(b.data_hora_saida))
 )
 const historico = computed(() => caronas.value.filter((c) => !EM_ABERTO.includes(c.status)))
 const lista = computed(() => (aba.value === 'abertas' ? abertas.value : historico.value))
 
-const pendentes = (c) => (pedidos[c.id] || []).filter((s) => s.status === 'pendente').length
+const pendentes = (c: Carona) => (pedidos[c.id] || []).filter((s) => s.status === 'pendente').length
 const JANELA_INICIO_MS = 30 * 60 * 1000 // pode iniciar 30 min antes da saida
-const aceitos = (c) => (pedidos[c.id] || []).filter((s) => s.status === 'aceita')
-const podeEditar = (c) => ['ativa', 'lotada'].includes(c.status) && !jaSaiu(c.data_hora_saida)
-const podeIniciar = (c) =>
+const aceitos = (c: Carona) => (pedidos[c.id] || []).filter((s) => s.status === 'aceita')
+const podeEditar = (c: Carona) => ['ativa', 'lotada'].includes(c.status) && !jaSaiu(c.data_hora_saida)
+const podeIniciar = (c: Carona) =>
   ['ativa', 'lotada'].includes(c.status) &&
   aceitos(c).length > 0 &&
   new Date(c.data_hora_saida).getTime() - JANELA_INICIO_MS <= Date.now()
-const podeConcluir = (c) => c.status === 'em_andamento' || (EM_ABERTO.includes(c.status) && jaSaiu(c.data_hora_saida))
-const podeAvaliarPassageiros = (c) =>
+const podeConcluir = (c: Carona) => c.status === 'em_andamento' || (EM_ABERTO.includes(c.status) && jaSaiu(c.data_hora_saida))
+const podeAvaliarPassageiros = (c: Carona) =>
   c.status === 'concluida' && aceitos(c).some((s) => !s.faltou && !s.ja_avaliei)
 
-const pins = reactive({}) // solicitacao_id -> PIN digitado
-const errosPin = reactive({})
+const pins = reactive<Record<number, string>>({}) // solicitacao_id -> PIN digitado
+const errosPin = reactive<Record<number, string | null>>({})
 
-function avisar(texto, tipo = 'success') {
+function avisar(texto: string, tipo: TipoAviso = 'success'): void {
   aviso.texto = texto
   aviso.tipo = tipo
 }
 
-async function carregarPedidos(carona) {
-  const { data } = await api.get(`/caronas/${carona.id}/solicitacoes`)
+async function carregarPedidos(carona: Carona): Promise<void> {
+  const { data } = await api.get<{ solicitacoes: Solicitacao[] }>(`/caronas/${carona.id}/solicitacoes`)
   pedidos[carona.id] = data.solicitacoes
 }
 
-async function carregar() {
+async function carregar(): Promise<void> {
   carregando.value = true
   try {
-    const { data } = await api.get('/caronas/minhas')
+    const { data } = await api.get<{ caronas: Carona[] }>('/caronas/minhas')
     caronas.value = data.caronas
     // Ja traz os pedidos das caronas em aberto, para mostrar quantos estao esperando resposta
     // (e das concluidas recentes, para o botao "Avaliar passageiros")
@@ -233,19 +235,19 @@ async function carregar() {
     await Promise.all([...abertas.value, ...recentes].map(carregarPedidos))
     abertas.value.filter((c) => pendentes(c) > 0 || c.status === 'em_andamento').forEach((c) => abertas_.add(c.id))
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   } finally {
     carregando.value = false
   }
 }
 
 // Atualizacao automatica: busca de novo as caronas e os pedidos e destaca os novos
-async function atualizarSilencioso() {
+async function atualizarSilencioso(): Promise<void> {
   const pendentesAntes = new Set(
     Object.values(pedidos).flat().filter((s) => s.status === 'pendente').map((s) => s.id)
   )
   const primeiraVez = !Object.keys(pedidos).length
-  const { data } = await api.get('/caronas/minhas')
+  const { data } = await api.get<{ caronas: Carona[] }>('/caronas/minhas')
   caronas.value = data.caronas
   await Promise.all(abertas.value.map(carregarPedidos))
   if (primeiraVez) return
@@ -263,7 +265,7 @@ async function atualizarSilencioso() {
 
 const { atualizadoEm } = useAoVivo(atualizarSilencioso)
 
-async function alternarPedidos(carona) {
+async function alternarPedidos(carona: Carona): Promise<void> {
   if (abertas_.has(carona.id)) {
     abertas_.delete(carona.id)
     return
@@ -272,69 +274,69 @@ async function alternarPedidos(carona) {
     if (!pedidos[carona.id]) await carregarPedidos(carona)
     abertas_.add(carona.id)
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-function substituir(carona) {
+function substituir(carona: Carona): void {
   const i = caronas.value.findIndex((c) => c.id === carona.id)
   if (i >= 0) caronas.value[i] = carona
 }
 
-async function responder(carona, solicitacao, acao) {
+async function responder(carona: Carona, solicitacao: Solicitacao, acao: 'aceitar' | 'recusar'): Promise<void> {
   respondendo.value = solicitacao.id
   try {
     await api.post(`/solicitacoes/${solicitacao.id}/${acao}`)
     await carregarPedidos(carona)
-    const { data } = await api.get(`/caronas/${carona.id}`)
+    const { data } = await api.get<{ carona: Carona }>(`/caronas/${carona.id}`)
     substituir(data.carona)
     avisar(acao === 'aceitar' ? `Vaga confirmada para ${solicitacao.passageiro.nome}.` : 'Pedido recusado.')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   } finally {
     respondendo.value = null
   }
 }
 
-async function cancelar(carona) {
+async function cancelar(carona: Carona): Promise<void> {
   try {
-    const { data } = await api.post(`/caronas/${carona.id}/cancelar`)
+    const { data } = await api.post<{ carona: Carona }>(`/caronas/${carona.id}/cancelar`)
     substituir(data.carona)
     await carregarPedidos(carona)
     avisar('Carona cancelada. Os passageiros veem o cancelamento em "Meus pedidos".')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function concluir(carona) {
+async function concluir(carona: Carona): Promise<void> {
   try {
-    const { data } = await api.post(`/caronas/${carona.id}/concluir`)
+    const { data } = await api.post<{ carona: Carona }>(`/caronas/${carona.id}/concluir`)
     substituir(data.carona)
     await carregarPedidos(carona)
     if (gps.caronaId === carona.id) desligarGps()
     avisar('Carona concluída! Agora vocês podem se avaliar em "Avaliações".')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
 // ==========================================================
 // CICLO DA VIAGEM
 // ==========================================================
-async function iniciar(carona) {
+async function iniciar(carona: Carona): Promise<void> {
   try {
-    const { data } = await api.post(`/caronas/${carona.id}/iniciar`)
+    const { data } = await api.post<{ carona: Carona }>(`/caronas/${carona.id}/iniciar`)
     substituir(data.carona)
     await carregarPedidos(carona)
     abertas_.add(carona.id)
     avisar('Viagem iniciada! Os passageiros foram avisados. Confirme o PIN de cada um no embarque.')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function confirmarEmbarque(carona, s) {
+async function confirmarEmbarque(carona: Carona, s: Solicitacao): Promise<void> {
   errosPin[s.id] = regras.pin(pins[s.id])
   if (errosPin[s.id]) return
   respondendo.value = s.id
@@ -343,19 +345,19 @@ async function confirmarEmbarque(carona, s) {
     await carregarPedidos(carona)
     avisar(`${s.passageiro.nome.split(' ')[0]} embarcou. PIN conferido!`)
   } catch (e) {
-    errosPin[s.id] = e.campos?.pin || e.mensagem
+    errosPin[s.id] = camposDoErro(e).pin || mensagemDeErro(e)
   } finally {
     respondendo.value = null
   }
 }
 
-async function marcarFalta(carona, s) {
+async function marcarFalta(carona: Carona, s: Solicitacao): Promise<void> {
   try {
     await api.post(`/solicitacoes/${s.id}/falta`)
     await carregarPedidos(carona)
     avisar(`Falta registrada para ${s.passageiro.nome.split(' ')[0]}.`, 'warning')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
@@ -363,10 +365,15 @@ async function marcarFalta(carona, s) {
 // GPS AO VIVO (aparece no link da familia)
 // Envia a posicao do celular do motorista no maximo a cada 15 s.
 // ==========================================================
-const gps = reactive({ caronaId: null, watchId: null, ultimoEnvio: '', erro: '' })
+const gps = reactive<{ caronaId: number | null; watchId: number | null; ultimoEnvio: string; erro: string }>({
+  caronaId: null,
+  watchId: null,
+  ultimoEnvio: '',
+  erro: ''
+})
 let ultimoEnvioMs = 0
 
-function ligarGps(carona) {
+function ligarGps(carona: Carona): void {
   gps.erro = ''
   if (!navigator.geolocation) {
     gps.erro = 'Este navegador não tem GPS.'
@@ -382,7 +389,7 @@ function ligarGps(carona) {
         await api.post(`/caronas/${carona.id}/posicao`, { lat: p.coords.latitude, lng: p.coords.longitude })
         gps.ultimoEnvio = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       } catch (e) {
-        gps.erro = e.mensagem
+        gps.erro = mensagemDeErro(e)
       }
     },
     () => {
@@ -393,7 +400,7 @@ function ligarGps(carona) {
   )
 }
 
-function desligarGps() {
+function desligarGps(): void {
   if (gps.watchId !== null) navigator.geolocation.clearWatch(gps.watchId)
   gps.watchId = null
   gps.caronaId = null

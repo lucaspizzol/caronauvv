@@ -36,22 +36,28 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import { useAoVivo } from '../composables/useAoVivo'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
 import { auth } from '../stores/auth'
+import type { Notificacao } from '../types/api'
 import { dataHora } from '../utils/formato'
 
-const notificacoes = ref([])
+const notificacoes = ref<Notificacao[]>([])
 const carregando = ref(true)
 const erro = ref('')
-const novas = reactive(new Set())
+const novas = reactive(new Set<number>())
 
-const ICONES = {
+interface IconeNotificacao {
+  icone: string
+  cor: string
+}
+
+const ICONES: Record<string, IconeNotificacao> = {
   novo_pedido: { icone: 'bi-person-plus-fill', cor: 'text-primary' },
   vaga_confirmada: { icone: 'bi-check-circle-fill', cor: 'text-success' },
   vaga_recusada: { icone: 'bi-x-circle-fill', cor: 'text-danger' },
@@ -66,10 +72,10 @@ const ICONES = {
   seguranca_conta: { icone: 'bi-shield-lock-fill', cor: 'text-primary' },
   alerta_seguranca: { icone: 'bi-exclamation-octagon-fill', cor: 'text-danger' }
 }
-const icone = (tipo) => ICONES[tipo] || { icone: 'bi-bell-fill', cor: 'text-secondary' }
+const icone = (tipo: string): IconeNotificacao => ICONES[tipo] || { icone: 'bi-bell-fill', cor: 'text-secondary' }
 
 // Para onde cada notificacao leva ao clicar
-function destino(n) {
+function destino(n: Notificacao): string | null {
   if (['avaliacao_pendente', 'nova_avaliacao'].includes(n.tipo)) return '/avaliacoes'
   if (['novo_pedido', 'pedido_cancelado', 'pagamento_informado'].includes(n.tipo)) return '/minhas-caronas'
   if (['vaga_confirmada', 'vaga_recusada', 'carona_cancelada', 'viagem_iniciada', 'embarque_confirmado'].includes(n.tipo)) return '/meus-pedidos'
@@ -78,9 +84,9 @@ function destino(n) {
   return null
 }
 
-async function buscar() {
+async function buscar(): Promise<void> {
   const antes = new Set(notificacoes.value.map((n) => n.id))
-  const { data } = await api.get('/notificacoes')
+  const { data } = await api.get<{ notificacoes: Notificacao[]; nao_lidas: number }>('/notificacoes')
   notificacoes.value = data.notificacoes
   if (antes.size) {
     data.notificacoes.filter((n) => !antes.has(n.id)).forEach((n) => {
@@ -98,7 +104,7 @@ onMounted(async () => {
   try {
     await buscar()
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   } finally {
     carregando.value = false
   }

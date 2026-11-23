@@ -109,52 +109,73 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 
-import api from '../services/api'
-import { atualizarUsuario, auth } from '../stores/auth'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
+import { atualizarUsuario, auth, type TipoAviso } from '../stores/auth'
+import type { DataIso, ErrosCampos, UsuarioLogado } from '../types/api'
 import { dataCurtaNumerica } from '../utils/formato'
 import AlertaMensagem from './AlertaMensagem.vue'
 
-const situacao = ref(null) // { ativo, ativado_em, codigos_restantes }
-const config = ref(null) // { segredo, uri, qr } enquanto o aluno le o QR Code
-const codigos = ref([]) // codigos de reserva recem-gerados
-const acao = ref('') // 'desativar' | 'codigos'
+/** GET /api/auth/2fa */
+interface SituacaoDoisFatores {
+  ativo: boolean
+  ativado_em: DataIso | null
+  codigos_restantes: number
+}
+
+/** POST /api/auth/2fa/iniciar (+ o QR Code desenhado aqui) */
+interface ConfigAutenticador {
+  segredo: string
+  uri: string
+  qr: string
+}
+
+interface RespostaAtivacao {
+  usuario: UsuarioLogado
+  dois_fatores: SituacaoDoisFatores
+  codigos_reserva: string[]
+}
+
+const situacao = ref<SituacaoDoisFatores | null>(null)
+const config = ref<ConfigAutenticador | null>(null) // enquanto o aluno le o QR Code
+const codigos = ref<string[]>([]) // codigos de reserva recem-gerados
+const acao = ref<'' | 'desativar' | 'codigos'>('')
 const codigo = ref('')
 const senha = ref('')
-const erros = ref({})
+const erros = ref<ErrosCampos>({})
 const carregando = ref(false)
 const copiado = ref('')
-const msg = reactive({ texto: '', tipo: 'success' })
+const msg = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
 
 // JBSWY3DP... -> "JBSW Y3DP ..." (mais facil de digitar no aplicativo)
 const chaveAgrupada = computed(() => (config.value?.segredo || '').replace(/(.{4})/g, '$1 ').trim())
 
-function avisar(texto, tipo = 'success') {
+function avisar(texto: string, tipo: TipoAviso = 'success'): void {
   msg.texto = texto
   msg.tipo = tipo
 }
 
-function falhou(e) {
-  erros.value = e.campos || {}
-  if (!Object.keys(erros.value).length) avisar(e.mensagem, 'danger')
+function falhou(e: unknown): void {
+  erros.value = camposDoErro(e)
+  if (!Object.keys(erros.value).length) avisar(mensagemDeErro(e), 'danger')
 }
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/auth/2fa')
+    const { data } = await api.get<{ dois_fatores: SituacaoDoisFatores }>('/auth/2fa')
     situacao.value = data.dois_fatores
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 })
 
-async function iniciar() {
+async function iniciar(): Promise<void> {
   msg.texto = ''
   carregando.value = true
   try {
-    const { data } = await api.post('/auth/2fa/iniciar')
+    const { data } = await api.post<Omit<ConfigAutenticador, 'qr'>>('/auth/2fa/iniciar')
     // QR Code desenhado no navegador: o segredo nao passa por nenhum site de fora
     const QRCode = (await import('qrcode')).default
     const qr = await QRCode.toDataURL(data.uri, { margin: 1, width: 360 })
@@ -163,27 +184,27 @@ async function iniciar() {
     senha.value = ''
     erros.value = {}
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   } finally {
     carregando.value = false
   }
 }
 
-function cancelar() {
+function cancelar(): void {
   config.value = null
   codigo.value = ''
   senha.value = ''
   erros.value = {}
 }
 
-async function ativar() {
+async function ativar(): Promise<void> {
   erros.value = {}
   if (!/^\d{3}\s?\d{3}$/.test(codigo.value)) erros.value.codigo = 'O código tem 6 números.'
   if (!senha.value) erros.value.senha = 'Campo obrigatório.'
   if (Object.keys(erros.value).length) return
   carregando.value = true
   try {
-    const { data } = await api.post('/auth/2fa/ativar', { senha: senha.value, codigo: codigo.value })
+    const { data } = await api.post<RespostaAtivacao>('/auth/2fa/ativar', { senha: senha.value, codigo: codigo.value })
     atualizarUsuario(data.usuario)
     situacao.value = data.dois_fatores
     codigos.value = data.codigos_reserva
@@ -196,7 +217,7 @@ async function ativar() {
   }
 }
 
-function abrirAcao(qual) {
+function abrirAcao(qual: 'desativar' | 'codigos'): void {
   acao.value = qual
   senha.value = ''
   codigo.value = ''
@@ -204,14 +225,14 @@ function abrirAcao(qual) {
   msg.texto = ''
 }
 
-function fecharAcao() {
+function fecharAcao(): void {
   acao.value = ''
   senha.value = ''
   codigo.value = ''
   erros.value = {}
 }
 
-async function confirmarAcao() {
+async function confirmarAcao(): Promise<void> {
   erros.value = {}
   if (!senha.value) erros.value.senha = 'Campo obrigatório.'
   if (!codigo.value) erros.value.codigo = 'Campo obrigatório.'
@@ -220,12 +241,12 @@ async function confirmarAcao() {
   try {
     const corpo = { senha: senha.value, codigo: codigo.value }
     if (acao.value === 'desativar') {
-      const { data } = await api.post('/auth/2fa/desativar', corpo)
+      const { data } = await api.post<Omit<RespostaAtivacao, 'codigos_reserva'>>('/auth/2fa/desativar', corpo)
       atualizarUsuario(data.usuario)
       situacao.value = data.dois_fatores
       avisar('Verificação em duas etapas desligada.', 'info')
     } else {
-      const { data } = await api.post('/auth/2fa/codigos-reserva', corpo)
+      const { data } = await api.post<Omit<RespostaAtivacao, 'usuario'>>('/auth/2fa/codigos-reserva', corpo)
       situacao.value = data.dois_fatores
       codigos.value = data.codigos_reserva
     }
@@ -237,7 +258,7 @@ async function confirmarAcao() {
   }
 }
 
-async function copiar(texto, qual) {
+async function copiar(texto: string, qual: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(texto)
     copiado.value = qual
@@ -247,7 +268,7 @@ async function copiar(texto, qual) {
   }
 }
 
-function baixar() {
+function baixar(): void {
   const texto = [
     'CaronaUVV - códigos de reserva da verificação em duas etapas',
     `Conta: ${auth.usuario?.email || ''}`,

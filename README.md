@@ -36,7 +36,9 @@ transporte (BlaBlaCar, Uber, 99):
 - **Testes:** pytest + pytest-flask (back-end, 255 testes, 96% de cobertura) e Vitest (front-end, 20 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
-- **Front-end:** Vue 3 + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons, responsivo para celular;
+- **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
+  responsivo para celular; os tipos das respostas da API ficam em `src/types/api.ts` e o `vue-tsc` confere código e
+  templates antes de cada build;
   `qrcode` (QR do Pix) e `mermaid` (diagrama do banco no painel)
 
 ## Estrutura
@@ -64,14 +66,15 @@ backend/
   tests/                  # 255 testes (pytest + pytest-flask)
 frontend/
   src/
-    router/, services/api.js, stores/auth.js, composables/useAoVivo.js
+    types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
+    router/, services/api.ts, stores/auth.ts, composables/useAoVivo.ts
     views/                # 15 telas (busca, oferecer, minhas caronas, pedidos, avaliacoes,
                           #   notificacoes, perfil, perfil publico, admin, link da familia,
                           #   login em duas etapas, recuperar senha...)
     components/           # NavBar, CaronaInfo, AvatarUsuario, FotoPerfilEditor, DoisFatores,
                           #   ReputacaoResumo, EstrelasNota, PixPagamento, SegurancaViagem,
                           #   StatusBadge, AlertaMensagem, BotaoConfirmar
-    utils/                # formatacao, validacao e recorte da foto (+ testes *.test.js)
+    utils/                # formatacao, validacao e recorte da foto (+ testes *.test.ts)
 docs/                     # documentacao do banco (gerada a partir dos modelos)
 ```
 
@@ -110,10 +113,11 @@ cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
 npm test                         # 20 testes do front (Vitest)
+npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 
-O Vite repassa as chamadas `/api` para o Flask em `localhost:5000` (proxy em `vite.config.js`).
-Para gerar a versão de produção: `npm run build` (sai na pasta `dist/`).
+O Vite repassa as chamadas `/api` para o Flask em `localhost:5000` (proxy em `vite.config.ts`).
+Para gerar a versão de produção: `npm run build` (confere os tipos e sai na pasta `dist/`).
 
 ### PostgreSQL (produção)
 

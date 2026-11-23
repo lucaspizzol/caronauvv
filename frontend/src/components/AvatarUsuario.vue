@@ -6,15 +6,19 @@
   </span>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import type { PessoaComFoto } from '../types/api'
 import { iniciais, urlFoto } from '../utils/formato'
 
-const props = defineProps({
-  usuario: { type: Object, default: null }, // precisa de .nome e .foto_url
-  tamanho: { type: Number, default: 2.5 } // em rem
-})
+const props = withDefaults(
+  defineProps<{
+    usuario?: PessoaComFoto | null // precisa de .nome e .foto_url
+    tamanho?: number // em rem
+  }>(),
+  { usuario: null, tamanho: 2.5 }
+)
 
 const falhou = ref(false)
 const src = computed(() => urlFoto(props.usuario?.foto_url))

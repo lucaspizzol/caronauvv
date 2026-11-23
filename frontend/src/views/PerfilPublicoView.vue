@@ -133,24 +133,25 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
-import api from '../services/api'
-import { auth } from '../stores/auth'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
+import { auth, type TipoAviso } from '../stores/auth'
+import type { ErrosCampos, PerfilPublico, Reputacao, Selo } from '../types/api'
 import {
-  dataCurta, listaPreferencias, membroDesde, MOTIVOS_DENUNCIA, nota, porcentagem
+  dataCurta, listaPreferencias, membroDesde, MOTIVOS_DENUNCIA, nota, porcentagem, type MotivoDenuncia
 } from '../utils/formato'
 import { regras, validar } from '../utils/validacao'
 
-const props = defineProps({ id: { type: String, required: true } })
+const props = defineProps<{ id: string }>()
 const router = useRouter()
 const route = useRoute()
 
-const ICONE_SELO = {
+const ICONE_SELO: Record<Selo['codigo'], string> = {
   email_uvv: 'bi-envelope-check-fill',
   perfil_verificado: 'bi-patch-check-fill',
   pontual: 'bi-alarm-fill',
@@ -158,36 +159,42 @@ const ICONE_SELO = {
   sem_faltas: 'bi-calendar-check-fill'
 }
 
-const u = ref(null)
+const u = ref<PerfilPublico | null>(null)
 const carregando = ref(true)
 const erro = ref('')
-const rep = computed(() => u.value?.reputacao || {})
+// Reputacao "zerada" enquanto o perfil carrega: o template pode ler os campos sem conferir se existem
+const REPUTACAO_VAZIA: Reputacao = {
+  nota_media: null, total_avaliacoes: 0, tags: [], viagens_motorista: 0, viagens_passageiro: 0,
+  faltas: 0, taxa_cancelamento: 0, nivel: 'Calouro', selos: []
+}
+const rep = computed<Reputacao>(() => u.value?.reputacao ?? REPUTACAO_VAZIA)
 
 const denunciando = ref(false)
 const enviando = ref(false)
-const denuncia = reactive({ motivo: '', descricao: '' })
-const errosDenuncia = ref({})
-const msgDenuncia = reactive({ texto: '', tipo: 'success' })
+const denuncia = reactive<{ motivo: '' | MotivoDenuncia; descricao: string }>({ motivo: '', descricao: '' })
+const errosDenuncia = ref<ErrosCampos>({})
+const msgDenuncia = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
 
-async function carregar() {
+async function carregar(): Promise<void> {
   carregando.value = true
   erro.value = ''
   try {
-    const { data } = await api.get(`/usuarios/${props.id}`)
+    const { data } = await api.get<{ usuario: PerfilPublico }>(`/usuarios/${props.id}`)
     u.value = data.usuario
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   } finally {
     carregando.value = false
   }
   if (route.hash === '#denunciar') abrirDenuncia()
 }
 
-function abrirDenuncia() {
+function abrirDenuncia(): void {
   denunciando.value = true
 }
 
-async function denunciar() {
+async function denunciar(): Promise<void> {
+  if (!u.value) return
   errosDenuncia.value = validar(denuncia, { motivo: [regras.obrigatorio] })
   if (Object.keys(errosDenuncia.value).length) return
   enviando.value = true
@@ -197,9 +204,9 @@ async function denunciar() {
     msgDenuncia.tipo = 'success'
     Object.assign(denuncia, { motivo: '', descricao: '' })
   } catch (e) {
-    msgDenuncia.texto = e.mensagem
+    msgDenuncia.texto = mensagemDeErro(e)
     msgDenuncia.tipo = 'danger'
-    errosDenuncia.value = e.campos || {}
+    errosDenuncia.value = camposDoErro(e)
   } finally {
     enviando.value = false
   }

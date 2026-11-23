@@ -251,7 +251,7 @@ def contar_testes() -> int:
 def contar_testes_front() -> int:
     return sum(
         f.read_text(encoding="utf-8").count("\n  it(")
-        for f in (RAIZ / "frontend" / "src").rglob("*.test.js")
+        for f in (RAIZ / "frontend" / "src").rglob("*.test.ts")
     )
 
 
@@ -524,7 +524,7 @@ Flask ── create_app()   (Application Factory)
       <tr><td><code>seguranca/</code></td><td>Link da família, botão de emergência e denúncias</td></tr>
       <tr><td><code>admin/</code></td><td>Indicadores, moderação, configurações e estrutura do banco</td></tr>
       <tr><td><code>migrations/</code>, <code>tests/</code></td><td>Migrações do Alembic e testes com pytest (SQLite em memória ou PostgreSQL)</td></tr>
-      <tr><td><code>frontend/src/</code></td><td>views, components, router (rotas protegidas e de admin), services/api.js, stores (sessão por aba), composables (ao vivo), utils (+ testes Vitest)</td></tr>
+      <tr><td><code>frontend/src/</code></td><td>views, components, router (rotas protegidas e de admin), services/api.ts, stores (sessão por aba), composables (ao vivo), utils (+ testes Vitest), types/api.ts (formato das respostas da API); tudo em TypeScript</td></tr>
     </tbody>
   </table>
   <h3>Exemplo do caminho de uma requisição: "Confirmar embarque"</h3>
@@ -607,7 +607,7 @@ Flask ── create_app()   (Application Factory)
   <h3>5.7 Foto de perfil (upload de arquivo)</h3>
   <p>O navegador recorta a foto em quadrado e reduz para 400 × 400 antes de enviar, então uma foto de celular de 5 MB
   chega com cerca de 25 KB. O envio é um formulário <code>multipart/form-data</code>:</p>
-  {codigo(linhas("frontend/src/utils/imagem.js", "export async function prepararFoto", "'image/jpeg', 0.85)") + chr(10) + "  })" + chr(10) + "}", "frontend/src/utils/imagem.js", "javascript")}
+  {codigo(linhas("frontend/src/utils/imagem.ts", "export async function prepararFoto", "'image/jpeg', 0.85)") + chr(10) + "  })" + chr(10) + "}", "frontend/src/utils/imagem.ts", "typescript")}
   <p>O servidor não confia no navegador: descobre o tipo pelos primeiros bytes do arquivo, lê largura e altura do
   cabeçalho e limita o tamanho. A foto fica no banco e o endereço dela é aleatório:</p>
   {codigo(funcao("backend/caronauvv/auth/foto.py", "identificar_imagem") + chr(10) * 3 + funcao("backend/caronauvv/auth/foto.py", "salvar_foto"), "backend/caronauvv/auth/foto.py")}
@@ -641,18 +641,30 @@ Flask ── create_app()   (Application Factory)
       <tr><td><code>test_avaliacoes_pagamentos.py</code></td><td>Avaliação às cegas, reputação, perfil público, Pix e pagamento</td></tr>
       <tr><td><code>test_seguranca_notificacoes.py</code></td><td>Notificações, contatos, link da família, emergência, denúncias</td></tr>
       <tr><td><code>test_admin.py</code>, <code>test_banco.py</code>, <code>test_models.py</code>, <code>test_veiculos.py</code></td><td>Painel, moderação, configurações, integridade do banco e seed</td></tr>
-      <tr><td><code>frontend/src/utils/*.test.js</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
+      <tr><td><code>frontend/src/utils/*.test.ts</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
     </tbody>
   </table>
 </section>
 <section>
-  <h3>5.10 Front-end em Vue 3</h3>
+  <h3>5.10 Front-end em Vue 3 + TypeScript</h3>
+  <p>Todo o front-end é escrito em <b>TypeScript em modo estrito</b> (<code>strict: true</code>): os arquivos
+  <code>.ts</code> e o <code>&lt;script setup lang="ts"&gt;</code> de cada componente. O formato de cada resposta da
+  API está descrito em <code>src/types/api.ts</code>, espelhando os <code>to_dict()</code> do back-end; assim, ler um
+  campo que não existe ou esquecer que ele pode vir <code>null</code> vira erro de compilação, e não de tela. O
+  <code>vue-tsc</code> confere também os templates, e o <code>npm run build</code> só gera a versão de produção se a
+  checagem passar.</p>
+  {codigo(linhas("frontend/src/types/api.ts", "export interface Carona {", "veiculo: Veiculo | null") + chr(10) + "}", "frontend/src/types/api.ts", "typescript")}
+  <p>As props e os eventos dos componentes também são tipados: se uma tela passar um valor do tipo errado para um
+  componente, o <code>vue-tsc</code> acusa antes de o código chegar ao navegador.</p>
+  {codigo(linhas("frontend/src/components/PixPagamento.vue", "const props = withDefaults(", "const emit = defineEmits"), "frontend/src/components/PixPagamento.vue", "typescript")}
+</section>
+<section>
   <p>Um único cliente HTTP coloca o token em toda requisição, volta para o login quando a sessão expira e repassa
   os erros de cada campo vindos do servidor:</p>
-  {codigo(linhas("frontend/src/services/api.js", "api.interceptors.response.use(", "export default api", incluir_fim=False), "frontend/src/services/api.js", "javascript")}
+  {codigo(linhas("frontend/src/services/api.ts", "api.interceptors.response.use(", "/**", incluir_fim=False), "frontend/src/services/api.ts", "typescript")}
   <p>O composable <code>useAoVivo</code> atualiza as telas sozinho (sem sobrepor requisições e pausando com a aba
   escondida); é ele que faz o pedido aparecer na tela do motorista e o sino de notificações contar:</p>
-  {codigo(linhas("frontend/src/composables/useAoVivo.js", "export function useAoVivo", "return { atualizadoEm"), "frontend/src/composables/useAoVivo.js", "javascript")}
+  {codigo(linhas("frontend/src/composables/useAoVivo.ts", "export function useAoVivo", "return { atualizadoEm"), "frontend/src/composables/useAoVivo.ts", "typescript")}
 </section>""")
 
     # ---------------- 6. TECNOLOGIAS ----------------
@@ -674,8 +686,9 @@ Flask ── create_app()   (Application Factory)
       <tr><td>pytest, pytest-flask, pytest-cov</td><td>Testes das rotas e regras de negócio, com cobertura medida.</td></tr>
       <tr><td>invoke e pyproject.toml</td><td>Empacotamento e tarefas (<code>invoke test</code>, <code>invoke resetdb</code>, <code>invoke docsdb</code>).</td></tr>
       <tr><td>Vue 3, Vite, vue-router, axios</td><td>SPA que consome a API, no padrão do front-end do TaskFlow.</td></tr>
+      <tr><td>TypeScript 5 (modo estrito) e vue-tsc</td><td>Tipagem estática do front-end (Unidade I da disciplina): interfaces das respostas da API, props e eventos tipados, checagem dos templates antes do build.</td></tr>
       <tr><td>Bootstrap 5 e Bootstrap Icons</td><td>Framework CSS: grid responsivo, formulários com estado de erro, componentes e ícones.</td></tr>
-      <tr><td>Vitest</td><td>Testes do front-end (validação e formatação).</td></tr>
+      <tr><td>Vitest</td><td>Testes do front-end (validação, formatação e recorte da foto), escritos em TypeScript.</td></tr>
       <tr><td>qrcode, Mermaid</td><td>QR Code do Pix e do autenticador gerados no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
       <tr><td>OpenStreetMap</td><td>Mapa do link da família, sem chave de API.</td></tr>
       <tr><td>Git e GitHub</td><td>Versionamento, com commits por etapa.</td></tr>
@@ -710,7 +723,8 @@ python -m pytest                          # testes do back-end</pre>
   <pre class="terminal">cd frontend
 npm install
 npm run dev                        # abre em http://localhost:5173
-npm test                           # testes do front-end (Vitest)</pre>
+npm test                           # testes do front-end (Vitest)
+npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   <h3>Usuários de exemplo (senha 123456)</h3>
   <table>
     <thead><tr><th>Login</th><th>Para que usar</th></tr></thead>
@@ -795,8 +809,8 @@ npm test                           # testes do front-end (Vitest)</pre>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
       <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; {n_rotas} rotas (seção 4).</td></tr>
-      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.js</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
-      <tr><td>4. Interface / front-end</td><td>Vue 3 + Bootstrap 5, {n_telas} telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
+      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
+      <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, {n_telas} telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
       <tr><td>5. Testes automatizados</td><td>{n_testes} testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + {n_front} testes Vitest (seção 5.9).</td></tr>
       <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, {n_tabelas} tabelas com FK, CHECK, UNIQUE e índices; {n_migracoes} migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>

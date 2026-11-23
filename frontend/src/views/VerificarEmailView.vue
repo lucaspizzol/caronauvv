@@ -45,13 +45,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api from '../services/api'
-import { atualizarUsuario, auth, demo } from '../stores/auth'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
+import { atualizarUsuario, auth, demo, type TipoAviso } from '../stores/auth'
+import type { UsuarioLogado } from '../types/api'
 import { regras } from '../utils/validacao'
 
 const router = useRouter()
@@ -59,33 +60,33 @@ const codigo = ref('')
 const erro = ref('')
 const enviando = ref(false)
 const reenviando = ref(false)
-const aviso = reactive({ texto: '', tipo: 'success' })
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
 
-async function confirmar() {
+async function confirmar(): Promise<void> {
   erro.value = regras.codigo(codigo.value) || ''
   if (erro.value) return
   enviando.value = true
   try {
-    const { data } = await api.post('/auth/verificar-email', { codigo: codigo.value })
+    const { data } = await api.post<{ usuario: UsuarioLogado }>('/auth/verificar-email', { codigo: codigo.value })
     atualizarUsuario(data.usuario)
     demo.codigoDev = null
-    router.push({ name: 'buscar' })
+    void router.push({ name: 'buscar' })
   } catch (e) {
-    erro.value = e.campos?.codigo || e.mensagem
+    erro.value = camposDoErro(e).codigo || mensagemDeErro(e)
   } finally {
     enviando.value = false
   }
 }
 
-async function reenviar() {
+async function reenviar(): Promise<void> {
   reenviando.value = true
   try {
-    const { data } = await api.post('/auth/reenviar-codigo')
+    const { data } = await api.post<{ message: string; codigo_dev?: string }>('/auth/reenviar-codigo')
     demo.codigoDev = data.codigo_dev || null
     aviso.texto = data.message
     aviso.tipo = 'success'
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   } finally {
     reenviando.value = false

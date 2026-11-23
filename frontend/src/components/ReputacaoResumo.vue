@@ -13,15 +13,19 @@
   </span>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
+import type { Reputacao } from '../types/api'
 import { nota } from '../utils/formato'
 
-const props = defineProps({
-  usuario: { type: Object, default: null }, // dict do usuario com .reputacao
-  mostrarFaltas: { type: Boolean, default: false }
-})
+const props = withDefaults(
+  defineProps<{
+    usuario?: { reputacao?: Reputacao; verificado?: boolean } | null // usuario da API com .reputacao
+    mostrarFaltas?: boolean
+  }>(),
+  { usuario: null, mostrarFaltas: false }
+)
 
 const rep = computed(() => props.usuario?.reputacao)
 const titulo = computed(() => {

@@ -113,41 +113,52 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import { useAoVivo } from '../composables/useAoVivo'
-import api from '../services/api'
-import { auth } from '../stores/auth'
+import api, { mensagemDeErro } from '../services/api'
+import { auth, type TipoAviso } from '../stores/auth'
+import type { Carona, Sentido, Solicitacao, StatusSolicitacao } from '../types/api'
 import { BAIRROS } from '../utils/bairros'
 import { hojeLocal } from '../utils/formato'
 
 const hoje = hojeLocal()
 
-const filtros = reactive({ bairro: '', sentido: '', data: '', hora_inicio: '', hora_fim: '' })
-let aplicados = {} // filtros da ultima busca (a atualizacao automatica usa estes, nao o que esta sendo digitado)
-const caronas = ref([])
+interface Filtros {
+  bairro: string
+  sentido: '' | Sentido
+  data: string
+  hora_inicio: string
+  hora_fim: string
+}
+
+const FILTROS_VAZIOS: Filtros = { bairro: '', sentido: '', data: '', hora_inicio: '', hora_fim: '' }
+
+const filtros = reactive<Filtros>({ ...FILTROS_VAZIOS })
+let aplicados: Partial<Filtros> = {} // filtros da ultima busca (a atualizacao automatica usa estes, nao o que esta sendo digitado)
+const caronas = ref<Carona[]>([])
 const carregando = ref(true)
-const aviso = reactive({ texto: '', tipo: 'danger' })
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'danger' })
 const erroFaixa = ref('')
 
-const abertaId = ref(null)
+const abertaId = ref<number | null>(null)
 const pedido = reactive({ endereco_embarque: '', mensagem: '' })
-const pedidos = reactive({}) // carona_id -> texto de confirmacao
-const meusPedidos = ref({}) // carona_id -> status do meu pedido em aberto (pendente/aceita)
+const pedidos = reactive<Record<number, string>>({}) // carona_id -> texto de confirmacao
+const meusPedidos = ref<Record<number, StatusSolicitacao>>({}) // carona_id -> status do meu pedido em aberto (pendente/aceita)
 
-async function carregarMeusPedidos() {
-  const { data } = await api.get('/solicitacoes/minhas')
+async function carregarMeusPedidos(): Promise<void> {
+  const { data } = await api.get<{ solicitacoes: Solicitacao[] }>('/solicitacoes/minhas')
   meusPedidos.value = Object.fromEntries(
     data.solicitacoes.filter((s) => ['pendente', 'aceita'].includes(s.status)).map((s) => [s.carona_id, s.status])
   )
 }
 const enviando = ref(false)
 
-async function buscar() {
+async function buscar(): Promise<void> {
   erroFaixa.value = ''
   if (filtros.hora_inicio && filtros.hora_fim && filtros.hora_inicio > filtros.hora_fim) {
     erroFaixa.value = 'O horário inicial precisa ser antes do final.'
@@ -157,12 +168,12 @@ async function buscar() {
   aviso.texto = ''
   try {
     // Envia so os filtros preenchidos (GET /api/caronas?bairro=...&data=...)
-    const params = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v))
+    const params: Partial<Filtros> = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v))
     aplicados = params
-    const [{ data }] = await Promise.all([api.get('/caronas', { params }), carregarMeusPedidos()])
+    const [{ data }] = await Promise.all([api.get<{ caronas: Carona[] }>('/caronas', { params }), carregarMeusPedidos()])
     caronas.value = data.caronas
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
     caronas.value = []
   } finally {
@@ -170,30 +181,30 @@ async function buscar() {
   }
 }
 
-function limpar() {
-  Object.assign(filtros, { bairro: '', sentido: '', data: '', hora_inicio: '', hora_fim: '' })
-  buscar()
+function limpar(): void {
+  Object.assign(filtros, FILTROS_VAZIOS)
+  void buscar()
 }
 
-function abrirPedido(carona) {
+function abrirPedido(carona: Carona): void {
   abertaId.value = carona.id
   pedido.endereco_embarque = ''
   pedido.mensagem = ''
 }
 
-async function pedirVaga(carona) {
+async function pedirVaga(carona: Carona): Promise<void> {
   enviando.value = true
   aviso.texto = ''
   try {
-    const { data } = await api.post(`/caronas/${carona.id}/solicitacoes`, pedido)
+    const { data } = await api.post<{ solicitacao: Solicitacao }>(`/caronas/${carona.id}/solicitacoes`, pedido)
     pedidos[carona.id] =
       data.solicitacao.status === 'aceita'
         ? 'Vaga confirmada na hora (reserva automática)!'
         : 'Pedido enviado! Agora é só aguardar o motorista aceitar.'
     abertaId.value = null
-    if (data.solicitacao.status === 'aceita') buscar()
+    if (data.solicitacao.status === 'aceita') void buscar()
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   } finally {
     enviando.value = false
@@ -201,9 +212,9 @@ async function pedirVaga(carona) {
 }
 
 // Atualizacao automatica: novas caronas aparecem e as lotadas somem sozinhas
-async function atualizarSilencioso() {
+async function atualizarSilencioso(): Promise<void> {
   if (carregando.value) return
-  const [{ data }] = await Promise.all([api.get('/caronas', { params: aplicados }), carregarMeusPedidos()])
+  const [{ data }] = await Promise.all([api.get<{ caronas: Carona[] }>('/caronas', { params: aplicados }), carregarMeusPedidos()])
   caronas.value = data.caronas
   if (abertaId.value && !caronas.value.some((c) => c.id === abertaId.value)) abertaId.value = null
 }

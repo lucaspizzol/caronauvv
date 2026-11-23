@@ -17,14 +17,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  modelValue: { type: Number, default: 0 },
-  rotulo: { type: String, default: 'Nota' }
+const props = withDefaults(defineProps<{ modelValue?: number; rotulo?: string }>(), {
+  modelValue: 0,
+  rotulo: 'Nota'
 })
-defineEmits(['update:modelValue'])
+defineEmits<{ 'update:modelValue': [nota: number] }>()
 
 const LEGENDAS = ['', 'Muito ruim', 'Ruim', 'Ok', 'Boa', 'Excelente']
 const legenda = computed(() => LEGENDAS[props.modelValue] || 'Escolha de 1 a 5')

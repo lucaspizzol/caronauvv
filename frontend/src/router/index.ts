@@ -1,11 +1,20 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { auth, logado } from '../stores/auth'
 
+// Campos extras que cada rota pode ter em `meta` (o TypeScript confere o nome e o tipo)
+// publica: abre sem login | livre: abre com ou sem login (link da familia)
+// admin: so administradores
+declare module 'vue-router' {
+  interface RouteMeta {
+    publica?: boolean
+    livre?: boolean
+    admin?: boolean
+  }
+}
+
 // Telas carregadas sob demanda (cada uma vira um arquivo JS separado no build)
-// meta.publica: abre sem login | meta.livre: abre com ou sem login (link da familia)
-// meta.admin: so administradores
-const routes = [
+const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/caronas' },
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { publica: true } },
   { path: '/cadastro', name: 'cadastro', component: () => import('../views/CadastroView.vue'), meta: { publica: true } },
@@ -31,17 +40,21 @@ const router = createRouter({
   scrollBehavior: (to) => (to.hash ? { el: to.hash } : { top: 0 })
 })
 
+// Telas de quem ainda nao entrou: quem ja esta logado vai direto para a busca
+const ROTAS_DE_ENTRADA = ['login', 'cadastro', 'recuperar-senha']
+
 // Rotas protegidas: sem login vai para /login e volta depois
 router.beforeEach((to) => {
   if (!to.meta.publica && !logado.value) {
     return { name: 'login', query: { volta: to.fullPath } }
   }
-  if (['login', 'cadastro', 'recuperar-senha'].includes(to.name) && logado.value) {
+  if (ROTAS_DE_ENTRADA.includes(String(to.name)) && logado.value) {
     return { name: 'buscar' }
   }
   if (to.meta.admin && !auth.usuario?.is_admin) {
     return { name: 'buscar' }
   }
+  return true
 })
 
 export default router

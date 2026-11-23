@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
 // Mesmo esquema do TaskFlow do professor: em desenvolvimento o Vite
@@ -11,7 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.js']
+    include: ['src/**/*.test.ts']
   },
   server: {
     host: '0.0.0.0',

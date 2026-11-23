@@ -1,5 +1,7 @@
 import { computed, reactive } from 'vue'
 
+import type { UsuarioLogado } from '../types/api'
+
 // ==========================================================
 // Estado de login compartilhado entre as telas.
 // O token fica no sessionStorage: cada aba tem a sua sessao, entao da para
@@ -8,7 +10,15 @@ import { computed, reactive } from 'vue'
 // descarta o token).
 // ==========================================================
 const CHAVE = 'caronauvv.sessao'
-const armazenamento = (() => {
+
+interface SessaoSalva {
+  token?: string | null
+  usuario?: UsuarioLogado | null
+}
+
+type Armazenamento = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+const armazenamento: Armazenamento = (() => {
   try {
     return window.sessionStorage
   } catch {
@@ -16,9 +26,9 @@ const armazenamento = (() => {
   }
 })()
 
-function lerSessao() {
+function lerSessao(): SessaoSalva {
   try {
-    return JSON.parse(armazenamento.getItem(CHAVE)) || {}
+    return (JSON.parse(armazenamento.getItem(CHAVE) ?? 'null') as SessaoSalva | null) || {}
   } catch {
     return {}
   }
@@ -26,7 +36,7 @@ function lerSessao() {
 
 const salvo = lerSessao()
 
-export const auth = reactive({
+export const auth = reactive<{ token: string | null; usuario: UsuarioLogado | null }>({
   token: salvo.token || null,
   usuario: salvo.usuario || null
 })
@@ -35,9 +45,9 @@ export const logado = computed(() => Boolean(auth.token))
 
 // Modo desenvolvimento/apresentacao: sem servidor de e-mail, a API devolve o
 // codigo de verificacao ("codigo_dev") e a tela de confirmacao o mostra.
-export const demo = reactive({ codigoDev: null })
+export const demo = reactive<{ codigoDev: string | null }>({ codigoDev: null })
 
-function persistir() {
+function persistir(): void {
   try {
     if (auth.token) {
       armazenamento.setItem(CHAVE, JSON.stringify({ token: auth.token, usuario: auth.usuario }))
@@ -49,21 +59,23 @@ function persistir() {
   }
 }
 
-// Aviso que precisa sobreviver a troca de tela (ex.: "voce entrou com um codigo de reserva")
-export const avisoGlobal = reactive({ texto: '', tipo: 'info' })
+export type TipoAviso = 'info' | 'success' | 'warning' | 'danger'
 
-export function entrar(token, usuario) {
+// Aviso que precisa sobreviver a troca de tela (ex.: "voce entrou com um codigo de reserva")
+export const avisoGlobal = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'info' })
+
+export function entrar(token: string, usuario: UsuarioLogado): void {
   auth.token = token
   auth.usuario = usuario
   persistir()
 }
 
-export function atualizarUsuario(usuario) {
+export function atualizarUsuario(usuario: UsuarioLogado): void {
   auth.usuario = usuario
   persistir()
 }
 
-export function sair() {
+export function sair(): void {
   auth.token = null
   auth.usuario = null
   persistir()

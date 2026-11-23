@@ -45,42 +45,55 @@
   <AlertaMensagem :texto="erro" @fechar="erro = ''" />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { Alerta, ContatoConfianca } from '../types/api'
 import { linkWhatsApp } from '../utils/formato'
 import AlertaMensagem from './AlertaMensagem.vue'
 import BotaoConfirmar from './BotaoConfirmar.vue'
 
-const props = defineProps({ caronaId: { type: Number, required: true } })
+const props = defineProps<{ caronaId: number }>()
+
+/** Resposta do botao de emergencia (POST /caronas/<id>/sos). */
+interface RespostaSos {
+  alerta: Alerta
+  contatos: ContatoConfianca[]
+  emergencia: string // telefone da policia (190)
+}
+
+interface Posicao {
+  lat?: number
+  lng?: number
+}
 
 const link = ref('')
-const contatos = ref([])
+const contatos = ref<ContatoConfianca[]>([])
 const gerando = ref(false)
 const copiado = ref(false)
-const sos = ref(null)
+const sos = ref<RespostaSos | null>(null)
 const erro = ref('')
 
 const mensagem = computed(() => `Estou numa carona do CaronaUVV. Acompanhe por aqui: ${link.value}`)
 
-async function compartilhar() {
+async function compartilhar(): Promise<void> {
   gerando.value = true
   try {
     const [{ data }, c] = await Promise.all([
-      api.post(`/caronas/${props.caronaId}/compartilhar`),
-      api.get('/contatos')
+      api.post<{ link: { caminho: string } }>(`/caronas/${props.caronaId}/compartilhar`),
+      api.get<{ contatos: ContatoConfianca[] }>('/contatos')
     ])
     link.value = `${location.origin}${data.link.caminho}`
     contatos.value = c.data.contatos
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   } finally {
     gerando.value = false
   }
 }
 
-async function copiar() {
+async function copiar(): Promise<void> {
   try {
     await navigator.clipboard.writeText(link.value)
     copiado.value = true
@@ -90,7 +103,7 @@ async function copiar() {
   }
 }
 
-function posicaoAtual() {
+function posicaoAtual(): Promise<Posicao> {
   // Tenta mandar a localizacao junto (ate 4 s); se o navegador negar, vai sem
   return new Promise((resolve) => {
     if (!navigator.geolocation) return resolve({})
@@ -102,13 +115,13 @@ function posicaoAtual() {
   })
 }
 
-async function emergencia() {
+async function emergencia(): Promise<void> {
   try {
     const posicao = await posicaoAtual()
-    const { data } = await api.post(`/caronas/${props.caronaId}/sos`, posicao)
+    const { data } = await api.post<RespostaSos>(`/caronas/${props.caronaId}/sos`, posicao)
     sos.value = data
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   }
 }
 </script>

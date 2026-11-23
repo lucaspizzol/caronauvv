@@ -118,23 +118,39 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { Carona, ErrosCampos, Sentido, Veiculo } from '../types/api'
 import { BAIRROS } from '../utils/bairros'
 import { dinheiro, hojeLocal } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
-const props = defineProps({ id: { type: String, default: null } })
+const props = withDefaults(defineProps<{ id?: string | null }>(), { id: null })
 const router = useRouter()
 const editando = computed(() => Boolean(props.id))
 
 const DESTINOS = ['UVV - Entrada principal', 'UVV - Prédio Branco', 'UVV - Biopráticas', 'UVV - Estacionamento']
 
-const form = reactive({
+interface FormCarona {
+  sentido: Sentido
+  bairro_origem: string
+  endereco_origem: string
+  destino: string
+  data: string // AAAA-MM-DD
+  hora: string // HH:MM
+  vagas: number
+  valor_por_passageiro: number | ''
+  veiculo_id: number | null
+  reserva_automatica: boolean
+  observacoes: string
+  distancia_km: number | null
+}
+
+const form = reactive<FormCarona>({
   sentido: 'ida',
   bairro_origem: '',
   endereco_origem: '',
@@ -149,39 +165,39 @@ const form = reactive({
   distancia_km: null
 })
 const teto = ref(5)
-const sugestao = ref(null)
+const sugestao = ref<number | null>(null)
+const veiculos = ref<Veiculo[]>([])
+const erros = ref<ErrosCampos>({})
+const erroApi = ref('')
+const carregando = ref(true)
+const salvando = ref(false)
 
-async function sugerirValor() {
+async function sugerirValor(): Promise<void> {
   try {
-    const { data } = await api.get('/caronas/valor-sugerido', {
+    const { data } = await api.get<{ valor_sugerido: number; teto: number }>('/caronas/valor-sugerido', {
       params: { distancia_km: form.distancia_km, vagas: form.vagas || 1 }
     })
     sugestao.value = data.valor_sugerido
     teto.value = data.teto
     form.valor_por_passageiro = data.valor_sugerido
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
   }
 }
-const veiculos = ref([])
-const erros = ref({})
-const erroApi = ref('')
-const carregando = ref(true)
-const salvando = ref(false)
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/veiculos')
+    const { data } = await api.get<{ veiculos: Veiculo[] }>('/veiculos')
     veiculos.value = data.veiculos
     if (!editando.value && veiculos.value.length === 1) form.veiculo_id = veiculos.value[0].id
 
     if (editando.value) {
-      const { data: d } = await api.get(`/caronas/${props.id}`)
+      const { data: d } = await api.get<{ carona: Carona }>(`/caronas/${props.id}`)
       const c = d.carona
       Object.assign(form, {
         sentido: c.sentido,
         bairro_origem: c.bairro_origem,
-        endereco_origem: c.endereco_origem,
+        endereco_origem: c.endereco_origem || '',
         destino: c.destino,
         data: c.data_hora_saida.slice(0, 10),
         hora: c.data_hora_saida.slice(11, 16),
@@ -191,23 +207,23 @@ onMounted(async () => {
         reserva_automatica: c.reserva_automatica,
         observacoes: c.observacoes || '',
         distancia_km: c.distancia_km
-      })
+      } satisfies FormCarona)
       if (!DESTINOS.includes(c.destino)) DESTINOS.push(c.destino)
     }
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
   } finally {
     carregando.value = false
   }
 })
 
-function validarForm() {
+function validarForm(): ErrosCampos {
   const e = validar(form, {
     bairro_origem: [regras.obrigatorio],
     endereco_origem: [regras.obrigatorio],
     data: [regras.obrigatorio],
     hora: [regras.obrigatorio],
-    vagas: [(v) => (Number.isInteger(v) && v >= 1 && v <= 6 ? null : 'De 1 a 6 vagas.')],
+    vagas: [(v) => (Number.isInteger(v) && Number(v) >= 1 && Number(v) <= 6 ? null : 'De 1 a 6 vagas.')],
     valor_por_passageiro: [
       (v) => (v === '' || v === null || Number(v) >= 0 ? null : 'O valor não pode ser negativo.'),
       (v) => (Number(v || 0) <= teto.value ? null : `Carona solidária: máximo de ${dinheiro(teto.value)} por pessoa.`)
@@ -220,7 +236,7 @@ function validarForm() {
   return e
 }
 
-async function salvar() {
+async function salvar(): Promise<void> {
   erroApi.value = ''
   erros.value = validarForm()
   if (Object.keys(erros.value).length) return
@@ -240,9 +256,9 @@ async function salvar() {
     } else {
       await api.post('/caronas', dados)
     }
-    router.push({ name: 'minhas-caronas', query: { ok: editando.value ? 'editada' : 'criada' } })
+    void router.push({ name: 'minhas-caronas', query: { ok: editando.value ? 'editada' : 'criada' } })
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
     erros.value = { ...erros.value, ...errosDoServidor(e, Object.keys(form)) }
   } finally {
     salvando.value = false

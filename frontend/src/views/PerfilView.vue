@@ -192,66 +192,92 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import DoisFatores from '../components/DoisFatores.vue'
 import FotoPerfilEditor from '../components/FotoPerfilEditor.vue'
-import api from '../services/api'
-import { atualizarUsuario, auth, entrar } from '../stores/auth'
+import api, { mensagemDeErro } from '../services/api'
+import { atualizarUsuario, auth, entrar, type TipoAviso } from '../stores/auth'
+import type { ContatoConfianca, ErrosCampos, NivelConversa, UsuarioLogado, Veiculo } from '../types/api'
 import { BAIRROS } from '../utils/bairros'
 import { PREF_CONVERSA, telefoneFormatado } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
-const perfil = reactive({
+/** Mensagem curta mostrada embaixo de cada cartao da tela. */
+type Aviso = { texto: string; tipo: TipoAviso }
+const novoAviso = (): Aviso => reactive({ texto: '', tipo: 'success' })
+
+interface FormPerfil {
+  nome: string
+  telefone: string
+  bairro: string
+  curso: string
+  chave_pix: string
+  bio: string
+  pref_conversa: NivelConversa
+  pref_musica: boolean
+  pref_animais: boolean
+  pref_fumar: boolean
+}
+
+const perfil = reactive<FormPerfil>({
   nome: '', telefone: '', bairro: '', curso: '', chave_pix: '', bio: '',
   pref_conversa: 'depende', pref_musica: true, pref_animais: false, pref_fumar: false
 })
-const msgSelo = reactive({ texto: '', tipo: 'success' })
+const msgSelo = novoAviso()
 
-const contatos = ref([])
+const contatos = ref<ContatoConfianca[]>([])
 const contato = reactive({ nome: '', telefone: '' })
-const errosContato = ref({})
-const msgContato = reactive({ texto: '', tipo: 'success' })
-const errosPerfil = ref({})
-const msgPerfil = reactive({ texto: '', tipo: 'success' })
+const errosContato = ref<ErrosCampos>({})
+const msgContato = novoAviso()
+const errosPerfil = ref<ErrosCampos>({})
+const msgPerfil = novoAviso()
 const salvandoPerfil = ref(false)
 
 const senha = reactive({ senha_atual: '', nova_senha: '' })
-const errosSenha = ref({})
-const msgSenha = reactive({ texto: '', tipo: 'success' })
+const errosSenha = ref<ErrosCampos>({})
+const msgSenha = novoAviso()
 const salvandoSenha = ref(false)
 
-const veiculos = ref([])
+const veiculos = ref<Veiculo[]>([])
 const veiculo = reactive({ modelo: '', cor: '', placa: '' })
-const errosVeiculo = ref({})
-const msgVeiculo = reactive({ texto: '', tipo: 'success' })
+const errosVeiculo = ref<ErrosCampos>({})
+const msgVeiculo = novoAviso()
 
-function preencher(u) {
-  const p = u.preferencias || {}
+function avisar(msg: Aviso, texto: string, tipo: TipoAviso = 'success'): void {
+  msg.texto = texto
+  msg.tipo = tipo
+}
+
+function preencher(u: UsuarioLogado): void {
+  const p = u.preferencias
   Object.assign(perfil, {
     nome: u.nome, telefone: u.telefone, bairro: u.bairro, curso: u.curso || '', chave_pix: u.chave_pix || '',
-    bio: u.bio || '', pref_conversa: p.conversa || 'depende', pref_musica: p.musica ?? true,
-    pref_animais: Boolean(p.animais), pref_fumar: Boolean(p.fumar)
-  })
+    bio: u.bio || '', pref_conversa: p?.conversa || 'depende', pref_musica: p?.musica ?? true,
+    pref_animais: Boolean(p?.animais), pref_fumar: Boolean(p?.fumar)
+  } satisfies FormPerfil)
 }
 
 onMounted(async () => {
   try {
-    const [me, vs, cs] = await Promise.all([api.get('/auth/me'), api.get('/veiculos'), api.get('/contatos')])
+    const [me, vs, cs] = await Promise.all([
+      api.get<{ usuario: UsuarioLogado }>('/auth/me'),
+      api.get<{ veiculos: Veiculo[] }>('/veiculos'),
+      api.get<{ contatos: ContatoConfianca[] }>('/contatos')
+    ])
     atualizarUsuario(me.data.usuario)
     preencher(me.data.usuario)
     veiculos.value = vs.data.veiculos
     contatos.value = cs.data.contatos
   } catch (e) {
-    msgPerfil.texto = e.mensagem
-    msgPerfil.tipo = 'danger'
+    avisar(msgPerfil, mensagemDeErro(e), 'danger')
   }
 })
 
-async function salvarPerfil() {
+async function salvarPerfil(): Promise<void> {
   msgPerfil.texto = ''
   errosPerfil.value = validar(perfil, {
     nome: [regras.obrigatorio],
@@ -261,104 +287,91 @@ async function salvarPerfil() {
   if (Object.keys(errosPerfil.value).length) return
   salvandoPerfil.value = true
   try {
-    const { data } = await api.put('/auth/me', perfil)
+    const { data } = await api.put<{ usuario: UsuarioLogado }>('/auth/me', perfil)
     atualizarUsuario(data.usuario)
-    msgPerfil.texto = 'Dados atualizados.'
-    msgPerfil.tipo = 'success'
+    avisar(msgPerfil, 'Dados atualizados.')
   } catch (e) {
-    msgPerfil.texto = e.mensagem
-    msgPerfil.tipo = 'danger'
+    avisar(msgPerfil, mensagemDeErro(e), 'danger')
     errosPerfil.value = { ...errosPerfil.value, ...errosDoServidor(e, Object.keys(perfil)) }
   } finally {
     salvandoPerfil.value = false
   }
 }
 
-async function pedirVerificacao() {
+async function pedirVerificacao(): Promise<void> {
   try {
-    const { data } = await api.post('/auth/solicitar-verificacao')
+    const { data } = await api.post<{ usuario: UsuarioLogado }>('/auth/solicitar-verificacao')
     atualizarUsuario(data.usuario)
-    msgSelo.texto = 'Pedido enviado! A administração confere sua matrícula e aprova o selo.'
-    msgSelo.tipo = 'success'
+    avisar(msgSelo, 'Pedido enviado! A administração confere sua matrícula e aprova o selo.')
   } catch (e) {
-    msgSelo.texto = e.mensagem
-    msgSelo.tipo = 'danger'
+    avisar(msgSelo, mensagemDeErro(e), 'danger')
   }
 }
 
-async function adicionarContato() {
+async function adicionarContato(): Promise<void> {
   msgContato.texto = ''
   errosContato.value = validar(contato, { nome: [regras.obrigatorio], telefone: [regras.obrigatorio, regras.telefone] })
   if (Object.keys(errosContato.value).length) return
   try {
-    const { data } = await api.post('/contatos', contato)
+    const { data } = await api.post<{ contato: ContatoConfianca }>('/contatos', contato)
     contatos.value.push(data.contato)
     Object.assign(contato, { nome: '', telefone: '' })
-    msgContato.texto = 'Contato adicionado.'
-    msgContato.tipo = 'success'
+    avisar(msgContato, 'Contato adicionado.')
   } catch (e) {
-    msgContato.texto = e.mensagem
-    msgContato.tipo = 'danger'
+    avisar(msgContato, mensagemDeErro(e), 'danger')
     errosContato.value = errosDoServidor(e, ['nome', 'telefone'])
   }
 }
 
-async function removerContato(c) {
+async function removerContato(c: ContatoConfianca): Promise<void> {
   try {
     await api.delete(`/contatos/${c.id}`)
     contatos.value = contatos.value.filter((x) => x.id !== c.id)
   } catch (e) {
-    msgContato.texto = e.mensagem
-    msgContato.tipo = 'danger'
+    avisar(msgContato, mensagemDeErro(e), 'danger')
   }
 }
 
-async function trocarSenha() {
+async function trocarSenha(): Promise<void> {
   msgSenha.texto = ''
   errosSenha.value = validar(senha, { senha_atual: [regras.obrigatorio], nova_senha: [regras.obrigatorio, regras.senha] })
   if (Object.keys(errosSenha.value).length) return
   salvandoSenha.value = true
   try {
-    const { data } = await api.put('/auth/me', senha)
+    const { data } = await api.put<{ usuario: UsuarioLogado; token?: string }>('/auth/me', senha)
     // A troca de senha encerra os logins antigos; este aparelho recebe um token novo
     if (data.token) entrar(data.token, data.usuario)
     Object.assign(senha, { senha_atual: '', nova_senha: '' })
-    msgSenha.texto = 'Senha alterada. Os outros aparelhos em que você estava logado foram desconectados.'
-    msgSenha.tipo = 'success'
+    avisar(msgSenha, 'Senha alterada. Os outros aparelhos em que você estava logado foram desconectados.')
   } catch (e) {
-    msgSenha.texto = e.mensagem
-    msgSenha.tipo = 'danger'
+    avisar(msgSenha, mensagemDeErro(e), 'danger')
   } finally {
     salvandoSenha.value = false
   }
 }
 
-async function adicionarVeiculo() {
+async function adicionarVeiculo(): Promise<void> {
   msgVeiculo.texto = ''
   errosVeiculo.value = validar(veiculo, { modelo: [regras.obrigatorio], cor: [regras.obrigatorio], placa: [regras.obrigatorio, regras.placa] })
   if (Object.keys(errosVeiculo.value).length) return
   try {
-    const { data } = await api.post('/veiculos', veiculo)
+    const { data } = await api.post<{ veiculo: Veiculo }>('/veiculos', veiculo)
     veiculos.value.push(data.veiculo)
     Object.assign(veiculo, { modelo: '', cor: '', placa: '' })
-    msgVeiculo.texto = 'Carro cadastrado.'
-    msgVeiculo.tipo = 'success'
+    avisar(msgVeiculo, 'Carro cadastrado.')
   } catch (e) {
-    msgVeiculo.texto = e.mensagem
-    msgVeiculo.tipo = 'danger'
+    avisar(msgVeiculo, mensagemDeErro(e), 'danger')
     errosVeiculo.value = errosDoServidor(e, ['modelo', 'cor', 'placa'])
   }
 }
 
-async function removerVeiculo(v) {
+async function removerVeiculo(v: Veiculo): Promise<void> {
   try {
     await api.delete(`/veiculos/${v.id}`)
     veiculos.value = veiculos.value.filter((x) => x.id !== v.id)
-    msgVeiculo.texto = 'Carro removido.'
-    msgVeiculo.tipo = 'success'
+    avisar(msgVeiculo, 'Carro removido.')
   } catch (e) {
-    msgVeiculo.texto = e.mensagem
-    msgVeiculo.tipo = 'danger'
+    avisar(msgVeiculo, mensagemDeErro(e), 'danger')
   }
 }
 </script>

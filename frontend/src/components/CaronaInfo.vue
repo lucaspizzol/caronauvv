@@ -56,12 +56,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import type { Carona } from '../types/api'
 import { dataCurta, dinheiro, hora } from '../utils/formato'
 import AvatarUsuario from './AvatarUsuario.vue'
 import ReputacaoResumo from './ReputacaoResumo.vue'
 
-defineProps({
-  carona: { type: Object, required: true }
-})
+defineProps<{ carona: Carona }>()
 </script>

@@ -81,7 +81,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
@@ -92,25 +92,29 @@ import PixPagamento from '../components/PixPagamento.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { TipoAviso } from '../stores/auth'
+import type { SolicitacaoComCarona } from '../types/api'
 import { linkWhatsApp, telefoneFormatado } from '../utils/formato'
 
-const pedidos = ref([])
+const pedidos = ref<SolicitacaoComCarona[]>([])
 const carregando = ref(true)
-const aviso = reactive({ texto: '', tipo: 'success' })
-const destacados = reactive(new Set()) // pedidos cujo status acabou de mudar
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
+const destacados = reactive(new Set<number>()) // pedidos cujo status acabou de mudar
 
-const emAberto = (p) => ['ativa', 'lotada', 'em_andamento'].includes(p.carona.status)
-const podeAvaliar = (p) => p.status === 'aceita' && !p.faltou && p.carona.status === 'concluida' && !p.ja_avaliei
-const podeCancelar = (p) => ['pendente', 'aceita'].includes(p.status) && ['ativa', 'lotada'].includes(p.carona.status)
+const emAberto = (p: SolicitacaoComCarona) => ['ativa', 'lotada', 'em_andamento'].includes(p.carona.status)
+const podeAvaliar = (p: SolicitacaoComCarona) =>
+  p.status === 'aceita' && !p.faltou && p.carona.status === 'concluida' && !p.ja_avaliei
+const podeCancelar = (p: SolicitacaoComCarona) =>
+  ['pendente', 'aceita'].includes(p.status) && ['ativa', 'lotada'].includes(p.carona.status)
 
-async function carregar() {
+async function carregar(): Promise<void> {
   carregando.value = true
   try {
-    const { data } = await api.get('/solicitacoes/minhas')
+    const { data } = await api.get<{ solicitacoes: SolicitacaoComCarona[] }>('/solicitacoes/minhas')
     pedidos.value = data.solicitacoes
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   } finally {
     carregando.value = false
@@ -118,9 +122,9 @@ async function carregar() {
 }
 
 // Atualizacao automatica: o passageiro ve o aceite/recusa do motorista sem recarregar
-async function atualizarSilencioso() {
-  const antes = Object.fromEntries(pedidos.value.map((p) => [p.id, `${p.status}/${p.carona.status}`]))
-  const { data } = await api.get('/solicitacoes/minhas')
+async function atualizarSilencioso(): Promise<void> {
+  const antes: Record<number, string> = Object.fromEntries(pedidos.value.map((p) => [p.id, `${p.status}/${p.carona.status}`]))
+  const { data } = await api.get<{ solicitacoes: SolicitacaoComCarona[] }>('/solicitacoes/minhas')
   pedidos.value = data.solicitacoes
   for (const p of pedidos.value) {
     if (antes[p.id] && antes[p.id] !== `${p.status}/${p.carona.status}`) {
@@ -132,14 +136,14 @@ async function atualizarSilencioso() {
 
 const { atualizadoEm } = useAoVivo(atualizarSilencioso)
 
-async function cancelar(p) {
+async function cancelar(p: SolicitacaoComCarona): Promise<void> {
   try {
     await api.post(`/solicitacoes/${p.id}/cancelar`)
     aviso.texto = 'Pedido cancelado. A vaga voltou a ficar livre para outros alunos.'
     aviso.tipo = 'success'
     await carregar()
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   }
 }

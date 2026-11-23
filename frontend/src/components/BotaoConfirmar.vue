@@ -14,21 +14,24 @@
   </span>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
-const props = defineProps({
-  texto: { type: String, required: true },
-  pergunta: { type: String, default: 'Tem certeza?' },
-  icone: { type: String, default: '' },
-  classe: { type: String, default: 'btn-outline-danger' },
-  acao: { type: Function, required: true }
-})
+const props = withDefaults(
+  defineProps<{
+    texto: string
+    pergunta?: string
+    icone?: string
+    classe?: string
+    acao: () => unknown // pode devolver uma Promise: o botao espera terminar
+  }>(),
+  { pergunta: 'Tem certeza?', icone: '', classe: 'btn-outline-danger' }
+)
 
 const confirmando = ref(false)
 const carregando = ref(false)
 
-async function confirmar() {
+async function confirmar(): Promise<void> {
   carregando.value = true
   try {
     await props.acao()

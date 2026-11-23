@@ -120,7 +120,7 @@
         <div class="d-flex flex-wrap justify-content-between gap-2">
           <div>
             <span :class="['badge me-2', d.status === 'encerrada' ? 'text-bg-secondary' : 'text-bg-danger']">{{ d.status.replace('_', ' ') }}</span>
-            <strong>{{ MOTIVOS_DENUNCIA[d.motivo] || d.motivo }}</strong>
+            <strong>{{ textoMotivo(d.motivo) }}</strong>
           </div>
           <span class="small text-secondary">{{ dataHora(d.criada_em) }}</span>
         </div>
@@ -231,18 +231,21 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import api from '../services/api'
-import { auth } from '../stores/auth'
-import { dataHora, MOTIVOS_DENUNCIA, nota, porcentagem } from '../utils/formato'
+import api, { mensagemDeErro } from '../services/api'
+import { auth, type TipoAviso } from '../stores/auth'
+import type { Alerta, Configuracao, Denuncia, EstruturaBanco, ResumoAdmin, UsuarioAdmin } from '../types/api'
+import { dataHora, nota, porcentagem, textoMotivo } from '../utils/formato'
 
-const ABAS = [
+type IdAba = 'resumo' | 'usuarios' | 'denuncias' | 'alertas' | 'regras' | 'banco'
+
+const ABAS: { id: IdAba; texto: string; icone: string }[] = [
   { id: 'resumo', texto: 'Visão geral', icone: 'bi-speedometer2' },
   { id: 'usuarios', texto: 'Usuários', icone: 'bi-people' },
   { id: 'denuncias', texto: 'Denúncias', icone: 'bi-flag' },
@@ -251,33 +254,41 @@ const ABAS = [
   { id: 'banco', texto: 'Banco de dados', icone: 'bi-database' }
 ]
 
-const aba = ref('resumo')
-const carregando = ref(true)
-const aviso = reactive({ texto: '', tipo: 'success' })
+/** Cartao de indicador da visao geral. */
+interface Kpi {
+  rotulo: string
+  valor: string | number
+  detalhe: string
+  classe?: '' | 'verde' | 'alerta'
+}
 
-const r = ref(null)
-const usuarios = ref([])
+const aba = ref<IdAba>('resumo')
+const carregando = ref(true)
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
+
+const r = ref<ResumoAdmin | null>(null)
+const usuarios = ref<UsuarioAdmin[]>([])
 const busca = ref('')
 const soPendentes = ref(false)
-const denuncias = ref([])
-const resolucoes = reactive({})
-const suspensoes = reactive({})
-const alertas = ref([])
-const configuracoes = ref([])
-const banco = ref(null)
-const diagrama = ref(null)
+const denuncias = ref<Denuncia[]>([])
+const resolucoes = reactive<Record<number, string>>({})
+const suspensoes = reactive<Record<number, boolean>>({})
+const alertas = ref<Alerta[]>([])
+const configuracoes = ref<Configuracao[]>([])
+const banco = ref<EstruturaBanco | null>(null)
+const diagrama = ref<HTMLElement | null>(null)
 const diagramaCompleto = ref(false)
 const desenhando = ref(false)
 const ampliado = ref(false)
 
-const decimal = (n) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+const decimal = (n: number | null | undefined) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
-function avisar(texto, tipo = 'success') {
+function avisar(texto: string, tipo: TipoAviso = 'success'): void {
   aviso.texto = texto
   aviso.tipo = tipo
 }
 
-const kpis = computed(() => {
+const kpis = computed<Kpi[]>(() => {
   if (!r.value) return []
   const { usuarios: u, viagens: v, confianca: c } = r.value
   return [
@@ -295,122 +306,126 @@ const maxDemanda = computed(() => Math.max(1, ...(r.value?.demanda_sem_oferta ||
 const maxOferta = computed(() => Math.max(1, ...(r.value?.bairros_com_mais_oferta || []).map((d) => d.caronas)))
 const totalLinhas = computed(() => (banco.value?.tabelas || []).reduce((s, t) => s + t.linhas, 0))
 
-async function carregarResumo() {
-  const { data } = await api.get('/admin/resumo')
+async function carregarResumo(): Promise<void> {
+  const { data } = await api.get<{ resumo: ResumoAdmin }>('/admin/resumo')
   r.value = data.resumo
 }
 
-async function carregarUsuarios() {
-  const { data } = await api.get('/admin/usuarios', { params: { busca: busca.value, pendentes: soPendentes.value ? 1 : 0 } })
+async function carregarUsuarios(): Promise<void> {
+  const { data } = await api.get<{ usuarios: UsuarioAdmin[] }>('/admin/usuarios', {
+    params: { busca: busca.value, pendentes: soPendentes.value ? 1 : 0 }
+  })
   usuarios.value = data.usuarios
 }
 
-const CARREGADORES = {
+// Cada aba sabe carregar os proprios dados. `Record<IdAba, ...>` garante que nenhuma aba fique sem carregador.
+const CARREGADORES: Record<IdAba, () => Promise<unknown>> = {
   resumo: carregarResumo,
   usuarios: carregarUsuarios,
-  denuncias: async () => (denuncias.value = (await api.get('/admin/denuncias')).data.denuncias),
-  alertas: async () => (alertas.value = (await api.get('/admin/alertas')).data.alertas),
-  regras: async () => (configuracoes.value = (await api.get('/admin/configuracoes')).data.configuracoes),
+  denuncias: async () => (denuncias.value = (await api.get<{ denuncias: Denuncia[] }>('/admin/denuncias')).data.denuncias),
+  alertas: async () => (alertas.value = (await api.get<{ alertas: Alerta[] }>('/admin/alertas')).data.alertas),
+  regras: async () =>
+    (configuracoes.value = (await api.get<{ configuracoes: Configuracao[] }>('/admin/configuracoes')).data.configuracoes),
   banco: async () => {
-    banco.value = (await api.get('/admin/banco')).data
+    banco.value = (await api.get<EstruturaBanco>('/admin/banco')).data
   }
 }
 
-async function trocarAba(id) {
+async function trocarAba(id: IdAba): Promise<void> {
   aba.value = id
   carregando.value = true
   aviso.texto = ''
   try {
     await Promise.all([CARREGADORES[id](), id === 'resumo' ? null : carregarResumo()])
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   } finally {
     carregando.value = false
   }
   if (id === 'banco') {
     await nextTick()
-    desenhar(diagramaCompleto.value)
+    await desenhar(diagramaCompleto.value)
   }
 }
 
-async function verificar(u, aprovado) {
+async function verificar(u: UsuarioAdmin, aprovado: boolean): Promise<void> {
   try {
     await api.post(`/admin/usuarios/${u.id}/verificar`, { aprovado })
     avisar(aprovado ? `${u.nome} agora tem o selo de verificado.` : 'Pedido de verificação recusado.')
     await Promise.all([carregarUsuarios(), carregarResumo()])
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
 // Moderacao: foto inadequada
-async function removerFoto(u) {
+async function removerFoto(u: UsuarioAdmin): Promise<void> {
   try {
     await api.delete(`/admin/usuarios/${u.id}/foto`)
     avisar(`A foto de ${u.nome} foi removida e ele(a) foi avisado(a).`)
     await carregarUsuarios()
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
 // Aluno ficou sem o celular e sem os codigos de reserva
-async function resetar2fa(u) {
+async function resetar2fa(u: UsuarioAdmin): Promise<void> {
   try {
     await api.post(`/admin/usuarios/${u.id}/resetar-2fa`)
     avisar(`A verificação em duas etapas de ${u.nome} foi desligada. Agora ele(a) entra só com a senha.`, 'warning')
     await carregarUsuarios()
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function suspender(u, ativo) {
+async function suspender(u: UsuarioAdmin, ativo: boolean): Promise<void> {
   try {
     await api.post(`/admin/usuarios/${u.id}/suspender`, { ativo })
     avisar(ativo ? `${u.nome} foi reativado.` : `${u.nome} foi suspenso e as caronas futuras dele foram canceladas.`, ativo ? 'success' : 'warning')
     await carregarUsuarios()
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function analisar(d, status = 'encerrada') {
+async function analisar(d: Denuncia, status: 'encerrada' | 'em_analise' = 'encerrada'): Promise<void> {
   try {
     await api.post(`/admin/denuncias/${d.id}`, { status, resolucao: resolucoes[d.id] || '', suspender: Boolean(suspensoes[d.id]) })
     avisar(status === 'encerrada' ? 'Denúncia encerrada.' : 'Denúncia marcada como em análise.')
     await Promise.all([CARREGADORES.denuncias(), carregarResumo()])
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function resolver(a) {
+async function resolver(a: Alerta): Promise<void> {
   try {
     await api.post(`/admin/alertas/${a.id}/resolver`)
     await Promise.all([CARREGADORES.alertas(), carregarResumo()])
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
-async function salvarConfiguracoes() {
+async function salvarConfiguracoes(): Promise<void> {
   try {
     const valores = Object.fromEntries(configuracoes.value.map((c) => [c.chave, c.valor]))
-    const { data } = await api.put('/admin/configuracoes', valores)
+    const { data } = await api.put<{ configuracoes: Configuracao[] }>('/admin/configuracoes', valores)
     configuracoes.value = data.configuracoes
     avisar('Regras salvas. Já valem para as próximas caronas.')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 
 // ==========================================================
 // DIAGRAMA ER (Mermaid) montado a partir de /api/admin/banco
 // ==========================================================
-function codigoMermaid(completo) {
+function codigoMermaid(estrutura: EstruturaBanco, completo: boolean): string {
   const linhas = ['erDiagram']
-  for (const t of banco.value.tabelas) {
+  for (const t of estrutura.tabelas) {
     const colunas = t.colunas.filter((c) => completo || c.pk || c.fk)
     linhas.push(`  ${t.nome} {`)
     for (const c of colunas) {
@@ -419,8 +434,9 @@ function codigoMermaid(completo) {
     }
     linhas.push('  }')
   }
-  for (const t of banco.value.tabelas) {
-    for (const c of t.colunas.filter((x) => x.fk)) {
+  for (const t of estrutura.tabelas) {
+    for (const c of t.colunas) {
+      if (!c.fk) continue
       const alvo = c.fk.split('.')[0]
       const cardinalidade = c.obrigatorio ? '||--o{' : '|o--o{'
       linhas.push(`  ${alvo} ${cardinalidade} ${t.nome} : "${c.nome}"`)
@@ -429,7 +445,7 @@ function codigoMermaid(completo) {
   return linhas.join('\n')
 }
 
-async function desenhar(completo) {
+async function desenhar(completo: boolean): Promise<void> {
   diagramaCompleto.value = completo
   if (!banco.value || !diagrama.value) return
   desenhando.value = true
@@ -437,10 +453,10 @@ async function desenhar(completo) {
     const mermaid = (await import('mermaid')).default // ~1 MB, carregado so nesta aba
     // useMaxWidth: o diagrama encolhe para caber na tela (bom para projetar na apresentacao)
     mermaid.initialize({ startOnLoad: false, theme: 'neutral', er: { useMaxWidth: !ampliado.value } })
-    const { svg } = await mermaid.render(`er-${Date.now()}`, codigoMermaid(completo))
+    const { svg } = await mermaid.render(`er-${Date.now()}`, codigoMermaid(banco.value, completo))
     diagrama.value.innerHTML = svg
   } catch (e) {
-    avisar(`Não foi possível desenhar o diagrama: ${e.message || e}`, 'warning')
+    avisar(`Não foi possível desenhar o diagrama: ${mensagemDeErro(e, String(e))}`, 'warning')
   } finally {
     desenhando.value = false
   }

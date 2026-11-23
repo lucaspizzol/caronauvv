@@ -24,33 +24,38 @@
   <AlertaMensagem :texto="msg.texto" :tipo="msg.tipo" @fechar="msg.texto = ''" />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, ref } from 'vue'
 
-import api from '../services/api'
-import { atualizarUsuario, auth } from '../stores/auth'
+import api, { mensagemDeErro } from '../services/api'
+import { atualizarUsuario, auth, type TipoAviso } from '../stores/auth'
+import type { UsuarioLogado } from '../types/api'
 import { prepararFoto, TIPOS_ACEITOS, validarArquivoDeFoto } from '../utils/imagem'
 import AlertaMensagem from './AlertaMensagem.vue'
 import AvatarUsuario from './AvatarUsuario.vue'
 import BotaoConfirmar from './BotaoConfirmar.vue'
 
-const campo = ref(null)
+const campo = ref<HTMLInputElement | null>(null)
 const enviando = ref(false)
-const msg = reactive({ texto: '', tipo: 'success' })
+const msg = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
 
-function avisar(texto, tipo = 'success') {
+function avisar(texto: string, tipo: TipoAviso = 'success'): void {
   msg.texto = texto
   msg.tipo = tipo
 }
 
-async function escolher(evento) {
-  const arquivo = evento.target.files?.[0]
+function limparCampo(): void {
+  if (campo.value) campo.value.value = '' // permite escolher o mesmo arquivo de novo
+}
+
+async function escolher(evento: Event): Promise<void> {
+  const arquivo = (evento.target as HTMLInputElement).files?.[0]
   if (!arquivo) return
   msg.texto = ''
   const problema = validarArquivoDeFoto(arquivo)
   if (problema) {
     avisar(problema, 'danger')
-    campo.value.value = ''
+    limparCampo()
     return
   }
   enviando.value = true
@@ -59,24 +64,24 @@ async function escolher(evento) {
     const foto = await prepararFoto(arquivo)
     const formulario = new FormData()
     formulario.append('foto', foto, 'foto.jpg')
-    const { data } = await api.put('/auth/me/foto', formulario)
+    const { data } = await api.put<{ usuario: UsuarioLogado }>('/auth/me/foto', formulario)
     atualizarUsuario(data.usuario)
     avisar('Foto atualizada.')
   } catch (e) {
-    avisar(e.mensagem || e.message || 'Não deu para enviar a foto.', 'danger')
+    avisar(mensagemDeErro(e, 'Não deu para enviar a foto.'), 'danger')
   } finally {
     enviando.value = false
-    campo.value.value = '' // permite escolher o mesmo arquivo de novo
+    limparCampo()
   }
 }
 
-async function remover() {
+async function remover(): Promise<void> {
   try {
-    const { data } = await api.delete('/auth/me/foto')
+    const { data } = await api.delete<{ usuario: UsuarioLogado }>('/auth/me/foto')
     atualizarUsuario(data.usuario)
     avisar('Foto removida.')
   } catch (e) {
-    avisar(e.mensagem, 'danger')
+    avisar(mensagemDeErro(e), 'danger')
   }
 }
 </script>

@@ -16,7 +16,7 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -24,6 +24,7 @@ import AlertaMensagem from './components/AlertaMensagem.vue'
 import NavBar from './components/NavBar.vue'
 import api from './services/api'
 import { atualizarUsuario, auth, avisoGlobal, logado } from './stores/auth'
+import type { UsuarioLogado } from './types/api'
 
 const route = useRoute()
 const mostrarMenu = computed(() => logado.value && !route.meta.publica)
@@ -33,10 +34,10 @@ const mostrarMenu = computed(() => logado.value && !route.meta.publica)
 onMounted(async () => {
   if (!logado.value) return
   try {
-    const { data } = await api.get('/auth/me')
+    const { data } = await api.get<{ usuario: UsuarioLogado }>('/auth/me')
     atualizarUsuario(data.usuario)
   } catch {
-    /* token invalido: o interceptor do api.js ja manda para o login */
+    /* token invalido: o interceptor do api.ts ja manda para o login */
   }
 })
 </script>

@@ -69,19 +69,20 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
 import AoVivo from '../components/AoVivo.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { ViagemAcompanhada } from '../types/api'
 import { dataHora, hora } from '../utils/formato'
 
-const props = defineProps({ token: { type: String, required: true } })
+const props = defineProps<{ token: string }>()
 
-const v = ref(null)
+const v = ref<ViagemAcompanhada | null>(null)
 const erro = ref('')
 const carregando = ref(true)
 
@@ -92,14 +93,14 @@ const mapa = computed(() => {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${p.lng - d},${p.lat - d},${p.lng + d},${p.lat + d}&layer=mapnik&marker=${p.lat},${p.lng}`
 })
 
-async function buscar() {
+async function buscar(): Promise<void> {
   try {
-    const { data } = await api.get(`/acompanhar/${props.token}`)
+    const { data } = await api.get<{ viagem: ViagemAcompanhada }>(`/acompanhar/${props.token}`)
     v.value = data.viagem
     erro.value = ''
   } catch (e) {
     v.value = null
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   }
 }
 

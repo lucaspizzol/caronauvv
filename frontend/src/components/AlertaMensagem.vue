@@ -6,10 +6,12 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  texto: { type: String, default: '' },
-  tipo: { type: String, default: 'danger' } // danger, success, info, warning
+<script setup lang="ts">
+import type { TipoAviso } from '../stores/auth'
+
+withDefaults(defineProps<{ texto?: string; tipo?: TipoAviso }>(), {
+  texto: '',
+  tipo: 'danger'
 })
-defineEmits(['fechar'])
+defineEmits<{ fechar: [] }>()
 </script>

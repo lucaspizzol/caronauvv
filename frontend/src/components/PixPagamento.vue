@@ -33,48 +33,52 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { Pagamento } from '../types/api'
 import { dinheiro } from '../utils/formato'
 import AlertaMensagem from './AlertaMensagem.vue'
 
-const props = defineProps({
-  solicitacaoId: { type: Number, required: true },
-  valor: { type: Number, required: true },
-  motorista: { type: String, default: 'o motorista' },
-  inicial: { type: Object, default: null } // pagamento que ja veio da API
-})
-const emit = defineEmits(['pago'])
+const props = withDefaults(
+  defineProps<{
+    solicitacaoId: number
+    valor: number
+    motorista?: string
+    inicial?: Pagamento | null // pagamento que ja veio da API
+  }>(),
+  { motorista: 'o motorista', inicial: null }
+)
+const emit = defineEmits<{ pago: [pagamento: Pagamento] }>()
 
 const aberto = ref(false)
 const carregando = ref(false)
 const enviando = ref(false)
-const pagamento = ref(props.inicial)
+const pagamento = ref<Pagamento | null>(props.inicial)
 const qr = ref('')
 const erro = ref('')
 const copiado = ref(false)
 
-async function abrir() {
+async function abrir(): Promise<void> {
   aberto.value = true
   carregando.value = true
   try {
-    const { data } = await api.get(`/solicitacoes/${props.solicitacaoId}/pix`)
+    const { data } = await api.get<{ pagamento: Pagamento }>(`/solicitacoes/${props.solicitacaoId}/pix`)
     pagamento.value = data.pagamento
     // QR Code gerado no navegador (biblioteca qrcode, carregada so quando precisa)
     const QRCode = (await import('qrcode')).default
-    qr.value = await QRCode.toDataURL(data.pagamento.pix_copia_cola, { margin: 1, width: 300 })
+    qr.value = await QRCode.toDataURL(data.pagamento.pix_copia_cola ?? '', { margin: 1, width: 300 })
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   } finally {
     carregando.value = false
   }
 }
 
-async function copiar() {
+async function copiar(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(pagamento.value.pix_copia_cola)
+    await navigator.clipboard.writeText(pagamento.value?.pix_copia_cola ?? '')
     copiado.value = true
     setTimeout(() => (copiado.value = false), 2000)
   } catch {
@@ -82,14 +86,14 @@ async function copiar() {
   }
 }
 
-async function informar(metodo) {
+async function informar(metodo: 'pix' | 'dinheiro'): Promise<void> {
   enviando.value = true
   try {
-    const { data } = await api.post(`/solicitacoes/${props.solicitacaoId}/pagamento`, { metodo })
+    const { data } = await api.post<{ pagamento: Pagamento }>(`/solicitacoes/${props.solicitacaoId}/pagamento`, { metodo })
     pagamento.value = data.pagamento
     emit('pago', data.pagamento)
   } catch (e) {
-    erro.value = e.mensagem
+    erro.value = mensagemDeErro(e)
   } finally {
     enviando.value = false
   }

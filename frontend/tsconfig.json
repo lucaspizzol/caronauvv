@@ -1,0 +1,9 @@
+{
+  // Dois projetos: o codigo do navegador (src/) e a configuracao do Vite (Node).
+  // `npm run type-check` confere os dois com o vue-tsc.
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

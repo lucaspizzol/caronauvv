@@ -64,58 +64,59 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
+import type { ErrosCampos } from '../types/api'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const route = useRoute()
 const router = useRouter()
 
-const passo = ref(1)
+const passo = ref<1 | 2>(1)
 const form = reactive({ login: String(route.query.login || ''), codigo: '', nova_senha: '', confirmar: '' })
-const erros = ref({})
+const erros = ref<ErrosCampos>({})
 const erroApi = ref('')
 const mensagem = ref('')
 const codigoDev = ref('')
 const enviando = ref(false)
 
-async function pedirCodigo() {
+async function pedirCodigo(): Promise<void> {
   erroApi.value = ''
   erros.value = validar(form, { login: [regras.obrigatorio] })
   if (Object.keys(erros.value).length) return
   enviando.value = true
   try {
-    const { data } = await api.post('/auth/esqueci-senha', { login: form.login })
+    const { data } = await api.post<{ message: string; codigo_dev?: string }>('/auth/esqueci-senha', { login: form.login })
     mensagem.value = data.message
     codigoDev.value = data.codigo_dev || ''
     Object.assign(form, { codigo: '', nova_senha: '', confirmar: '' })
     passo.value = 2
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
   } finally {
     enviando.value = false
   }
 }
 
-async function redefinir() {
+async function redefinir(): Promise<void> {
   erroApi.value = ''
   erros.value = validar(form, {
     codigo: [regras.obrigatorio, regras.codigo],
     nova_senha: [regras.obrigatorio, regras.senha],
-    confirmar: [regras.obrigatorio, (v, dados) => (v === dados.nova_senha ? null : 'As senhas não são iguais.')]
+    confirmar: [regras.obrigatorio, (v, dados) => (v === dados?.nova_senha ? null : 'As senhas não são iguais.')]
   })
   if (Object.keys(erros.value).length) return
   enviando.value = true
   try {
     await api.post('/auth/redefinir-senha', { login: form.login, codigo: form.codigo, nova_senha: form.nova_senha })
-    router.push({ name: 'login', query: { senha: 'ok' } })
+    void router.push({ name: 'login', query: { senha: 'ok' } })
   } catch (e) {
     erros.value = errosDoServidor(e, ['codigo', 'nova_senha'])
-    if (!Object.keys(erros.value).length) erroApi.value = e.mensagem
+    if (!Object.keys(erros.value).length) erroApi.value = mensagemDeErro(e)
   } finally {
     enviando.value = false
   }

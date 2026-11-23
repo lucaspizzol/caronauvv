@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 
 // ==========================================================
 // Atualizacao automatica ("ao vivo") das telas.
@@ -9,12 +9,17 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 // ==========================================================
 export const INTERVALO_PADRAO = 5000
 
-export function useAoVivo(atualizar, intervalo = INTERVALO_PADRAO) {
-  const atualizadoEm = ref(null)
-  let timer = null
+export interface AoVivo {
+  atualizadoEm: Ref<Date | null>
+  atualizarAgora: () => Promise<void>
+}
+
+export function useAoVivo(atualizar: () => unknown, intervalo = INTERVALO_PADRAO): AoVivo {
+  const atualizadoEm = ref<Date | null>(null)
+  let timer: ReturnType<typeof setInterval> | undefined
   let ocupado = false
 
-  async function tick() {
+  async function tick(): Promise<void> {
     if (ocupado || document.visibilityState === 'hidden') return
     ocupado = true
     try {
@@ -27,8 +32,8 @@ export function useAoVivo(atualizar, intervalo = INTERVALO_PADRAO) {
     }
   }
 
-  function aoVoltarParaAba() {
-    if (document.visibilityState === 'visible') tick()
+  function aoVoltarParaAba(): void {
+    if (document.visibilityState === 'visible') void tick()
   }
 
   onMounted(() => {

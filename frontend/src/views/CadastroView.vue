@@ -70,24 +70,25 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api from '../services/api'
+import api, { mensagemDeErro } from '../services/api'
 import { demo, entrar } from '../stores/auth'
+import type { ErrosCampos, RespostaSessao } from '../types/api'
 import { BAIRROS } from '../utils/bairros'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const router = useRouter()
 
 const form = reactive({ nome: '', matricula: '', curso: '', email: '', telefone: '', bairro: '', senha: '', confirmar: '' })
-const erros = ref({})
+const erros = ref<ErrosCampos>({})
 const erroApi = ref('')
 const enviando = ref(false)
 
-async function enviar() {
+async function enviar(): Promise<void> {
   erroApi.value = ''
   erros.value = validar(form, {
     nome: [regras.obrigatorio],
@@ -96,19 +97,20 @@ async function enviar() {
     telefone: [regras.obrigatorio, regras.telefone],
     bairro: [regras.obrigatorio],
     senha: [regras.obrigatorio, regras.senha],
-    confirmar: [(v, d) => (v === d.senha ? null : 'As senhas não conferem.')]
+    confirmar: [(v, d) => (v === d?.senha ? null : 'As senhas não conferem.')]
   })
   if (Object.keys(erros.value).length) return
 
   enviando.value = true
   try {
-    const { confirmar, ...dados } = form
-    const { data } = await api.post('/auth/cadastro', dados)
+    // "confirmar" so existe na tela: nao vai para a API
+    const { confirmar: _confirmar, ...dados } = form
+    const { data } = await api.post<RespostaSessao>('/auth/cadastro', dados)
     entrar(data.token, data.usuario)
     demo.codigoDev = data.codigo_dev || null
-    router.push('/verificar-email')
+    void router.push('/verificar-email')
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
     // erros que so o servidor conhece (ex.: dominio do e-mail) aparecem no campo certo
     erros.value = { ...erros.value, ...errosDoServidor(e, Object.keys(form)) }
   } finally {

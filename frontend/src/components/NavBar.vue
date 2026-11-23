@@ -47,7 +47,7 @@
   </nav>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -56,16 +56,23 @@ import api from '../services/api'
 import { auth, sair } from '../stores/auth'
 import AvatarUsuario from './AvatarUsuario.vue'
 
+interface ItemMenu {
+  to: string
+  texto: string
+  curto?: string // nome curto para telas medias
+  icone: string
+}
+
 const router = useRouter()
 
-const itens = [
+const itens: ItemMenu[] = [
   { to: '/caronas', texto: 'Buscar caronas', curto: 'Buscar', icone: 'bi-search' },
   { to: '/caronas/nova', texto: 'Oferecer carona', curto: 'Oferecer', icone: 'bi-plus-circle' },
   { to: '/minhas-caronas', texto: 'Minhas caronas', curto: 'Motorista', icone: 'bi-car-front' },
   { to: '/meus-pedidos', texto: 'Meus pedidos', curto: 'Pedidos', icone: 'bi-ticket-perforated' },
   { to: '/avaliacoes', texto: 'Avaliações', curto: 'Avaliar', icone: 'bi-star' }
 ]
-const itensCelular = [...itens.slice(0, 4), { to: '/perfil', texto: 'Perfil', icone: 'bi-person-circle' }]
+const itensCelular: ItemMenu[] = [...itens.slice(0, 4), { to: '/perfil', texto: 'Perfil', icone: 'bi-person-circle' }]
 
 const primeiroNome = computed(() => (auth.usuario?.nome || '').split(' ')[0])
 // O admin tem um item a mais no menu: os nomes completos so cabem em telas bem largas (>= 1400 px)
@@ -73,23 +80,23 @@ const largo = computed(() => (auth.usuario?.is_admin ? 'xxl' : 'xl'))
 
 // Sino: numero de notificacoes nao lidas, atualizado a cada 10 s
 const naoLidas = ref(0)
-async function contar() {
-  const { data } = await api.get('/notificacoes/contagem')
+async function contar(): Promise<void> {
+  const { data } = await api.get<{ nao_lidas: number }>('/notificacoes/contagem')
   naoLidas.value = data.nao_lidas
 }
 const { atualizarAgora } = useAoVivo(contar, 10000)
-atualizarAgora()
+void atualizarAgora()
 router.afterEach((to) => {
   if (to.name === 'notificacoes') naoLidas.value = 0
 })
 
-async function fazerLogout() {
+async function fazerLogout(): Promise<void> {
   try {
     await api.post('/auth/logout')
   } catch {
     /* mesmo se a API falhar, o token e descartado no navegador */
   }
   sair()
-  router.push({ name: 'login' })
+  void router.push({ name: 'login' })
 }
 </script>

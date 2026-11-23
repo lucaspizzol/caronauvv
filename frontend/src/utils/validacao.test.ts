@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { errosDoServidor, regras, validar } from './validacao'
+import { errosDoServidor, regras, validar, type Regra } from './validacao'
 
 describe('regras de validação dos formulários', () => {
   it('exige campo preenchido', () => {
@@ -50,7 +50,7 @@ describe('validar()', () => {
   })
 
   it('permite regra que compara campos (confirmar senha)', () => {
-    const iguais = (v, d) => (v === d.senha ? null : 'As senhas não conferem.')
+    const iguais: Regra = (v, d) => (v === d?.senha ? null : 'As senhas não conferem.')
     expect(validar({ senha: 'abcdef', confirmar: 'abcdeg' }, { confirmar: [iguais] })).toEqual({
       confirmar: 'As senhas não conferem.'
     })

@@ -68,47 +68,55 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import EstrelasNota from '../components/EstrelasNota.vue'
-import api from '../services/api'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
+import type { TipoAviso } from '../stores/auth'
+import type { AvaliacaoPendente, ErrosCampos } from '../types/api'
 import { dataCurta, hora } from '../utils/formato'
 
-const pendentes = ref([])
-const carregando = ref(true)
-const enviando = ref(null)
-const aviso = reactive({ texto: '', tipo: 'success' })
-const formularios = reactive({}) // solicitacao_id -> { nota, tags, comentario }
-const erros = reactive({})
+interface FormAvaliacao {
+  nota: number
+  tags: string[]
+  comentario: string
+}
 
-function form(p) {
+const pendentes = ref<AvaliacaoPendente[]>([])
+const carregando = ref(true)
+const enviando = ref<number | null>(null)
+const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
+const formularios = reactive<Record<number, FormAvaliacao>>({}) // solicitacao_id -> formulario
+const erros = reactive<Record<number, ErrosCampos>>({})
+
+function form(p: AvaliacaoPendente): FormAvaliacao {
   if (!formularios[p.solicitacao_id]) formularios[p.solicitacao_id] = { nota: 0, tags: [], comentario: '' }
   return formularios[p.solicitacao_id]
 }
 
-function alternarTag(p, tag) {
+function alternarTag(p: AvaliacaoPendente, tag: string): void {
   const tags = form(p).tags
   const i = tags.indexOf(tag)
   if (i >= 0) tags.splice(i, 1)
   else tags.push(tag)
 }
 
-async function carregar() {
+async function carregar(): Promise<void> {
   try {
-    const { data } = await api.get('/avaliacoes/pendentes')
+    const { data } = await api.get<{ pendentes: AvaliacaoPendente[] }>('/avaliacoes/pendentes')
     pendentes.value = data.pendentes
   } catch (e) {
-    aviso.texto = e.mensagem
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   } finally {
     carregando.value = false
   }
 }
 
-async function enviar(p) {
+async function enviar(p: AvaliacaoPendente): Promise<void> {
   const dados = form(p)
   erros[p.solicitacao_id] = dados.nota ? {} : { nota: 'Escolha uma nota de 1 a 5 estrelas.' }
   if (!dados.nota) return
@@ -119,8 +127,8 @@ async function enviar(p) {
     aviso.texto = `Obrigado! Sua avaliação de ${p.avaliado.nome.split(' ')[0]} foi registrada.`
     aviso.tipo = 'success'
   } catch (e) {
-    erros[p.solicitacao_id] = e.campos || {}
-    aviso.texto = e.mensagem
+    erros[p.solicitacao_id] = camposDoErro(e)
+    aviso.texto = mensagemDeErro(e)
     aviso.tipo = 'danger'
   } finally {
     enviando.value = null

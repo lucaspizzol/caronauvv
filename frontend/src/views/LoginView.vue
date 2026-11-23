@@ -62,7 +62,7 @@
             v-else id="codigo" ref="campoCodigo" :value="codigo" maxlength="9" autocomplete="off" autocapitalize="characters"
             aria-label="Código de reserva" placeholder="ABCD-EFGH"
             :class="['form-control form-control-lg text-center font-monospace', { 'is-invalid': erros.codigo }]" style="letter-spacing: 0.2rem"
-            @input="codigo = $event.target.value = codigoReservaFormatado($event.target.value)"
+            @input="digitarReserva"
           />
           <div class="invalid-feedback d-block mb-2">{{ erros.codigo }}</div>
           <button class="btn btn-primary w-100 py-2" :disabled="enviando">
@@ -81,21 +81,28 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { nextTick, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api from '../services/api'
+import api, { camposDoErro, mensagemDeErro, statusDoErro } from '../services/api'
 import { avisoGlobal, entrar } from '../stores/auth'
+import type { ErrosCampos, RespostaSessao } from '../types/api'
 import { codigoReservaFormatado } from '../utils/formato'
 import { regras, validar } from '../utils/validacao'
+
+/** O /login devolve a sessao ou, se a conta usa autenticador, um desafio para a segunda etapa. */
+type RespostaLogin = (RespostaSessao & { precisa_2fa?: false }) | { precisa_2fa: true; desafio: string }
+
+/** A segunda etapa pode trazer um aviso (ex.: "Voce entrou com um codigo de reserva. Restam 3."). */
+type SessaoComAviso = RespostaSessao & { aviso?: string }
 
 const route = useRoute()
 const router = useRouter()
 
 const form = reactive({ login: '', senha: '' })
-const erros = ref({})
+const erros = ref<ErrosCampos>({})
 const erroApi = ref('')
 const enviando = ref(false)
 
@@ -103,22 +110,23 @@ const enviando = ref(false)
 const desafio = ref('')
 const codigo = ref('')
 const usarReserva = ref(false)
-const campoCodigo = ref(null)
+const campoCodigo = ref<HTMLInputElement | null>(null)
 
-function concluir(dados) {
+function concluir(dados: SessaoComAviso): void {
   entrar(dados.token, dados.usuario)
   if (dados.aviso) Object.assign(avisoGlobal, { texto: dados.aviso, tipo: 'warning' })
-  router.push(route.query.volta || '/caronas')
+  const volta = route.query.volta
+  void router.push(typeof volta === 'string' && volta ? volta : '/caronas')
 }
 
-async function enviar() {
+async function enviar(): Promise<void> {
   erroApi.value = ''
   erros.value = validar(form, { login: [regras.obrigatorio], senha: [regras.obrigatorio] })
   if (Object.keys(erros.value).length) return
 
   enviando.value = true
   try {
-    const { data } = await api.post('/auth/login', form)
+    const { data } = await api.post<RespostaLogin>('/auth/login', form)
     if (data.precisa_2fa) {
       desafio.value = data.desafio
       codigo.value = ''
@@ -129,13 +137,13 @@ async function enviar() {
       concluir(data)
     }
   } catch (e) {
-    erroApi.value = e.mensagem
+    erroApi.value = mensagemDeErro(e)
   } finally {
     enviando.value = false
   }
 }
 
-async function confirmar() {
+async function confirmar(): Promise<void> {
   erroApi.value = ''
   const valido = usarReserva.value ? /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i.test(codigo.value) : /^\d{3}\s?\d{3}$/.test(codigo.value)
   erros.value = valido ? {} : { codigo: usarReserva.value ? 'O código de reserva tem 8 caracteres.' : 'O código tem 6 números.' }
@@ -143,26 +151,33 @@ async function confirmar() {
 
   enviando.value = true
   try {
-    const { data } = await api.post('/auth/login/2fa', { desafio: desafio.value, codigo: codigo.value })
+    const { data } = await api.post<SessaoComAviso>('/auth/login/2fa', { desafio: desafio.value, codigo: codigo.value })
     concluir(data)
   } catch (e) {
+    const erroCodigo = camposDoErro(e).codigo
     // desafio vencido (5 min) ou invalido: volta para a senha
-    if (e.response?.status === 401 && !e.campos?.codigo) {
+    if (statusDoErro(e) === 401 && !erroCodigo) {
       voltar()
-      erroApi.value = e.mensagem
-    } else if (e.campos?.codigo) {
-      erros.value = { codigo: e.campos.codigo }
+      erroApi.value = mensagemDeErro(e)
+    } else if (erroCodigo) {
+      erros.value = { codigo: erroCodigo }
       codigo.value = ''
       campoCodigo.value?.focus()
     } else {
-      erroApi.value = e.mensagem
+      erroApi.value = mensagemDeErro(e)
     }
   } finally {
     enviando.value = false
   }
 }
 
-async function trocarModo() {
+// Codigo de reserva: maiusculas e hifen no meio enquanto a pessoa digita ("abcdefgh" -> "ABCD-EFGH")
+function digitarReserva(evento: Event): void {
+  const campo = evento.target as HTMLInputElement
+  codigo.value = campo.value = codigoReservaFormatado(campo.value)
+}
+
+async function trocarModo(): Promise<void> {
   usarReserva.value = !usarReserva.value
   codigo.value = ''
   erros.value = {}
@@ -171,7 +186,7 @@ async function trocarModo() {
   campoCodigo.value?.focus()
 }
 
-function voltar() {
+function voltar(): void {
   desafio.value = ''
   codigo.value = ''
   form.senha = ''

@@ -1,6 +1,7 @@
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
 
 import { auth, sair } from '../stores/auth'
+import type { ErrosCampos } from '../types/api'
 
 // ==========================================================
 // Cliente HTTP da API Flask
@@ -9,6 +10,19 @@ import { auth, sair } from '../stores/auth'
 // - repassa o erro de cada campo do formulario (campo "campos" da API, vindo
 //   da validacao Pydantic no servidor) para a tela marcar o campo certo
 // ==========================================================
+
+/** Corpo de erro que a API devolve (caronauvv/errors.py). */
+interface CorpoErro {
+  error?: string
+  campos?: ErrosCampos
+}
+
+/** Erro do axios ja com a mensagem em portugues e os erros por campo. */
+export interface ErroApi extends AxiosError<CorpoErro> {
+  mensagem: string
+  campos: ErrosCampos
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 10000
@@ -23,7 +37,8 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (resposta) => resposta,
-  (erro) => {
+  (erroOriginal: AxiosError<CorpoErro>) => {
+    const erro = erroOriginal as ErroApi
     const status = erro.response?.status
     // Token vencido ou invalido: volta para o login
     if (status === 401 && auth.token) {
@@ -43,5 +58,30 @@ api.interceptors.response.use(
     return Promise.reject(erro)
   }
 )
+
+/**
+ * Mensagem legivel de qualquer erro pego num `catch`. No TypeScript o erro do
+ * `catch` e `unknown`: esta funcao confere o formato antes de ler a mensagem.
+ */
+export function mensagemDeErro(erro: unknown, padrao = 'Algo deu errado. Tente novamente.'): string {
+  if (erro && typeof erro === 'object' && 'mensagem' in erro && typeof erro.mensagem === 'string') {
+    return erro.mensagem
+  }
+  if (erro instanceof Error && erro.message) return erro.message
+  return padrao
+}
+
+/** Erros por campo que vieram do servidor (vazio se o erro nao veio da API). */
+export function camposDoErro(erro: unknown): ErrosCampos {
+  if (erro && typeof erro === 'object' && 'campos' in erro && erro.campos && typeof erro.campos === 'object') {
+    return erro.campos as ErrosCampos
+  }
+  return {}
+}
+
+/** Status HTTP do erro da API (ou undefined se nem chegou a resposta). */
+export function statusDoErro(erro: unknown): number | undefined {
+  return axios.isAxiosError(erro) ? erro.response?.status : undefined
+}
 
 export default api

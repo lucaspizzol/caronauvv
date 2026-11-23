@@ -41,6 +41,7 @@
       <div v-if="carona.rateio" class="small text-secondary mt-2" :title="`${ENERGIAS[carona.rateio.energia].texto}: combustível dividido entre todos no carro, mais o adicional do motorista`">
         <i :class="['bi me-1', ENERGIAS[carona.rateio.energia].icone]"></i>{{ carona.rateio.energia === 'eletrico' ? 'Energia' : 'Combustível' }}
         {{ reais(carona.rateio.combustivel) }} + adicional {{ reais(carona.rateio.adicional) }}
+        <span v-if="carona.rateio.transito_percentual" class="text-nowrap">· +{{ carona.rateio.transito_percentual }}% trânsito</span>
         <span class="text-nowrap">· {{ ENERGIAS[carona.rateio.energia].texto }}</span>
       </div>
       <div v-if="carona.observacoes" class="small text-secondary mt-2"><i class="bi bi-chat-left-text me-1"></i>{{ carona.observacoes }}</div>

@@ -55,6 +55,9 @@ class Configuracao(db.Model):
         "preco_etanol": ("4.39", "Preço do litro do etanol (R$)"),
         "preco_diesel": ("6.19", "Preço do litro do diesel (R$)"),
         "preco_kwh": ("0.89", "Preço do kWh para carro elétrico (R$)"),
+        "transito_pico_percentual": ("25", "Trânsito: % a mais de consumo no horário de pico (dia útil, 6h30-8h30 e 17h-19h30)"),
+        "transito_trecho_percentual": ("10", "Trânsito: % a mais por trecho crítico no pico (pontes, Rod. do Sol, BR-101)"),
+        "transito_maximo_percentual": ("50", "Trânsito: acréscimo máximo no consumo (%)"),
         "exigir_cnh_motorista": ("0", "1 = só oferece carona quem tem a CNH verificada; 0 = não exige"),
         "exigir_identidade_passageiro": ("0", "1 = só pede vaga quem tem a identidade verificada; 0 = não exige"),
     }

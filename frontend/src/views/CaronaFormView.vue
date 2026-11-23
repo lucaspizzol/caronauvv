@@ -141,6 +141,19 @@
               </div>
             </div>
 
+            <fieldset class="mt-3">
+              <legend class="form-label small mb-1">
+                <i class="bi bi-cone-striped me-1"></i>Trechos com trânsito no caminho
+                <span class="text-secondary fw-normal">(no horário de pico o consumo sobe)</span>
+              </legend>
+              <div class="d-flex flex-wrap gap-3">
+                <div v-for="(nome, chave) in TRECHOS" :key="chave" class="form-check">
+                  <input :id="`trecho-${chave}`" v-model="calc.trechos" class="form-check-input" type="checkbox" :value="chave" />
+                  <label class="form-check-label small" :for="`trecho-${chave}`">{{ nome }}</label>
+                </div>
+              </div>
+            </fieldset>
+
             <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
               <button type="button" class="btn btn-warning fw-semibold" :disabled="!form.distancia_km || calculando" @click="ligarCalculo">
                 <span v-if="calculando" class="spinner-border spinner-border-sm me-1"></span>
@@ -159,8 +172,15 @@
                 <span><i :class="['bi me-1', ENERGIAS[calculo.energia].icone]"></i>{{ calculo.energia === 'eletrico' ? 'Energia gasta' : 'Combustível gasto' }}</span>
                 <span>
                   {{ numeroBr(calculo.distancia_km, 3) }} km ÷ {{ numeroBr(calculo.consumo_km, 1) }} {{ unidadeConsumo(calculo.energia) }}
-                  = <strong>{{ numeroBr(calculo.quantidade, 3) }} {{ calculo.unidade }}</strong>
+                  = <strong>{{ numeroBr(calculo.transito_percentual ? calculo.quantidade_sem_transito : calculo.quantidade, 3) }} {{ calculo.unidade }}</strong>
                 </span>
+              </div>
+              <div v-if="calculo.transito_percentual" class="linha transito">
+                <span><i class="bi bi-cone-striped me-1"></i>Trânsito ({{ calculo.transito_motivos.join('; ') }})</span>
+                <span>{{ numeroBr(calculo.quantidade_sem_transito, 3) }} {{ calculo.unidade }} + {{ calculo.transito_percentual }}% = <strong>{{ numeroBr(calculo.quantidade, 3) }} {{ calculo.unidade }}</strong></span>
+              </div>
+              <div v-else-if="horarioDePico === false && calc.trechos.length" class="linha small text-secondary">
+                <span><i class="bi bi-cone-striped me-1"></i>Fora do horário de pico: sem acréscimo de trânsito</span><span></span>
               </div>
               <div class="linha">
                 <span><i class="bi bi-receipt me-1"></i>Custo da viagem</span>
@@ -233,7 +253,7 @@ import api, { camposDoErro, mensagemDeErro } from '../services/api'
 import { auth } from '../stores/auth'
 import type {
   BairroSugestao, CalculoRateio, Carona, CidadeGrandeVitoria, DistanciaUvv, EnderecoCep, Energia, ErrosCampos,
-  RespostaValorSugerido, Sentido, Veiculo
+  RespostaValorSugerido, Sentido, TrechoTransito, Veiculo
 } from '../types/api'
 import { distanciaTexto, ENERGIAS, hojeLocal, numeroBr, reais, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
@@ -275,10 +295,27 @@ const form = reactive<FormCarona>({
 })
 
 // Dados do calculo do combustivel (o carro escolhido preenche energia e consumo)
-const calc = reactive<{ energia: Energia; consumo_km: number | ''; adicional: number | '' }>({
+const calc = reactive<{ energia: Energia; consumo_km: number | ''; adicional: number | ''; trechos: TrechoTransito[] }>({
   energia: 'flex',
   consumo_km: '',
-  adicional: 0
+  adicional: 0,
+  trechos: []
+})
+
+// Trechos criticos da Grande Vitoria (iguais aos do servidor)
+const TRECHOS: Record<TrechoTransito, string> = {
+  terceira_ponte: 'Terceira Ponte',
+  segunda_ponte: 'Segunda Ponte',
+  rodovia_do_sol: 'Rodovia do Sol',
+  br101_carapina: 'BR-101 / Carapina'
+}
+// Horario de pico (dia util, 6h30-8h30 e 17h-19h30): so para o texto da tela; a conta e do servidor
+const horarioDePico = computed<boolean | null>(() => {
+  if (!form.data || !form.hora) return null
+  const d = new Date(`${form.data}T${form.hora}`)
+  const minutos = d.getHours() * 60 + d.getMinutes()
+  const util = d.getDay() >= 1 && d.getDay() <= 5
+  return util && ((minutos >= 390 && minutos < 510) || (minutos >= 1020 && minutos < 1170))
 })
 const modoCalculo = ref(false) // true: o valor vem da conta (e o servidor refaz a conta ao salvar)
 const calculo = ref<CalculoRateio | null>(null)
@@ -316,6 +353,7 @@ async function distanciaDoBairro(bairro: string): Promise<void> {
     form.distancia_km = data.km
     distanciaEstimadaPeloBairro.value = true
     cidadeDoBairro.value = data.cidade
+    if (!calc.trechos.length) sugerirTrechos(data.cidade)
     textoDistancia.value = data.metodo === 'osrm'
       ? `Distância de carro de ${data.bairro} até a UVV pela rota do mapa (~${data.duracao_min} min sem trânsito); ajuste se o trajeto for diferente.`
       : `Distância estimada de ${data.bairro} até a UVV pelas coordenadas do bairro; ajuste se o trajeto for diferente.`
@@ -353,6 +391,18 @@ watch(
 
 function escolheuBairro(b: BairroSugestao): void {
   cidadeDoBairro.value = b.cidade
+  sugerirTrechos(b.cidade)
+}
+
+// Do outro lado da baia, o caminho ate a UVV passa por ponte (e da Serra, pela BR-101)
+function sugerirTrechos(cidade: CidadeGrandeVitoria): void {
+  const sugestao: Record<CidadeGrandeVitoria, TrechoTransito[]> = {
+    'Vila Velha': [],
+    Vitória: ['terceira_ponte'],
+    Cariacica: ['segunda_ponte'],
+    Serra: ['br101_carapina', 'terceira_ponte']
+  }
+  calc.trechos = [...sugestao[cidade]]
 }
 
 function escolheuRua(r: EnderecoCep): void {
@@ -373,7 +423,7 @@ watch(
 // Mudou algum dado da conta: refaz o calculo sozinho (com uma pequena espera enquanto digita)
 let espera: ReturnType<typeof setTimeout> | undefined
 watch(
-  () => [form.distancia_km, form.vagas, calc.energia, calc.consumo_km, calc.adicional],
+  () => [form.distancia_km, form.vagas, calc.energia, calc.consumo_km, calc.adicional, form.data, form.hora, calc.trechos.join()],
   () => {
     if (!modoCalculo.value) return
     clearTimeout(espera)
@@ -403,7 +453,9 @@ async function calcular(): Promise<void> {
         vagas: form.vagas,
         energia: calc.energia,
         consumo_km: calc.consumo_km || undefined,
-        adicional: calc.adicional || 0
+        adicional: calc.adicional || 0,
+        data_hora: form.data && form.hora ? `${form.data}T${form.hora}` : undefined,
+        trechos: calc.trechos.join(',') || undefined
       }
     })
     teto.value = data.teto
@@ -458,7 +510,10 @@ onMounted(async () => {
       if (c.rateio) {
         // carona calculada: mostra a mesma conta (energia e consumo usados naquele dia)
         await nextTick() // deixa o watch do carro rodar antes de aplicar a conta salva
-        Object.assign(calc, { energia: c.rateio.energia, consumo_km: c.rateio.consumo_km ?? '', adicional: c.rateio.adicional })
+        Object.assign(calc, {
+          energia: c.rateio.energia, consumo_km: c.rateio.consumo_km ?? '', adicional: c.rateio.adicional,
+          trechos: [...(c.rateio.trechos_transito || [])]
+        })
         modoCalculo.value = true
       }
     } else {
@@ -512,7 +567,8 @@ async function salvar(): Promise<void> {
     Object.assign(dados, {
       energia: calc.energia,
       consumo_km: calc.consumo_km === '' ? null : Number(calc.consumo_km),
-      adicional_por_passageiro: Number(calc.adicional || 0)
+      adicional_por_passageiro: Number(calc.adicional || 0),
+      trechos_transito: calc.trechos
     })
   }
 

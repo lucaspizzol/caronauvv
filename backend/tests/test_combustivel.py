@@ -1,12 +1,15 @@
-"""Calculo do rateio pelo combustivel: conta, energias, metros, adicional, teto e o que o servidor salva."""
+"""Calculo do rateio pelo combustivel: conta, energias, metros, adicional, teto, transito e o que o servidor salva."""
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 
 from caronauvv.admin.models import Configuracao
-from caronauvv.caronas.combustivel import CONSUMO_MEDIO, calcular_rateio
+from caronauvv.caronas.combustivel import CONSUMO_MEDIO, calcular_rateio, horario_de_pico
 from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
+
+FORA_DO_PICO = "2099-01-04T10:00"   # domingo de manha: sem acrescimo de transito
 
 
 # ==========================================================
@@ -141,10 +144,11 @@ def test_carona_calculada_ignora_o_valor_do_navegador(client, novo_aluno, nova_c
     carro = _carro(client, h)
     # o navegador manda R$ 4,99, mas com o adicional ligado o servidor faz a conta
     carona = nova_carona(h, veiculo_id=carro["id"], distancia_km=5, vagas=2,
-                         adicional_por_passageiro="0.79", valor_por_passageiro="4.99")
+                         adicional_por_passageiro="0.79", valor_por_passageiro="4.99", data_hora_saida=FORA_DO_PICO)
     # 5 km / 7 km/kWh = 0,714 kWh x R$ 0,89 = R$ 0,64 / 3 ocupantes = R$ 0,21 + R$ 0,79
     assert carona["valor_por_passageiro"] == 1.0
-    assert carona["rateio"] == {"energia": "eletrico", "consumo_km": 7.0, "combustivel": 0.21, "adicional": 0.79}
+    assert carona["rateio"] == {"energia": "eletrico", "consumo_km": 7.0, "combustivel": 0.21, "adicional": 0.79,
+                                "transito_percentual": 0, "trechos_transito": []}
 
 
 def test_teto_vale_para_combustivel_mais_adicional(client, novo_aluno):
@@ -162,7 +166,7 @@ def test_teto_vale_para_combustivel_mais_adicional(client, novo_aluno):
 def test_editar_vagas_recalcula(client, novo_aluno, nova_carona):
     _, h = novo_aluno(1)
     carro = _carro(client, h)
-    carona = nova_carona(h, veiculo_id=carro["id"], distancia_km=5, vagas=2, adicional_por_passageiro="0.79")
+    carona = nova_carona(h, veiculo_id=carro["id"], distancia_km=5, vagas=2, adicional_por_passageiro="0.79", data_hora_saida=FORA_DO_PICO)
     editada = client.put(f"/api/caronas/{carona['id']}", json={"vagas": 4}, headers=h).get_json()["carona"]
     # 0,64 / 5 ocupantes = R$ 0,13 de energia; o adicional continua R$ 0,79
     assert editada["rateio"]["combustivel"] == 0.13
@@ -173,7 +177,7 @@ def test_editar_vagas_recalcula(client, novo_aluno, nova_carona):
 def test_valor_digitado_a_mao_tira_o_detalhamento(client, novo_aluno, nova_carona):
     _, h = novo_aluno(1)
     carro = _carro(client, h)
-    carona = nova_carona(h, veiculo_id=carro["id"], distancia_km=5, vagas=2, adicional_por_passageiro="0.79")
+    carona = nova_carona(h, veiculo_id=carro["id"], distancia_km=5, vagas=2, adicional_por_passageiro="0.79", data_hora_saida=FORA_DO_PICO)
     editada = client.put(f"/api/caronas/{carona['id']}", json={"valor_por_passageiro": "2.00"}, headers=h).get_json()["carona"]
     assert editada["valor_por_passageiro"] == 2.0
     assert editada["rateio"] is None
@@ -191,7 +195,75 @@ def test_calculo_sem_distancia_e_recusado(client, novo_aluno):
 
 def test_carona_sem_carro_usa_flex_com_consumo_medio(client, novo_aluno, nova_carona):
     _, h = novo_aluno(1)
-    carona = nova_carona(h, distancia_km=12, vagas=3, adicional_por_passageiro="0")
+    carona = nova_carona(h, distancia_km=12, vagas=3, adicional_por_passageiro="0", data_hora_saida=FORA_DO_PICO)
     # 12 km / 12 km/l (media flex) = 1 L x 6,29 / 4 = R$ 1,57
     assert carona["rateio"]["energia"] == "flex"
     assert carona["rateio"]["combustivel"] == 1.57
+
+
+# ==========================================================
+# TRANSITO DA GRANDE VITORIA (horario de pico e trechos criticos)
+# ==========================================================
+SEGUNDA_7H = datetime(2099, 1, 5, 7, 0)     # segunda-feira, pico da manha
+SEGUNDA_10H = datetime(2099, 1, 5, 10, 0)
+SEXTA_18H = datetime(2099, 1, 9, 18, 0)     # pico da tarde
+SABADO_7H = datetime(2099, 1, 3, 7, 0)
+
+
+def test_horario_de_pico():
+    assert horario_de_pico(SEGUNDA_7H) and horario_de_pico(SEXTA_18H)
+    assert not horario_de_pico(SEGUNDA_10H)
+    assert not horario_de_pico(SABADO_7H)          # fim de semana nao tem pico
+    assert not horario_de_pico(datetime(2099, 1, 5, 8, 30))   # 8h30 ja saiu do pico
+    assert not horario_de_pico(None)
+
+
+def test_pico_aumenta_o_consumo_em_25_por_cento(app):
+    normal = calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_10H)
+    pico = calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_7H)
+    assert normal.transito_percentual == 0 and normal.quantidade == Decimal("1.000")
+    assert pico.transito_percentual == 25
+    assert pico.quantidade == Decimal("1.250")
+    assert pico.quantidade_sem_transito == Decimal("1.000")
+    assert pico.transito_motivos == ["+25% por trânsito no horário de pico"]
+    assert pico.custo_total > normal.custo_total
+
+
+def test_trechos_criticos_somam_ate_o_maximo(app):
+    r = calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_7H, trechos=["terceira_ponte", "terceira_ponte"])
+    assert r.transito_percentual == 35                       # 25 + 10 (trecho repetido conta 1 vez)
+    assert "+10% pela Terceira Ponte" in r.transito_motivos
+    r = calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_7H,
+                        trechos=["terceira_ponte", "segunda_ponte", "rodovia_do_sol", "br101_carapina", "inventado"])
+    assert r.transito_percentual == 50                       # limitado
+    assert r.transito_motivos[-1] == "limitado a +50%"
+    # Fora do pico os trechos nao pesam
+    assert calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_10H, trechos=["terceira_ponte"]).transito_percentual == 0
+
+
+def test_percentuais_do_transito_vem_do_painel(app):
+    db.session.add(Configuracao(chave="transito_pico_percentual", valor="40"))
+    db.session.commit()
+    assert calcular_rateio(10, 3, "gasolina", 10, saida=SEGUNDA_7H).transito_percentual == 40
+
+
+def test_valor_sugerido_com_transito(client, novo_aluno):
+    _, h = novo_aluno(1)
+    url = "/api/caronas/valor-sugerido?distancia_km=10&vagas=3&energia=gasolina&consumo_km=10"
+    conta = client.get(f"{url}&data_hora=2099-01-05T07:00&trechos=terceira_ponte", headers=h).get_json()["calculo"]
+    assert conta["transito_percentual"] == 35
+    assert client.get(f"{url}&data_hora=ontem", headers=h).status_code == 400
+
+
+def test_carona_guarda_o_transito_e_recalcula_ao_mudar_o_horario(client, novo_aluno, nova_carona):
+    _, h = novo_aluno(1)
+    carona = nova_carona(h, distancia_km=10, vagas=3, adicional_por_passageiro="0", data_hora_saida="2099-01-05T07:00",
+                         trechos_transito=["terceira_ponte"])
+    assert carona["rateio"]["transito_percentual"] == 35
+    assert carona["rateio"]["trechos_transito"] == ["terceira_ponte"]
+    pico = carona["valor_por_passageiro"]
+    editada = client.put(f"/api/caronas/{carona['id']}", json={"data_hora_saida": "2099-01-05T10:00"}, headers=h).get_json()["carona"]
+    assert editada["rateio"]["transito_percentual"] == 0
+    assert editada["valor_por_passageiro"] < pico
+    resp = client.put(f"/api/caronas/{carona['id']}", json={"trechos_transito": ["ponte_inventada"]}, headers=h)
+    assert resp.status_code == 400

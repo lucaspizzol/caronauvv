@@ -141,7 +141,12 @@ export interface RateioCarona {
   consumo_km: number | null
   combustivel: number
   adicional: number
+  transito_percentual: number // acrescimo no consumo pelo transito (horario de pico + trechos)
+  trechos_transito: TrechoTransito[]
 }
+
+/** Trechos criticos de transito da Grande Vitoria (caronas/combustivel.py: TRECHOS). */
+export type TrechoTransito = 'terceira_ponte' | 'segunda_ponte' | 'rodovia_do_sol' | 'br101_carapina'
 
 /** GET /api/caronas/valor-sugerido com energia: a conta completa (caronas/combustivel.py). */
 export interface CalculoRateio {
@@ -159,6 +164,9 @@ export interface CalculoRateio {
   combustivel_por_pessoa: number
   adicional: number
   valor_por_passageiro: number
+  transito_percentual: number
+  transito_motivos: string[]
+  quantidade_sem_transito: number
 }
 
 export interface RespostaValorSugerido {

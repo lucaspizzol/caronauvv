@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, g, request
 
 from caronauvv.auth.decorators import login_required
@@ -73,8 +75,15 @@ def sugerir_valor():
     energia = request.args.get("energia")
     if energia:
         # Conta completa: litros (ou kWh), preco, custo da viagem, parte de cada um e adicional
+        saida = None
+        if request.args.get("data_hora"):
+            try:
+                saida = datetime.fromisoformat(request.args["data_hora"]).replace(tzinfo=None)
+            except ValueError:
+                raise ApiError("data_hora inválida (use AAAA-MM-DDTHH:MM).")
+        trechos = [t for t in (request.args.get("trechos") or "").split(",") if t]
         rateio = calcular_rateio(distancia, vagas, energia, request.args.get("consumo_km"),
-                                 request.args.get("adicional", 0))
+                                 request.args.get("adicional", 0), saida, trechos)
         return {
             "valor_sugerido": float(rateio.valor_por_passageiro), "teto": float(teto),
             "acima_do_teto": rateio.valor_por_passageiro > teto, "calculo": rateio.to_dict(),
@@ -252,7 +261,6 @@ def sair_da_fila(pedido_id):
 @limitar(60, 60)
 def demanda_do_bairro():
     """Para o motorista: quantos alunos esperam carona deste bairro neste horario."""
-    from datetime import datetime
 
     from .models import SENTIDOS
 

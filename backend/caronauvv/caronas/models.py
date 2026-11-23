@@ -62,6 +62,9 @@ class Carona(db.Model):
     consumo_km: Mapped[Optional[float]] = mapped_column(db.Float)
     combustivel_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
     adicional_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
+    # Transito no calculo: trechos criticos escolhidos ("terceira_ponte,segunda_ponte") e o % aplicado
+    trechos_transito: Mapped[Optional[str]] = mapped_column(db.String(120))
+    transito_percentual: Mapped[Optional[int]] = mapped_column(db.Integer)
     reserva_automatica: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA]
     # Fila do "Pedir carona": ate esta hora so quem estava na fila pode pedir vaga (nulo = sem fila)
     prioridade_ate: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
@@ -98,7 +101,13 @@ class Carona(db.Model):
             "consumo_km": self.consumo_km,
             "combustivel": float(self.combustivel_por_passageiro),
             "adicional": float(self.adicional_por_passageiro or 0),
+            "transito_percentual": self.transito_percentual or 0,
+            "trechos_transito": self.lista_trechos,
         }
+
+    @property
+    def lista_trechos(self) -> list[str]:
+        return [t for t in (self.trechos_transito or "").split(",") if t]
 
     # ======================================================
     # REGRA DE NEGOCIO: vagas restantes = vagas - aceitas

@@ -13,7 +13,10 @@ from caronauvv.validacao import Bairro, Schema, TextoOpcional
 
 from caronauvv.auth.models import ENERGIAS
 
+from .combustivel import TRECHOS
 from .models import SENTIDOS
+
+TRECHOS_TRANSITO = tuple(TRECHOS)
 
 VAGAS_MIN, VAGAS_MAX = 1, 6
 
@@ -48,6 +51,8 @@ class CaronaEdicaoSchema(Schema):
     energia: Literal[ENERGIAS] | None = None  # type: ignore[valid-type]
     consumo_km: float | None = Field(default=None, gt=0, le=60)
     adicional_por_passageiro: Decimal | None = Field(default=None, ge=0, le=999)
+    # Trechos criticos de transito (Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101/Carapina)
+    trechos_transito: list[Literal[TRECHOS_TRANSITO]] | None = Field(default=None, max_length=4)  # type: ignore[valid-type]
 
     @field_validator("bairro_origem", "endereco_origem", "destino", "data_hora_saida", "vagas", mode="before")
     @classmethod

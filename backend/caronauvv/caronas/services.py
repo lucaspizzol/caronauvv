@@ -90,6 +90,8 @@ def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:
     # 1) veio o adicional -> calculo pelo combustivel (o servidor calcula, nao confia no navegador)
     # 2) veio so o valor   -> valor digitado pelo motorista (sem detalhamento)
     # 3) mudou distancia/vagas/carro de uma carona calculada -> recalcula com o mesmo adicional
+    if "trechos_transito" in campos:
+        campos["trechos_transito"] = ",".join(dict.fromkeys(campos["trechos_transito"] or [])) or None
     calculado = "adicional_por_passageiro" in campos
     manual = "valor_por_passageiro" in campos and not calculado
     if calculado:
@@ -98,7 +100,8 @@ def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:
         campos["valor_por_passageiro"] = campos["valor_por_passageiro"].quantize(Decimal("0.01"))
     recalcular = calculado or (
         not manual and carona.combustivel_por_passageiro is not None
-        and any(c in campos for c in ("distancia_km", "vagas", "veiculo_id", "energia", "consumo_km"))
+        and any(c in campos for c in ("distancia_km", "vagas", "veiculo_id", "energia", "consumo_km",
+                                      "data_hora_saida", "trechos_transito"))
     )
 
     for campo, valor in campos.items():
@@ -107,6 +110,7 @@ def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:
     if manual:
         carona.combustivel_por_passageiro = None
         carona.adicional_por_passageiro = None
+        carona.transito_percentual = None
     if recalcular:
         _calcular_valor(carona, veiculo or (db.session.get(Veiculo, carona.veiculo_id) if carona.veiculo_id else None))
 
@@ -134,7 +138,8 @@ def _calcular_valor(carona: Carona, veiculo: Veiculo | None) -> None:
     if carona.consumo_km is None and veiculo is not None and veiculo.energia == carona.energia:
         carona.consumo_km = veiculo.consumo_km
     rateio = calcular_rateio(carona.distancia_km, carona.vagas, carona.energia, carona.consumo_km,
-                             carona.adicional_por_passageiro or 0)
+                             carona.adicional_por_passageiro or 0, carona.data_hora_saida, carona.lista_trechos)
+    carona.transito_percentual = rateio.transito_percentual
     carona.combustivel_por_passageiro = rateio.combustivel_por_pessoa
     carona.adicional_por_passageiro = rateio.adicional
     carona.valor_por_passageiro = rateio.valor_por_passageiro

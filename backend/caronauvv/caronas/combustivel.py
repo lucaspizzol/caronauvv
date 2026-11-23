@@ -12,10 +12,16 @@ Quanto cada pessoa paga por uma carona, com a conta aberta:
 - Carro flex e hibrido usam o preco da gasolina; diesel, etanol e eletrico, o proprio.
 - Sem o consumo do carro, usa a media de um carro popular daquele tipo
   (e avisa que e estimativa).
+- TRANSITO (Grande Vitoria): no horario de pico (dia util, 6h30-8h30 e 17h-19h30) o
+  anda-e-para gasta mais: +25% no consumo, e cada trecho critico escolhido (Terceira
+  Ponte, Segunda Ponte, Rodovia do Sol, BR-101/Carapina) soma +10%, ate +50%.
+  Os percentuais ficam no painel. Fora do pico o transito flui e nao ha acrescimo.
+  E uma estimativa por horario (o sistema nao usa API de transito em tempo real).
 - Toda a conta usa Decimal (dinheiro nao pode ter erro de arredondamento de float)
   e so arredonda no fim, para centavos.
 """
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, time
 from decimal import ROUND_HALF_UP, Decimal
 
 from caronauvv.admin.models import Configuracao
@@ -43,6 +49,39 @@ CONSUMO_MEDIO = {
     "eletrico": 6.5,
 }
 
+# Trechos criticos de transito da Grande Vitoria (escolhidos pelo motorista)
+TRECHOS = {
+    "terceira_ponte": "Terceira Ponte",
+    "segunda_ponte": "Segunda Ponte",
+    "rodovia_do_sol": "Rodovia do Sol",
+    "br101_carapina": "BR-101 / Carapina",
+}
+PICOS = ((time(6, 30), time(8, 30)), (time(17, 0), time(19, 30)))
+
+
+def horario_de_pico(saida: datetime | None) -> bool:
+    if saida is None or saida.weekday() >= 5:   # sabado e domingo: sem pico
+        return False
+    return any(inicio <= saida.time() < fim for inicio, fim in PICOS)
+
+
+def fator_transito(saida: datetime | None, trechos=()) -> tuple[int, list[str]]:
+    """Acrescimo no consumo (%) e os motivos, para mostrar na conta."""
+    trechos = [t for t in dict.fromkeys(trechos or ()) if t in TRECHOS]
+    if not horario_de_pico(saida):
+        return 0, []
+    pico = Configuracao.obter_int("transito_pico_percentual", 25)
+    por_trecho = Configuracao.obter_int("transito_trecho_percentual", 10)
+    maximo = Configuracao.obter_int("transito_maximo_percentual", 50)
+    motivos = [f"+{pico}% por trânsito no horário de pico"] if pico else []
+    motivos += [f"+{por_trecho}% pela {TRECHOS[t]}" for t in trechos if por_trecho]
+    total = pico + por_trecho * len(trechos)
+    if total > maximo:
+        motivos.append(f"limitado a +{maximo}%")
+        total = maximo
+    return total, motivos
+
+
 NOMES = {
     "gasolina": "Gasolina", "flex": "Flex (gasolina)", "etanol": "Etanol",
     "diesel": "Diesel", "hibrido": "Híbrido (gasolina)", "eletrico": "Elétrico",
@@ -64,6 +103,9 @@ class Rateio:
     combustivel_por_pessoa: Decimal
     adicional: Decimal
     valor_por_passageiro: Decimal
+    transito_percentual: int = 0                                  # acrescimo no consumo pelo transito
+    transito_motivos: list[str] = field(default_factory=list)
+    quantidade_sem_transito: Decimal = Decimal("0")
 
     def to_dict(self) -> dict:
         dados = asdict(self)
@@ -84,7 +126,8 @@ def _decimal(valor, campo: str) -> Decimal:
     return numero
 
 
-def calcular_rateio(distancia_km, vagas: int, energia: str = "flex", consumo_km=None, adicional=0) -> Rateio:
+def calcular_rateio(distancia_km, vagas: int, energia: str = "flex", consumo_km=None, adicional=0,
+                    saida: datetime | None = None, trechos=()) -> Rateio:
     """Conta completa do rateio. Levanta ApiError com o campo errado quando um dado nao serve."""
     if energia not in PRECO_POR_ENERGIA:
         raise ApiError("Tipo de energia inválido.", campos={"energia": "Escolha gasolina, etanol, flex, diesel, híbrido ou elétrico."})
@@ -106,7 +149,9 @@ def calcular_rateio(distancia_km, vagas: int, energia: str = "flex", consumo_km=
 
     preco = Configuracao.obter_decimal(PRECO_POR_ENERGIA[energia], "0")
     km = Decimal(distancia_m) / 1000
-    quantidade = km / consumo
+    percentual, motivos = fator_transito(saida, trechos)
+    sem_transito = km / consumo
+    quantidade = sem_transito * (1 + Decimal(percentual) / 100)
     custo_total = quantidade * preco
     ocupantes = int(vagas) + 1
     por_pessoa = (custo_total / ocupantes).quantize(CENTAVO, rounding=ROUND_HALF_UP)
@@ -126,4 +171,7 @@ def calcular_rateio(distancia_km, vagas: int, energia: str = "flex", consumo_km=
         combustivel_por_pessoa=por_pessoa,
         adicional=extra,
         valor_por_passageiro=por_pessoa + extra,
+        transito_percentual=percentual,
+        transito_motivos=motivos,
+        quantidade_sem_transito=sem_transito.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
     )

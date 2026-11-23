@@ -158,7 +158,7 @@ body {
   color: #6c7a92;
 }
 
-.vazio i {
+.vazio > i {
   font-size: 2.5rem;
   display: block;
   margin-bottom: 0.5rem;
@@ -179,7 +179,9 @@ body {
 .nav-celular a {
   flex: 1;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
+  min-width: 0;
+  white-space: nowrap;
   color: #6c7a92;
   text-decoration: none;
   padding: 0.45rem 0 0.35rem;

@@ -1,4 +1,6 @@
-import type { DataIso, Energia, NivelConversa, Preferencias, StatusCarona, StatusSolicitacao } from '../types/api'
+import type {
+  DataIso, Energia, NivelConversa, Preferencias, StatusCarona, StatusPedidoCarona, StatusSolicitacao
+} from '../types/api'
 
 // ==========================================================
 // Formatacao de datas, valores e status para exibicao
@@ -69,7 +71,7 @@ export function telefoneFormatado(telefone: Talvez<string>): string {
 }
 
 /** Cor do Bootstrap usada no selo de status (badge text-bg-<cor>). */
-export type CorStatus = 'success' | 'warning' | 'info' | 'secondary' | 'danger'
+export type CorStatus = 'success' | 'warning' | 'info' | 'secondary' | 'danger' | 'primary'
 
 export interface InfoStatus {
   texto: string
@@ -91,6 +93,13 @@ export const STATUS_PEDIDO: Record<StatusSolicitacao, InfoStatus> = {
   recusada: { texto: 'Recusado', cor: 'danger' },
   cancelada: { texto: 'Cancelado', cor: 'secondary' },
   expirada: { texto: 'Expirado', cor: 'secondary' }
+}
+
+export const STATUS_FILA: Record<StatusPedidoCarona, InfoStatus> = {
+  aberto: { texto: 'Na fila', cor: 'primary' },
+  atendido: { texto: 'Conseguiu carona', cor: 'success' },
+  expirado: { texto: 'Expirado', cor: 'secondary' },
+  cancelado: { texto: 'Cancelado', cor: 'secondary' }
 }
 
 export function iniciais(nome: Talvez<string>): string {

@@ -25,7 +25,7 @@ MARCADOR = "## Diagrama físico"
 
 MODULOS = {
     "auth": ["usuarios", "veiculos", "contatos_confianca", "fotos_perfil", "documentos", "codigos_reserva"],
-    "caronas": ["caronas", "solicitacoes", "posicoes_gps"],
+    "caronas": ["caronas", "solicitacoes", "posicoes_gps", "pedidos_carona"],
     "avaliacoes": ["avaliacoes", "avaliacao_tags", "pagamentos"],
     "notificacoes": ["notificacoes"],
     "seguranca": ["alertas", "links_compartilhados", "denuncias"],

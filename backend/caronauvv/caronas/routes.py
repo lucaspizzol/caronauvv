@@ -5,7 +5,13 @@ from caronauvv.errors import ApiError
 from caronauvv.validacao import validar
 
 from .combustivel import calcular_rateio
-from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema, PinSchema, PosicaoSchema
+from caronauvv.limite import limitar
+
+from .fila import buscar_pedido, criar_pedido, demanda, pedido_to_dict, pedidos_do_aluno
+from .fila import cancelar_pedido as cancelar_pedido_da_fila
+from .schemas import (
+    CaronaEdicaoSchema, CaronaNovaSchema, PedidoCaronaSchema, PedidoVagaSchema, PinSchema, PosicaoSchema,
+)
 from .services import (
     aceitar_solicitacao,
     buscar_carona,
@@ -31,6 +37,7 @@ from .services import (
 
 bp = Blueprint("caronas", __name__)                    # /api/caronas
 bp_solicitacoes = Blueprint("solicitacoes", __name__)  # /api/solicitacoes
+bp_pedidos = Blueprint("pedidos_carona", __name__)     # /api/pedidos-carona (fila do "Pedir carona")
 
 
 def _json() -> dict:
@@ -194,3 +201,46 @@ def embarque(solicitacao_id):
 def falta(solicitacao_id):
     solicitacao = marcar_falta(buscar_solicitacao(solicitacao_id), g.usuario)
     return {"solicitacao": solicitacao.to_dict(g.usuario)}
+
+
+# ==========================================================
+# PEDIR CARONA (fila com prioridade)
+# ==========================================================
+@bp_pedidos.post("")
+@login_required
+@limitar(10, 60)
+def entrar_na_fila():
+    pedido = criar_pedido(g.usuario, validar(PedidoCaronaSchema, _json()))
+    return {"pedido": pedido_to_dict(pedido)}, 201
+
+
+@bp_pedidos.get("/minhas")
+@login_required
+def meus_pedidos_de_carona():
+    return {"pedidos": [pedido_to_dict(p) for p in pedidos_do_aluno(g.usuario)]}
+
+
+@bp_pedidos.post("/<int:pedido_id>/cancelar")
+@login_required
+def sair_da_fila(pedido_id):
+    pedido = cancelar_pedido_da_fila(buscar_pedido(pedido_id, g.usuario))
+    return {"pedido": pedido_to_dict(pedido)}
+
+
+@bp_pedidos.get("/demanda")
+@login_required
+@limitar(60, 60)
+def demanda_do_bairro():
+    """Para o motorista: quantos alunos esperam carona deste bairro neste horario."""
+    from datetime import datetime
+
+    from .models import SENTIDOS
+
+    sentido = request.args.get("sentido", "ida")
+    if sentido not in SENTIDOS:
+        raise ApiError(f"sentido deve ser um de: {', '.join(SENTIDOS)}.")
+    try:
+        saida = datetime.fromisoformat(request.args.get("data_hora", ""))
+    except ValueError:
+        raise ApiError("data_hora inválida (use AAAA-MM-DDTHH:MM).")
+    return {"alunos": demanda(request.args.get("bairro", "")[:100], sentido, saida.replace(tzinfo=None))}

@@ -99,7 +99,8 @@ COLUNAS_DESTAQUE = {
 
 DOMINIOS = (
     ("Viagem: caronas, pedidos, GPS, avaliações e pagamento",
-     ("usuarios", "veiculos", "caronas", "solicitacoes", "posicoes_gps", "avaliacoes", "avaliacao_tags", "pagamentos")),
+     ("usuarios", "veiculos", "caronas", "solicitacoes", "pedidos_carona", "posicoes_gps", "avaliacoes", "avaliacao_tags",
+      "pagamentos")),
     ("Segurança: contatos de confiança, link da família, alertas e denúncias",
      ("usuarios", "caronas", "contatos_confianca", "links_compartilhados", "alertas", "denuncias")),
     ("Conta: foto de perfil, documentos verificados e verificação em duas etapas",
@@ -202,6 +203,7 @@ DESCRICAO_TABELAS = {
     "documentos": "Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)",
     "solicitacoes": "Pedido de vaga: status, PIN de embarque, embarque e falta",
     "posicoes_gps": "Trilha GPS da viagem em andamento (link da família)",
+    "pedidos_carona": "Fila do Pedir carona: bairro, sentido, dia e faixa de horário (prioridade nas caronas novas)",
     "avaliacoes": "Nota de 1 a 5 entre motorista e passageiro",
     "avaliacao_tags": "Elogios de cada avaliação (Pontual, Dirige bem...)",
     "pagamentos": "Rateio por Pix/dinheiro, com o código Pix copia e cola",

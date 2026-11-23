@@ -3,7 +3,7 @@ Schemas (Pydantic) dos formularios de carona e de pedido de vaga.
 Regras que dependem do banco (vagas ja aceitas, dono do veiculo, teto do
 rateio nas configuracoes) ficam no services.py.
 """
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal
 
@@ -88,6 +88,23 @@ class PinSchema(Schema):
     def _quatro_digitos(cls, v: str) -> str:
         if not (len(v) == 4 and v.isdigit()):
             raise ValueError("O PIN tem 4 números.")
+        return v
+
+
+class PedidoCaronaSchema(Schema):
+    """Entrar na fila do "Pedir carona"."""
+    bairro: Bairro = Field(min_length=1, max_length=100)
+    sentido: Literal[SENTIDOS] = "ida"  # type: ignore[valid-type]
+    data: date
+    hora_inicio: time
+    hora_fim: time
+
+    @field_validator("hora_fim")
+    @classmethod
+    def _faixa(cls, v: time, info) -> time:
+        inicio = info.data.get("hora_inicio")
+        if inicio is not None and v <= inicio:
+            raise ValueError("O fim da faixa precisa ser depois do início.")
         return v
 
 

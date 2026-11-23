@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/acompanhar/:token', name: 'acompanhar', component: () => import('../views/AcompanharView.vue'), props: true, meta: { titulo: 'Acompanhar viagem', publica: true, livre: true } },
   { path: '/verificar-email', name: 'verificar-email', component: () => import('../views/VerificarEmailView.vue'), meta: { titulo: 'Confirmar e-mail' } },
   { path: '/caronas', name: 'buscar', component: () => import('../views/BuscarView.vue'), meta: { titulo: 'Buscar caronas' } },
+  { path: '/pedir-carona', name: 'pedir-carona', component: () => import('../views/PedirCaronaView.vue'), meta: { titulo: 'Pedir carona' } },
   { path: '/caronas/nova', name: 'oferecer', component: () => import('../views/CaronaFormView.vue'), meta: { titulo: 'Oferecer carona' } },
   { path: '/caronas/:id/editar', name: 'editar', component: () => import('../views/CaronaFormView.vue'), props: true, meta: { titulo: 'Editar carona' } },
   { path: '/minhas-caronas', name: 'minhas-caronas', component: () => import('../views/MinhasCaronasView.vue'), meta: { titulo: 'Minhas caronas' } },

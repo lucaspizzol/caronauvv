@@ -19,7 +19,7 @@ from caronauvv.auth.models import CodigoReserva, ContatoConfianca, Documento, Fo
 from caronauvv.avaliacoes.models import Avaliacao, AvaliacaoTag, Pagamento
 from caronauvv.avaliacoes.services import gerar_pix_copia_cola
 from caronauvv.caronas.combustivel import calcular_rateio
-from caronauvv.caronas.models import Carona, PosicaoGps, Solicitacao
+from caronauvv.caronas.models import Carona, PedidoCarona, PosicaoGps, Solicitacao
 from caronauvv.notificacoes.models import Notificacao
 from caronauvv.seguranca.models import Alerta, Denuncia, LinkCompartilhado
 
@@ -435,4 +435,20 @@ def _dados_de_exemplo() -> None:
         Busca(usuario=marina, bairro="Glória", sentido="volta", data_desejada=amanha, qtd_resultados=0),
         Notificacao(usuario=lucas, carona=c_3dias, tipo="avaliacao_pendente", titulo="Como foi a viagem?",
                     texto="Avalie Kauã e ajude a comunidade a confiar no CaronaUVV."),
+    ])
+
+    # ------------------------------------------------------
+    # PEDIR CARONA (fila): Marina espera carona da Gloria amanha cedo e a noite;
+    # Joao tambem (2o da fila da Gloria); o pedido da Ana foi atendido pela carona do Kaua
+    # ------------------------------------------------------
+    db.session.add_all([
+        PedidoCarona(aluno=marina, bairro="Glória", bairro_chave="gloria", sentido="ida", data=amanha,
+                     hora_inicio=time(7, 0), hora_fim=time(8, 0), criado_em=datetime.now() - timedelta(hours=5)),
+        PedidoCarona(aluno=marina, bairro="Glória", bairro_chave="gloria", sentido="volta", data=amanha,
+                     hora_inicio=time(22, 0), hora_fim=time(23, 0), criado_em=datetime.now() - timedelta(hours=5)),
+        PedidoCarona(aluno=joao, bairro="Glória", bairro_chave="gloria", sentido="ida", data=amanha,
+                     hora_inicio=time(6, 30), hora_fim=time(7, 30), criado_em=datetime.now() - timedelta(hours=2)),
+        PedidoCarona(aluno=ana, bairro="Itapuã", bairro_chave="itapua", sentido="ida", data=amanha,
+                     hora_inicio=time(18, 0), hora_fim=time(19, 0), status="atendido", carona=c_amanha,
+                     criado_em=datetime.now() - timedelta(hours=6), atendido_em=datetime.now() - timedelta(hours=3)),
     ])

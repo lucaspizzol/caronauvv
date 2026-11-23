@@ -46,6 +46,7 @@ class Configuracao(db.Model):
         "raio_busca_km": ("2", "Distância máxima da rota até o passageiro na busca (km)"),
         "horas_expirar_pedido": ("2", "Pedido sem resposta expira X horas antes da saída"),
         "minutos_responder_pedido": ("30", "O motorista tem X minutos para responder um pedido de vaga"),
+        "minutos_prioridade_fila": ("15", "Carona nova: nos primeiros X min só quem estava na fila do Pedir carona pede vaga"),
         "minutos_alerta_parada": ("6", "Carro parado fora da rota por X min dispara 'Está tudo bem?'"),
         "minutos_sem_resposta_alerta": ("3", "Sem resposta ao alerta em X min, avisa os contatos de confiança"),
         "dias_revelar_avaliacao": ("7", "Notas aparecem quando os dois avaliam ou após X dias"),

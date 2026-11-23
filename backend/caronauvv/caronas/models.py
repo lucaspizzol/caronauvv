@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import List, Optional, TYPE_CHECKING
 
@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 SENTIDOS = ("ida", "volta")                     # Casa -> UVV / UVV -> Casa
 STATUS_CARONA = ("ativa", "lotada", "em_andamento", "concluida", "cancelada")
 STATUS_SOLICITACAO = ("pendente", "aceita", "recusada", "cancelada", "expirada")
-METODOS_EMBARQUE = ("pin", "pin+gps", "gps", "manual")  # "pin": o motorista digitou o PIN do passageiro
+METODOS_EMBARQUE = ("pin", "pin+gps", "gps", "manual")
+STATUS_PEDIDO_CARONA = ("aberto", "atendido", "expirado", "cancelado")  # "pin": o motorista digitou o PIN do passageiro
 
 
 # === Carona (oferta do motorista) ===  [MVP]
@@ -62,6 +63,8 @@ class Carona(db.Model):
     combustivel_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
     adicional_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
     reserva_automatica: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA]
+    # Fila do "Pedir carona": ate esta hora so quem estava na fila pode pedir vaga (nulo = sem fila)
+    prioridade_ate: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
     observacoes: Mapped[Optional[str]] = mapped_column(db.String(300))  # "Saio pontualmente; cabe mochila"
 
     # ------------------------------------------------------
@@ -141,6 +144,7 @@ class Carona(db.Model):
             "valor_por_passageiro": float(self.valor_por_passageiro),
             "rateio": self.rateio_dict(),
             "reserva_automatica": self.reserva_automatica,
+            "prioridade_ate": iso(self.prioridade_ate) if self.prioridade_ate and self.prioridade_ate > datetime.now() else None,
             "observacoes": self.observacoes,
             "status": self.status,
             "iniciada_em": iso(self.iniciada_em),
@@ -263,3 +267,43 @@ class PosicaoGps(db.Model):
 
     def __repr__(self) -> str:
         return f"<PosicaoGps carona_id={self.carona_id} ({self.lat}, {self.lng})>"
+
+
+# === PedidoCarona (fila do "Pedir carona") ===  [EXTRA]
+# O aluno avisa "preciso de carona de Itapua para a UVV amanha entre 6h30 e 7h".
+# Quando um motorista oferece uma carona compativel, quem esta na fila e avisado
+# e tem prioridade para pedir vaga nos primeiros minutos.
+class PedidoCarona(db.Model):
+    __tablename__ = "pedidos_carona"
+    __table_args__ = (
+        CheckConstraint(check_valores("sentido", SENTIDOS), name="sentido"),
+        CheckConstraint(check_valores("status", STATUS_PEDIDO_CARONA), name="status"),
+        CheckConstraint("hora_fim > hora_inicio", name="faixa"),
+    )
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    aluno_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    bairro: Mapped[str] = mapped_column(db.String(100), nullable=False)
+    bairro_chave: Mapped[str] = mapped_column(db.String(100), nullable=False, index=True)  # sem acento/minusculo
+    sentido: Mapped[str] = mapped_column(db.String(10), nullable=False, default="ida")
+    data: Mapped[date] = mapped_column(db.Date, nullable=False, index=True)
+    hora_inicio: Mapped[time] = mapped_column(db.Time, nullable=False)
+    hora_fim: Mapped[time] = mapped_column(db.Time, nullable=False)
+    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="aberto", index=True)
+    carona_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("caronas.id", ondelete="SET NULL"))  # carona que atendeu
+    criado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
+    atendido_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+
+    aluno: Mapped["Usuario"] = relationship("Usuario")
+    carona: Mapped[Optional["Carona"]] = relationship("Carona")
+
+    @property
+    def inicio(self) -> datetime:
+        return datetime.combine(self.data, self.hora_inicio)
+
+    @property
+    def fim(self) -> datetime:
+        return datetime.combine(self.data, self.hora_fim)
+
+    def __repr__(self) -> str:
+        return f"<PedidoCarona id={self.id} {self.bairro} {self.sentido} {self.data} status='{self.status}'>"

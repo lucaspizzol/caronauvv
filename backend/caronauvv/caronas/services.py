@@ -9,9 +9,11 @@ from caronauvv.auth.models import Usuario, Veiculo
 from caronauvv.auth.services import exigir_email_verificado
 from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
+from caronauvv.lugares.services import normalizar
 from caronauvv.notificacoes.services import notificar
 
 from .combustivel import calcular_rateio
+from .fila import ao_confirmar_vaga, ao_publicar_carona, checar_prioridade
 from .models import SENTIDOS, Carona, PosicaoGps, Solicitacao
 from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema
 
@@ -190,8 +192,6 @@ def listar_caronas(filtros, usuario: Usuario | None = None) -> list[Carona]:
     )
 
     bairro = (filtros.get("bairro") or "").strip()
-    if bairro:
-        consulta = consulta.where(Carona.bairro_origem.ilike(f"%{bairro}%"))
 
     sentido = filtros.get("sentido")
     if sentido:
@@ -214,6 +214,11 @@ def listar_caronas(filtros, usuario: Usuario | None = None) -> list[Carona]:
     consulta = consulta.join(Carona.motorista).where(Usuario.is_active.is_(True))
 
     caronas = list(db.session.scalars(consulta))
+    if bairro:
+        # Sem diferenciar acento e maiuscula: "gloria" acha "Glória" (feito em Python porque
+        # SQLite e PostgreSQL tratam acento de jeitos diferentes; a lista ja vem filtrada por data/status)
+        procurado = normalizar(bairro)
+        caronas = [c for c in caronas if procurado in normalizar(c.bairro_origem)]
 
     if bairro:
         db.session.add(Busca(
@@ -249,6 +254,7 @@ def criar_carona(motorista: Usuario, dados: CaronaNovaSchema) -> Carona:
     _aplicar_dados(carona, dados.preenchidos(), motorista)
     db.session.add(carona)
     db.session.commit()
+    ao_publicar_carona(carona)  # avisa quem esta na fila do "Pedir carona" e liga a prioridade
     return carona
 
 
@@ -436,6 +442,7 @@ def _aceitar(solicitacao: Solicitacao) -> None:
     solicitacao.respondida_em = datetime.now()
     solicitacao.pin_embarque = f"{secrets.randbelow(10000):04d}"
     atualizar_lotacao(solicitacao.carona)
+    ao_confirmar_vaga(solicitacao)  # o pedido da fila (se houver) foi atendido
     carona = solicitacao.carona
     notificar(solicitacao.passageiro, "vaga_confirmada", "Vaga confirmada!",
               f"{_primeiro_nome(carona.motorista)} confirmou sua vaga para {_quando(carona)}. "
@@ -461,6 +468,7 @@ def pedir_vaga(carona: Carona, passageiro: Usuario, dados: PedidoVagaSchema) -> 
         raise ApiError("Esta carona está lotada.")
     if carona.status != "ativa" or carona.data_hora_saida <= datetime.now():
         raise ApiError("Esta carona não está mais recebendo pedidos.")
+    checar_prioridade(carona, passageiro)  # primeiros minutos: so quem estava na fila
 
     # Regra: o passageiro nao pode pedir a mesma carona duas vezes.
     # Excecao: se ele mesmo cancelou o pedido, pode pedir de novo.

@@ -125,6 +125,7 @@ export interface Carona {
   vagas_restantes: number
   valor_por_passageiro: number
   reserva_automatica: boolean
+  prioridade_ate: DataIso | null // fila do Pedir carona: ate esta hora so quem estava na fila pede vaga
   observacoes: string | null
   status: StatusCarona
   iniciada_em: DataIso | null
@@ -408,4 +409,24 @@ export interface DistanciaUvv {
   km: number
   duracao_min: number | null
   metodo: 'osrm' | 'estimativa'
+}
+
+// ----------------------------------------------------------
+// Pedir carona (caronas/fila.py: pedido_to_dict)
+// ----------------------------------------------------------
+export type StatusPedidoCarona = 'aberto' | 'atendido' | 'expirado' | 'cancelado'
+
+export interface PedidoCarona {
+  id: number
+  bairro: string
+  sentido: Sentido
+  data: string // AAAA-MM-DD
+  hora_inicio: string // HH:MM
+  hora_fim: string
+  status: StatusPedidoCarona
+  criado_em: DataIso
+  carona_id: number | null
+  posicao: number | null // 1 = primeiro da fila (so nos abertos)
+  caronas_compativeis: number
+  sem_prioridade_por_falta: boolean
 }

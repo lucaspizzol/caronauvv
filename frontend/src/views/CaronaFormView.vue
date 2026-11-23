@@ -57,6 +57,13 @@
           <input id="hora" v-model="form.hora" type="time" :class="['form-control', { 'is-invalid': erros.hora }]" />
           <div class="invalid-feedback">{{ erros.hora }}</div>
         </div>
+        <div v-if="esperando > 0 && !editando" class="col-12">
+          <div class="alert alert-info py-2 mb-0 small d-flex align-items-center gap-2" role="status">
+            <i class="bi bi-people-fill fs-5"></i>
+            <span><strong>{{ esperando }} {{ esperando === 1 ? 'aluno esperando' : 'alunos esperando' }}</strong> carona
+              {{ form.sentido === 'ida' ? 'de' : 'para' }} {{ form.bairro_origem }} nesse horário. Ao publicar, eles são avisados na hora.</span>
+          </div>
+        </div>
         <div class="col-6 col-md-4">
           <label class="form-label" for="vagas">Vagas</label>
           <input id="vagas" v-model.number="form.vagas" type="number" min="1" max="6" :class="['form-control', { 'is-invalid': erros.vagas }]" />
@@ -318,6 +325,31 @@ async function distanciaDoBairro(bairro: string): Promise<void> {
     distanciaEstimadaPeloBairro.value = false
   }
 }
+
+// Quantos alunos estao na fila do "Pedir carona" para este bairro/sentido/horario
+const esperando = ref(0)
+let esperaDemanda: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => [form.bairro_origem, form.sentido, form.data, form.hora],
+  () => {
+    clearTimeout(esperaDemanda)
+    esperaDemanda = setTimeout(async () => {
+      if (!form.bairro_origem || !form.data || !form.hora) {
+        esperando.value = 0
+        return
+      }
+      try {
+        const { data } = await api.get<{ alunos: number }>('/pedidos-carona/demanda', {
+          params: { bairro: form.bairro_origem, sentido: form.sentido, data_hora: `${form.data}T${form.hora}` }
+        })
+        esperando.value = data.alunos
+      } catch {
+        esperando.value = 0
+      }
+    }, 400)
+  },
+  { immediate: true }
+)
 
 function escolheuBairro(b: BairroSugestao): void {
   cidadeDoBairro.value = b.cidade

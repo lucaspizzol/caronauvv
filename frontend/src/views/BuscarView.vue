@@ -52,7 +52,10 @@
     <div v-else-if="!caronas.length" class="card vazio">
       <i class="bi bi-signpost-split"></i>
       <p class="fw-semibold mb-1">Nenhuma carona encontrada com esses filtros.</p>
-      <p class="small mb-0">Tente outro horário ou ofereça você mesmo uma carona.</p>
+      <p class="small mb-2">Tente outro horário, ou entre na fila: quando um motorista oferecer carona do seu bairro nesse horário, você é avisado e tem prioridade.</p>
+      <RouterLink :to="{ name: 'pedir-carona', query: { bairro: filtros.bairro || undefined, sentido: filtros.sentido || undefined, data: filtros.data || undefined, hora_inicio: filtros.hora_inicio || undefined, hora_fim: filtros.hora_fim || undefined } }" class="btn btn-primary btn-sm align-self-center">
+        <i class="bi bi-hand-index-thumb me-1"></i>Pedir carona
+      </RouterLink>
     </div>
 
     <template v-else>
@@ -60,6 +63,9 @@
       <div class="d-flex flex-column gap-3">
         <div v-for="carona in caronas" :key="carona.id" class="card p-3">
           <CaronaInfo :carona="carona" />
+          <div v-if="carona.prioridade_ate" class="small mt-2 text-primary-emphasis">
+            <i class="bi bi-people-fill me-1"></i>Prioridade para quem estava na fila do Pedir carona até as {{ hora(carona.prioridade_ate) }}.
+          </div>
 
           <div class="border-top mt-3 pt-3">
             <div v-if="carona.motorista.id === auth.usuario?.id" class="small text-secondary">
@@ -114,6 +120,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import CampoBairro from '../components/CampoBairro.vue'
@@ -123,7 +130,7 @@ import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'
 import { auth, type TipoAviso } from '../stores/auth'
 import type { Carona, Sentido, Solicitacao, StatusSolicitacao } from '../types/api'
-import { hojeLocal } from '../utils/formato'
+import { hojeLocal, hora } from '../utils/formato'
 
 const hoje = hojeLocal()
 
@@ -137,7 +144,16 @@ interface Filtros {
 
 const FILTROS_VAZIOS: Filtros = { bairro: '', sentido: '', data: '', hora_inicio: '', hora_fim: '' }
 
-const filtros = reactive<Filtros>({ ...FILTROS_VAZIOS })
+// Filtros vindos da URL (ex.: link "caronas disponiveis" do Pedir carona)
+const route = useRoute()
+const daUrl = (chave: keyof Filtros): string => (typeof route.query[chave] === 'string' ? (route.query[chave] as string) : '')
+const filtros = reactive<Filtros>({
+  bairro: daUrl('bairro'),
+  sentido: daUrl('sentido') === 'ida' || daUrl('sentido') === 'volta' ? (daUrl('sentido') as Sentido) : '',
+  data: daUrl('data'),
+  hora_inicio: daUrl('hora_inicio'),
+  hora_fim: daUrl('hora_fim')
+})
 let aplicados: Partial<Filtros> = {} // filtros da ultima busca (a atualizacao automatica usa estes, nao o que esta sendo digitado)
 const caronas = ref<Carona[]>([])
 const carregando = ref(true)

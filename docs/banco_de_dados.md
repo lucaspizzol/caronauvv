@@ -1,6 +1,6 @@
 # CaronaUVV — Banco de dados
 
-Modelo físico do banco do CaronaUVV: 18 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
+Modelo físico do banco do CaronaUVV: 19 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
 e versionadas com Flask-Migrate (`backend/migrations/`).
 
 > O diagrama e o dicionário abaixo são gerados a partir do código (`db.metadata`), então refletem exatamente

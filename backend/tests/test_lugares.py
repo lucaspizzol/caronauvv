@@ -197,3 +197,12 @@ def test_bairro_normal_e_aceito(client, aluno, nova_carona):
     }, headers=aluno)
     assert resp.status_code == 400
     assert "bairro_origem" in resp.get_json()["campos"]
+
+
+def test_busca_de_carona_ignora_acento(client, novo_aluno, nova_carona):
+    _, motorista = novo_aluno("5", "Motorista")
+    nova_carona(motorista, bairro_origem="Gloria")
+    _, ana = novo_aluno("6", "Ana")
+    assert len(client.get("/api/caronas?bairro=Glória", headers=ana).get_json()["caronas"]) == 1
+    assert len(client.get("/api/caronas?bairro=GLOR", headers=ana).get_json()["caronas"]) == 1
+    assert client.get("/api/caronas?bairro=Ibes", headers=ana).get_json()["caronas"] == []

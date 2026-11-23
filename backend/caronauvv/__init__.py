@@ -1,9 +1,9 @@
 import os
 import time
 
-from flask import Flask
+from flask import Flask, request
 
-from .config import Config
+from .config import DEV_SECRET_KEY, Config
 from .errors import init_app as init_errors
 from .extensions import cors, migrate
 from .ext.db import db
@@ -67,6 +67,23 @@ def create_app(config_class=Config):
     # Erros -> JSON ({"error": "..."}), inclusive 404/405/500
     # ----------------------------------------------------------
     init_errors(app)
+
+    # ----------------------------------------------------------
+    # Cabecalhos de seguranca em toda resposta da API
+    # ----------------------------------------------------------
+    @app.after_request
+    def _cabecalhos_de_seguranca(resposta):
+        resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resposta.headers.setdefault("X-Frame-Options", "DENY")
+        resposta.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if request.path.startswith("/api") and resposta.mimetype == "application/json":
+            # JSON com dados pessoais: nao guarda em cache e nao roda como pagina
+            resposta.headers.setdefault("Cache-Control", "no-store")
+            resposta.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        return resposta
+
+    if app.config["SECRET_KEY"] == DEV_SECRET_KEY and not app.config.get("DEBUG") and not app.config.get("TESTING"):
+        app.logger.critical("SECRET_KEY de desenvolvimento em producao! Defina SECRET_KEY no ambiente.")
 
     @app.get("/api/health")
     def health():

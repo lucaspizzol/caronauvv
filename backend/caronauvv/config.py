@@ -26,8 +26,11 @@ def _url_banco(padrao: str) -> str:
     return url
 
 
+DEV_SECRET_KEY = "dev-secret-key-caronauvv"   # so para desenvolvimento (a factory avisa se for usada em producao)
+
+
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-caronauvv")
+    SECRET_KEY = os.getenv("SECRET_KEY", DEV_SECRET_KEY)
 
     # SQLite para desenvolvimento local: o arquivo e criado em instance/caronauvv.db.
     # Em producao (Render/Railway) basta definir DATABASE_URL com o PostgreSQL.
@@ -51,7 +54,10 @@ class Config:
     TOKEN_MAX_AGE = int(os.getenv("TOKEN_MAX_AGE", 7 * 24 * 60 * 60))
 
     # Origens liberadas no CORS (frontend Vue). Varias separadas por virgula.
-    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+    # Sem a variavel, so o Vite local. Na Vercel o front e a API ficam no mesmo dominio
+    # (nao precisam de CORS). O login vai no cabecalho Authorization, nao em cookie.
+    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",")
+                    if o.strip()]
 
     # Nivel do log da aplicacao: DEBUG, INFO, WARNING, ERROR
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()

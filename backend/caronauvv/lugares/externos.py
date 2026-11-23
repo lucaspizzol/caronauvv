@@ -92,8 +92,9 @@ def buscar_ruas(texto: str, cidade: str = "Vila Velha") -> list[dict] | None:
     guardado = _do_cache(chave)
     if guardado is not None:
         return guardado
-    url = (f"https://viacep.com.br/ws/ES/{urllib.parse.quote(cidade)}/"
-           f"{urllib.parse.quote(texto)}/json/")
+    # safe="": a barra tambem e codificada, entao o texto nunca vira outro caminho na URL
+    url = (f"https://viacep.com.br/ws/ES/{urllib.parse.quote(cidade, safe='')}/"
+           f"{urllib.parse.quote(texto, safe='')}/json/")
     dados = _get_json(url)
     if not isinstance(dados, list):
         return None

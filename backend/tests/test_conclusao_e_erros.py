@@ -92,3 +92,18 @@ def test_erro_inesperado_vira_500_sem_vazar_detalhes(app, client):
     resp = client.get("/api/teste-quebra")
     assert resp.status_code == 500
     assert "detalhe interno" not in resp.get_data(as_text=True)
+
+
+def test_cabecalhos_de_seguranca(client):
+    resp = client.get("/api/health")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    assert resp.headers["Cache-Control"] == "no-store"
+    assert "default-src 'none'" in resp.headers["Content-Security-Policy"]
+
+
+def test_cors_so_para_origens_liberadas(client):
+    liberada = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
+    assert liberada.headers.get("Access-Control-Allow-Origin") == "http://localhost:5173"
+    estranha = client.get("/api/health", headers={"Origin": "https://site-malicioso.example"})
+    assert "Access-Control-Allow-Origin" not in estranha.headers

@@ -240,3 +240,10 @@ def test_onibus_validacoes(client, aluno):
     assert client.get("/api/lugares/onibus?bairro=Ibes&sentido=x", headers=aluno).status_code == 400
     assert client.get("/api/lugares/onibus?bairro=Ibes&hora=25", headers=aluno).status_code == 400
     assert client.get("/api/lugares/onibus?bairro=Ibes").status_code == 401
+
+
+def test_ruas_nao_deixa_mudar_o_caminho_da_url(client, aluno, monkeypatch):
+    urls = []
+    monkeypatch.setattr(externos, "_get_json", lambda url: urls.append(url) or [])
+    client.get("/api/lugares/ruas?q=../../outra/coisa", headers=aluno)
+    assert urls == ["https://viacep.com.br/ws/ES/Vila%20Velha/..%2F..%2Foutra%2Fcoisa/json/"]

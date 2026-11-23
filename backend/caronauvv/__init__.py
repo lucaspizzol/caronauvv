@@ -52,10 +52,12 @@ def create_app(config_class=Config):
     from .auth import init_app as init_auth
     from .avaliacoes import init_app as init_avaliacoes
     from .caronas import init_app as init_caronas
+    from .lugares import init_app as init_lugares
     from .notificacoes import init_app as init_notificacoes
     from .seguranca import init_app as init_seguranca
     init_auth(app)            # /api/auth, /api/usuarios, /api/veiculos, /api/contatos
     init_caronas(app)         # /api/caronas, /api/solicitacoes
+    init_lugares(app)         # /api/lugares (bairros, CEP, ruas, distancia ate a UVV)
     init_avaliacoes(app)      # avaliacoes, reputacao e pagamento Pix
     init_notificacoes(app)    # /api/notificacoes
     init_seguranca(app)       # link da familia, botao de emergencia, denuncias

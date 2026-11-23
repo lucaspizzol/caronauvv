@@ -23,20 +23,16 @@
       <div class="row g-3">
         <div class="col-md-5">
           <label class="form-label" for="bairro">Bairro {{ form.sentido === 'ida' ? 'de saída' : 'de chegada' }}</label>
-          <input
-            id="bairro" v-model.trim="form.bairro_origem" list="lista-bairros" autocomplete="off" placeholder="Ex.: Itapuã"
-            :class="['form-control', { 'is-invalid': erros.bairro_origem }]"
-          />
-          <datalist id="lista-bairros"><option v-for="b in BAIRROS" :key="b" :value="b" /></datalist>
-          <div class="invalid-feedback">{{ erros.bairro_origem }}</div>
+          <CampoBairro id="bairro" v-model="form.bairro_origem" :invalido="Boolean(erros.bairro_origem)" @escolher="escolheuBairro" />
+          <div v-if="erros.bairro_origem" class="invalid-feedback d-block">{{ erros.bairro_origem }}</div>
         </div>
         <div class="col-md-7">
           <label class="form-label" for="endereco">Rua {{ form.sentido === 'ida' ? 'de saída' : 'de chegada' }}</label>
-          <input
-            id="endereco" v-model.trim="form.endereco_origem" maxlength="255" placeholder="Ex.: Rua Itaúnas, 120 (ou um ponto de referência)"
-            :class="['form-control', { 'is-invalid': erros.endereco_origem }]"
+          <CampoRua
+            id="endereco" v-model="form.endereco_origem" :cidade="cidadeDoBairro" :invalido="Boolean(erros.endereco_origem)"
+            placeholder="Ex.: Rua Itaúnas, 120 (ou um ponto de referência)" @endereco="escolheuRua"
           />
-          <div class="invalid-feedback">{{ erros.endereco_origem }}</div>
+          <div v-if="erros.endereco_origem" class="invalid-feedback d-block">{{ erros.endereco_origem }}</div>
         </div>
         <div v-if="doPerfil" class="col-12 mt-1">
           <div class="form-text">
@@ -144,7 +140,7 @@
                 <i v-else class="bi bi-fuel-pump me-1"></i>{{ modoCalculo ? 'Recalcular' : 'Calcular pelo combustível' }}
               </button>
               <span v-if="distanciaEstimadaPeloBairro && !calculo" class="small text-secondary">
-                <i class="bi bi-info-circle me-1"></i>Distância estimada pelo bairro {{ form.bairro_origem }}; ajuste se o trajeto for diferente.
+                <i class="bi bi-info-circle me-1"></i>{{ textoDistancia }}
               </span>
               <span v-else-if="!form.distancia_km" class="small text-secondary">Informe a distância até a UVV.</span>
             </div>
@@ -224,10 +220,14 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import CampoBairro from '../components/CampoBairro.vue'
+import CampoRua from '../components/CampoRua.vue'
 import api, { camposDoErro, mensagemDeErro } from '../services/api'
 import { auth } from '../stores/auth'
-import type { CalculoRateio, Carona, Energia, ErrosCampos, RespostaValorSugerido, Sentido, Veiculo } from '../types/api'
-import { BAIRROS, distanciaEstimada } from '../utils/bairros'
+import type {
+  BairroSugestao, CalculoRateio, Carona, CidadeGrandeVitoria, DistanciaUvv, EnderecoCep, Energia, ErrosCampos,
+  RespostaValorSugerido, Sentido, Veiculo
+} from '../types/api'
 import { distanciaTexto, ENERGIAS, hojeLocal, numeroBr, reais, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
@@ -286,16 +286,46 @@ const calculando = ref(false)
 const doPerfil = ref(false) // bairro e rua preenchidos com o endereco do perfil
 const distanciaEstimadaPeloBairro = ref(false) // vira false quando o motorista digita a distancia
 
-// Escolheu o bairro: preenche a distancia ate a UVV (se o motorista nao tiver digitado uma)
+const cidadeDoBairro = ref<CidadeGrandeVitoria>('Vila Velha') // para sugerir as ruas da cidade certa
+const textoDistancia = ref('')
+
+// Bairro escolhido/digitado: preenche a distancia ate a UVV (se o motorista nao tiver digitado uma).
+// O servidor usa a rota real de carro (OSRM); se o servico cair, a estimativa pelas coordenadas.
+let esperaDistancia: ReturnType<typeof setTimeout> | undefined
 watch(
   () => form.bairro_origem,
   (bairro) => {
+    clearTimeout(esperaDistancia)
     if (form.distancia_km && !distanciaEstimadaPeloBairro.value) return
-    const km = distanciaEstimada(bairro)
-    form.distancia_km = km
-    distanciaEstimadaPeloBairro.value = km !== null
+    esperaDistancia = setTimeout(() => void distanciaDoBairro(bairro), 400)
   }
 )
+
+async function distanciaDoBairro(bairro: string): Promise<void> {
+  if (!bairro.trim()) return
+  try {
+    const { data } = await api.get<DistanciaUvv>('/lugares/distancia', { params: { bairro } })
+    if (form.distancia_km && !distanciaEstimadaPeloBairro.value) return // o motorista digitou enquanto isso
+    form.distancia_km = data.km
+    distanciaEstimadaPeloBairro.value = true
+    cidadeDoBairro.value = data.cidade
+    textoDistancia.value = data.metodo === 'osrm'
+      ? `Distância de carro de ${data.bairro} até a UVV pela rota do mapa (~${data.duracao_min} min sem trânsito); ajuste se o trajeto for diferente.`
+      : `Distância estimada de ${data.bairro} até a UVV pelas coordenadas do bairro; ajuste se o trajeto for diferente.`
+  } catch {
+    // bairro fora da lista: o motorista informa a distancia
+    if (distanciaEstimadaPeloBairro.value) form.distancia_km = null
+    distanciaEstimadaPeloBairro.value = false
+  }
+}
+
+function escolheuBairro(b: BairroSugestao): void {
+  cidadeDoBairro.value = b.cidade
+}
+
+function escolheuRua(r: EnderecoCep): void {
+  if (r.bairro) form.bairro_origem = r.bairro
+}
 
 // Escolheu o carro: o calculo passa a usar a energia e o consumo dele
 watch(
@@ -415,7 +445,7 @@ onMounted(async () => {
 
 function validarForm(): ErrosCampos {
   const e = validar(form, {
-    bairro_origem: [regras.obrigatorio],
+    bairro_origem: [regras.obrigatorio, regras.bairro],
     endereco_origem: [regras.obrigatorio],
     data: [regras.obrigatorio],
     hora: [regras.obrigatorio],

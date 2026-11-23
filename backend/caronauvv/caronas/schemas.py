@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
-from caronauvv.validacao import Schema, TextoOpcional
+from caronauvv.validacao import Bairro, Schema, TextoOpcional
 
 from caronauvv.auth.models import ENERGIAS
 
@@ -30,7 +30,7 @@ def _sem_fuso(valor: datetime) -> datetime:
 # ==========================================================
 class CaronaEdicaoSchema(Schema):
     sentido: Literal[SENTIDOS] | None = None  # type: ignore[valid-type]
-    bairro_origem: str | None = Field(default=None, min_length=1, max_length=100)
+    bairro_origem: Bairro | None = Field(default=None, min_length=1, max_length=100)
     endereco_origem: str | None = Field(default=None, min_length=1, max_length=255)
     destino: str | None = Field(default=None, min_length=1, max_length=255)
     data_hora_saida: datetime | None = None
@@ -66,7 +66,7 @@ class CaronaEdicaoSchema(Schema):
 # CARONA - criacao (POST): os campos principais passam a ser obrigatorios
 # ==========================================================
 class CaronaNovaSchema(CaronaEdicaoSchema):
-    bairro_origem: str = Field(min_length=1, max_length=100)
+    bairro_origem: Bairro = Field(min_length=1, max_length=100)
     endereco_origem: str = Field(min_length=1, max_length=255)
     data_hora_saida: datetime
     vagas: int = Field(ge=VAGAS_MIN, le=VAGAS_MAX)

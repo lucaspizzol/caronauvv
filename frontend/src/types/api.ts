@@ -380,3 +380,32 @@ export interface EstruturaBanco {
   versao_migracao: string | null
   tabelas: TabelaBanco[]
 }
+
+// ----------------------------------------------------------
+// Lugares (lugares/routes.py): bairros, CEP, ruas e distancia ate a UVV
+// ----------------------------------------------------------
+export type CidadeGrandeVitoria = 'Vila Velha' | 'Vitória' | 'Cariacica' | 'Serra'
+
+export interface BairroSugestao {
+  nome: string
+  cidade: CidadeGrandeVitoria
+  lat: number
+  lng: number
+  distancia_uvv_km: number
+}
+
+export interface EnderecoCep {
+  cep: string
+  rua: string
+  bairro: string
+  cidade: string
+  uf: string
+}
+
+export interface DistanciaUvv {
+  bairro: string
+  cidade: CidadeGrandeVitoria
+  km: number
+  duracao_min: number | null
+  metodo: 'osrm' | 'estimativa'
+}

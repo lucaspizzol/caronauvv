@@ -50,9 +50,8 @@
             </div>
             <div class="col-sm-6">
               <label class="form-label" for="p-bairro">Bairro</label>
-              <input id="p-bairro" v-model.trim="perfil.bairro" list="lista-bairros" :class="['form-control', { 'is-invalid': errosPerfil.bairro }]" />
-              <datalist id="lista-bairros"><option v-for="b in BAIRROS" :key="b" :value="b" /></datalist>
-              <div class="invalid-feedback">{{ errosPerfil.bairro }}</div>
+              <CampoBairro id="p-bairro" v-model="perfil.bairro" :invalido="Boolean(errosPerfil.bairro)" />
+              <div v-if="errosPerfil.bairro" class="invalid-feedback d-block">{{ errosPerfil.bairro }}</div>
             </div>
             <div class="col-sm-6">
               <label class="form-label" for="p-curso">Curso</label>
@@ -227,6 +226,7 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import CampoBairro from '../components/CampoBairro.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import DocumentosVerificacao from '../components/DocumentosVerificacao.vue'
 import DoisFatores from '../components/DoisFatores.vue'
@@ -234,7 +234,6 @@ import FotoPerfilEditor from '../components/FotoPerfilEditor.vue'
 import api, { mensagemDeErro } from '../services/api'
 import { atualizarUsuario, auth, entrar, type TipoAviso } from '../stores/auth'
 import type { ContatoConfianca, Energia, ErrosCampos, NivelConversa, UsuarioLogado, Veiculo } from '../types/api'
-import { BAIRROS } from '../utils/bairros'
 import { ENERGIAS, numeroBr, PREF_CONVERSA, telefoneFormatado, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
@@ -323,7 +322,7 @@ async function salvarPerfil(): Promise<void> {
   errosPerfil.value = validar(perfil, {
     nome: [regras.obrigatorio],
     telefone: [regras.obrigatorio, regras.telefone],
-    bairro: [regras.obrigatorio]
+    bairro: [regras.obrigatorio, regras.bairro]
   })
   if (Object.keys(errosPerfil.value).length) return
   salvandoPerfil.value = true

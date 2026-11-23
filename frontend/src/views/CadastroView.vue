@@ -38,9 +38,8 @@
             </div>
             <div class="col-12">
               <label class="form-label" for="bairro">Bairro onde mora</label>
-              <input id="bairro" v-model.trim="form.bairro" list="bairros" :class="['form-control', { 'is-invalid': erros.bairro }]" placeholder="Itapuã" />
-              <datalist id="bairros"><option v-for="b in BAIRROS" :key="b" :value="b" /></datalist>
-              <div class="invalid-feedback">{{ erros.bairro }}</div>
+              <CampoBairro id="bairro" v-model="form.bairro" :invalido="Boolean(erros.bairro)" />
+              <div v-if="erros.bairro" class="invalid-feedback d-block">{{ erros.bairro }}</div>
             </div>
             <div class="col-sm-6">
               <label class="form-label" for="senha">Senha</label>
@@ -75,10 +74,10 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import CampoBairro from '../components/CampoBairro.vue'
 import api, { mensagemDeErro } from '../services/api'
 import { demo, entrar } from '../stores/auth'
 import type { ErrosCampos, RespostaSessao } from '../types/api'
-import { BAIRROS } from '../utils/bairros'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const router = useRouter()
@@ -95,7 +94,7 @@ async function enviar(): Promise<void> {
     matricula: [regras.obrigatorio, regras.matricula],
     email: [regras.obrigatorio, regras.email, regras.emailUvv],
     telefone: [regras.obrigatorio, regras.telefone],
-    bairro: [regras.obrigatorio],
+    bairro: [regras.obrigatorio, regras.bairro],
     senha: [regras.obrigatorio, regras.senha],
     confirmar: [(v, d) => (v === d?.senha ? null : 'As senhas não conferem.')]
   })

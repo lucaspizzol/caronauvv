@@ -1,4 +1,5 @@
 import type { ErrosCampos } from '../types/api'
+import { pareceEndereco } from './bairros'
 
 // ==========================================================
 // Validacao dos formularios no navegador.
@@ -23,6 +24,7 @@ export const regras = {
     const n = texto(v).replace(/\D/g, '')
     return n.length >= 10 && n.length <= 13 ? null : 'Informe o telefone com DDD.'
   },
+  bairro: (v) => (pareceEndereco(texto(v)) ? 'Aqui vai só o bairro (ex.: Itapuã); a rua vai no campo de rua/endereço.' : null),
   matricula: (v) => (/^\d{5,12}$/.test(texto(v).trim()) ? null : 'A matrícula tem de 5 a 12 números.'),
   placa: (v) =>
     /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(texto(v).replace(/[\s-]/g, '').toUpperCase())

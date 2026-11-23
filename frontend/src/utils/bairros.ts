@@ -1,38 +1,36 @@
-// Sugestoes para o campo de bairro (o aluno pode digitar outro)
-export const BAIRROS: readonly string[] = [
-  'Boa Vista', 'Centro de Vila Velha', 'Coqueiral de Itaparica', 'Cobilândia', 'Glória', 'Ibes',
-  'Itapuã', 'Jardim Camburi', 'Jardim da Penha', 'Jockey de Itaparica', 'Praia da Costa',
-  'Praia de Itaparica', 'Santa Inês', 'Soteco', 'Divino Espírito Santo', 'Cariacica', 'Serra', 'Vitória - Centro'
-]
+// ==========================================================
+// Bairros e distancia ate a UVV.
+// A lista completa dos bairros da Grande Vitoria fica no servidor
+// (GET /api/lugares/bairros?q=), que tambem calcula a distancia real
+// de carro (OSRM) com plano B. Aqui ficam as regras usadas na tela.
+// ==========================================================
 
-// Distancia aproximada de carro entre o bairro e a UVV (campus Boa Vista), em km.
-// So para preencher o campo "Distancia" ao oferecer carona: o motorista pode ajustar.
-export const DISTANCIA_ATE_UVV_KM: Readonly<Record<string, number>> = {
-  'Boa Vista': 1.5,
-  'Centro de Vila Velha': 4,
-  'Coqueiral de Itaparica': 7,
-  'Cobilândia': 5,
-  'Glória': 3,
-  'Ibes': 3.5,
-  'Itapuã': 6.2,
-  'Jardim Camburi': 17,
-  'Jardim da Penha': 14,
-  'Jockey de Itaparica': 6.5,
-  'Praia da Costa': 7.5,
-  'Praia de Itaparica': 5,
-  'Santa Inês': 4.5,
-  'Soteco': 3,
-  'Divino Espírito Santo': 3.5,
-  'Cariacica': 12,
-  'Serra': 28,
-  'Vitória - Centro': 10
+/** Campus Boa Vista da UVV, em Vila Velha (mesma coordenada do servidor). */
+export const UVV: readonly [number, number] = [-20.3617, -40.3075]
+
+/** As ruas nao sao linha reta: na Grande Vitoria o trajeto de carro e ~35% maior. */
+export const FATOR_ROTA = 1.35
+
+/** "  Itapuã " -> "itapua" (sem acento, minusculo, espacos simples) */
+export function normalizar(texto: string | null | undefined): string {
+  return (texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' ')
 }
 
-/** Distancia estimada do bairro ate a UVV (ignora maiusculas e acentos), ou null se o bairro nao estiver na lista. */
-export function distanciaEstimada(bairro: string | null | undefined): number | null {
-  const simples = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
-  const procurado = simples(bairro || '')
-  if (!procurado) return null
-  const achado = Object.keys(DISTANCIA_ATE_UVV_KM).find((b) => simples(b) === procurado)
-  return achado ? DISTANCIA_ATE_UVV_KM[achado] : null
+/** O aluno digitou um endereco ("Rua Itapemirim", "Av. Hugo Musso") no campo Bairro? */
+export function pareceEndereco(texto: string | null | undefined): boolean {
+  return /^(rua|r\.|av\.?|avenida|travessa|tv\.|rodovia|rod\.|estrada|alameda|al\.|praca)(\s|$)/.test(normalizar(texto))
+}
+
+/** Distancia em linha reta entre dois pontos (km), formula de Haversine. */
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (g: number) => (g * Math.PI) / 180
+  const dLat = rad(lat2 - lat1)
+  const dLng = rad(lng2 - lng1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(a))
+}
+
+/** Estimativa de carro ate a UVV: linha reta x fator de rota, 1 casa, minimo 1 km (igual ao servidor). */
+export function distanciaAteUvvKm(lat: number, lng: number): number {
+  return Math.max(1, Math.round(haversineKm(lat, lng, UVV[0], UVV[1]) * FATOR_ROTA * 10) / 10)
 }

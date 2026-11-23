@@ -15,7 +15,7 @@ O frontend usa "campos" para pintar de vermelho o campo certo do formulario.
 import re
 from typing import Annotated, TypeVar
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, ValidationError
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, ValidationError
 
 from caronauvv.errors import ApiError
 
@@ -52,6 +52,20 @@ def _somente_digitos(valor):
 
 # Texto opcional: "" ou "   " viram None (o banco guarda NULL, nao string vazia)
 TextoOpcional = Annotated[str | None, BeforeValidator(_vazio_vira_none)]
+
+_PARECE_ENDERECO = re.compile(
+    r"^(rua|r\.|av\.?|avenida|travessa|tv\.|rodovia|rod\.|estrada|alameda|al\.|praca|praça)(\s|$)", re.IGNORECASE
+)
+
+
+def _bairro(valor: str | None) -> str | None:
+    if valor is not None and _PARECE_ENDERECO.match(valor.strip()):
+        raise ValueError("Isto parece um endereço. Aqui vai só o bairro (ex.: Itapuã); a rua vai no campo Endereço.")
+    return valor
+
+
+# Bairro: texto que nao pode comecar com "Rua", "Av.", "Avenida"...
+Bairro = Annotated[str, AfterValidator(_bairro)]
 
 # Telefone: aceita "(27) 99999-0000" e guarda so os numeros
 Digitos = Annotated[str, BeforeValidator(_somente_digitos)]

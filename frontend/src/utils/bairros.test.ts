@@ -1,25 +1,32 @@
 import { describe, expect, it } from 'vitest'
 
-import { BAIRROS, DISTANCIA_ATE_UVV_KM, distanciaEstimada } from './bairros'
+import { distanciaAteUvvKm, haversineKm, normalizar, pareceEndereco, UVV } from './bairros'
 
-describe('distância do bairro até a UVV', () => {
-  it('estima a distância dos bairros da lista', () => {
-    expect(distanciaEstimada('Itapuã')).toBe(6.2)
-    expect(distanciaEstimada('Jardim Camburi')).toBe(17)
+describe('bairros', () => {
+  it('normaliza ignorando acento, maiúsculas e espaços', () => {
+    expect(normalizar('  Itapuã ')).toBe('itapua')
+    expect(normalizar('PRAIA   da  Costa')).toBe('praia da costa')
+    expect(normalizar(null)).toBe('')
   })
 
-  it('ignora maiúsculas, acentos e espaços nas pontas', () => {
-    expect(distanciaEstimada('  itapua ')).toBe(6.2)
-    expect(distanciaEstimada('GLORIA')).toBe(3)
+  it('reconhece quando digitaram uma rua no campo Bairro', () => {
+    expect(pareceEndereco('rua itape')).toBe(true)
+    expect(pareceEndereco('Av. Hugo Musso')).toBe(true)
+    expect(pareceEndereco('Avenida Champagnat')).toBe(true)
+    expect(pareceEndereco('Itapuã')).toBe(false)
+    expect(pareceEndereco('Ruas Altas')).toBe(false) // bairro que comeca com "Rua..." sem ser endereco
+  })
+})
+
+describe('distância até a UVV', () => {
+  it('calcula a linha reta pela fórmula de Haversine', () => {
+    // Itapua (-20.3523, -40.2897) fica a ~2 km da UVV
+    expect(haversineKm(-20.3523, -40.2897, UVV[0], UVV[1])).toBeCloseTo(2.1, 1)
+    expect(haversineKm(UVV[0], UVV[1], UVV[0], UVV[1])).toBe(0)
   })
 
-  it('devolve null para bairro fora da lista ou vazio', () => {
-    expect(distanciaEstimada('Bairro Inventado')).toBeNull()
-    expect(distanciaEstimada('')).toBeNull()
-    expect(distanciaEstimada(null)).toBeNull()
-  })
-
-  it('tem distância para todo bairro sugerido no cadastro', () => {
-    expect(BAIRROS.filter((b) => DISTANCIA_ATE_UVV_KM[b] === undefined)).toEqual([])
+  it('estima o trajeto de carro com o fator de rota (mínimo 1 km)', () => {
+    expect(distanciaAteUvvKm(-20.3523, -40.2897)).toBeCloseTo(2.9, 1)
+    expect(distanciaAteUvvKm(UVV[0], UVV[1])).toBe(1)
   })
 })

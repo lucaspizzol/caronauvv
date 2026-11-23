@@ -116,3 +116,4 @@ class TestConfig(Config):
     MOSTRAR_CODIGO_DEV = True
     MAIL_SERVER = ""
     PASSWORD_HASH_METHOD = "pbkdf2:sha256:1000"  # so nos testes: hash leve para a suite rodar rapido
+    APIS_EXTERNAS_DESLIGADAS = True  # testes nunca chamam ViaCEP/OSRM de verdade (usam monkeypatch)

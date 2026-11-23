@@ -16,6 +16,11 @@ describe('regras de validação dos formulários', () => {
     expect(regras.emailUvv('ana@fakeuvv.br')).toMatch(/institucional/)
   })
 
+  it('não aceita rua no campo Bairro', () => {
+    expect(regras.bairro('rua itape')).toContain('só o bairro')
+    expect(regras.bairro('Itapuã')).toBeNull()
+  })
+
   it('valida telefone com DDD', () => {
     expect(regras.telefone('(27) 99999-0000')).toBeNull()
     expect(regras.telefone('99999-0000')).toMatch(/DDD/)

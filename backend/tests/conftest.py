@@ -9,6 +9,11 @@ from caronauvv.ext.db import db
 
 @pytest.fixture
 def app():
+    from caronauvv.limite import zerar
+    from caronauvv.lugares.externos import limpar_cache
+
+    zerar()          # contadores do limite de requisicoes comecam do zero em cada teste
+    limpar_cache()
     app = create_app(TestConfig)
     with app.app_context():
         db.create_all()

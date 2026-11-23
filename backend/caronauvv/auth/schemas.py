@@ -9,7 +9,7 @@ from typing import Literal
 from flask import current_app
 from pydantic import Field, field_validator
 
-from caronauvv.validacao import Digitos, Schema, TextoOpcional
+from caronauvv.validacao import Bairro, Digitos, Schema, TextoOpcional
 
 from .models import ENERGIAS, NIVEIS_CONVERSA
 
@@ -39,7 +39,7 @@ class CadastroSchema(Schema):
     matricula: str = Field(min_length=1, max_length=20)
     email: str = Field(min_length=1, max_length=255)
     telefone: Digitos = Field(min_length=1)
-    bairro: str = Field(min_length=1, max_length=100)
+    bairro: Bairro = Field(min_length=1, max_length=100)
     senha: str = Field(min_length=1, max_length=128)
     curso: TextoOpcional = Field(default=None, max_length=120)
 
@@ -135,7 +135,7 @@ class RedefinirSenhaSchema(Schema):
 class PerfilSchema(Schema):
     nome: str | None = Field(default=None, min_length=1, max_length=150)
     telefone: Digitos | None = Field(default=None, min_length=1)
-    bairro: str | None = Field(default=None, min_length=1, max_length=100)
+    bairro: Bairro | None = Field(default=None, min_length=1, max_length=100)
     curso: TextoOpcional = Field(default=None, max_length=120)
     endereco: TextoOpcional = Field(default=None, max_length=255)
     chave_pix: TextoOpcional = Field(default=None, max_length=150)

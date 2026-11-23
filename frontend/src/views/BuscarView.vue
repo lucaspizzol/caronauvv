@@ -14,8 +14,7 @@
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-4">
           <label class="form-label" for="f-bairro">Bairro</label>
-          <input id="f-bairro" v-model.trim="filtros.bairro" list="lista-bairros" class="form-control" placeholder="Ex.: Itapuã" />
-          <datalist id="lista-bairros"><option v-for="b in BAIRROS" :key="b" :value="b" /></datalist>
+          <CampoBairro id="f-bairro" v-model="filtros.bairro" />
         </div>
         <div class="col-6 col-md-2">
           <label class="form-label" for="f-sentido">Sentido</label>
@@ -117,13 +116,13 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import CampoBairro from '../components/CampoBairro.vue'
 import AoVivo from '../components/AoVivo.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'
 import { auth, type TipoAviso } from '../stores/auth'
 import type { Carona, Sentido, Solicitacao, StatusSolicitacao } from '../types/api'
-import { BAIRROS } from '../utils/bairros'
 import { hojeLocal } from '../utils/formato'
 
 const hoje = hojeLocal()

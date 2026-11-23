@@ -59,6 +59,9 @@ def resetvercel(c):
         if not url:
             raise SystemExit("DATABASE_URL nao encontrado nas variaveis da Vercel.")
         env = {"DATABASE_URL": url, "FLASK_DEBUG": "0"}
+        # Mesma SECRET_KEY do site: os codigos de reserva do exemplo sao assinados com ela
+        if valores.get("SECRET_KEY"):
+            env["SECRET_KEY"] = valores["SECRET_KEY"].strip('"')
         print("Zerando o banco online...")
         c.run(f"{FLASK} db downgrade base", env=env, hide=True)
         c.run(f"{FLASK} db upgrade", env=env, hide=True)

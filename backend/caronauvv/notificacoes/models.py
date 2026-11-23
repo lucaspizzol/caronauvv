@@ -15,7 +15,8 @@ TIPOS_NOTIFICACAO = (
     "novo_pedido", "vaga_confirmada", "vaga_recusada", "pedido_expirado", "pedido_cancelado",
     "viagem_iniciada", "embarque_confirmado", "pagamento_informado", "nova_avaliacao",
     "lembrete_saida", "motorista_chegando", "carona_cancelada",
-    "avaliacao_pendente", "alerta_seguranca",
+    "avaliacao_pendente", "alerta_seguranca", "perfil_verificado",
+    "seguranca_conta",   # senha alterada, autenticador ligado/desligado, foto removida pela administracao
 )
 
 

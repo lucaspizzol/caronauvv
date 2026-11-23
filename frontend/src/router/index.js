@@ -9,6 +9,7 @@ const routes = [
   { path: '/', redirect: '/caronas' },
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { publica: true } },
   { path: '/cadastro', name: 'cadastro', component: () => import('../views/CadastroView.vue'), meta: { publica: true } },
+  { path: '/recuperar-senha', name: 'recuperar-senha', component: () => import('../views/RecuperarSenhaView.vue'), meta: { publica: true } },
   { path: '/acompanhar/:token', name: 'acompanhar', component: () => import('../views/AcompanharView.vue'), props: true, meta: { publica: true, livre: true } },
   { path: '/verificar-email', name: 'verificar-email', component: () => import('../views/VerificarEmailView.vue') },
   { path: '/caronas', name: 'buscar', component: () => import('../views/BuscarView.vue') },
@@ -35,7 +36,7 @@ router.beforeEach((to) => {
   if (!to.meta.publica && !logado.value) {
     return { name: 'login', query: { volta: to.fullPath } }
   }
-  if ((to.name === 'login' || to.name === 'cadastro') && logado.value) {
+  if (['login', 'cadastro', 'recuperar-senha'].includes(to.name) && logado.value) {
     return { name: 'buscar' }
   }
   if (to.meta.admin && !auth.usuario?.is_admin) {

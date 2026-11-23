@@ -103,7 +103,7 @@
         <div v-if="abertas_.has(carona.id)" class="mt-3">
           <div v-if="!(pedidos[carona.id] || []).length" class="small text-secondary">Nenhum pedido de vaga ainda.</div>
           <div v-for="s in pedidos[carona.id]" :key="s.id" :class="['d-flex flex-wrap align-items-center gap-2 border rounded-3 p-2 mb-2 bg-light-subtle', { chegou: destacados.has(s.id) }]">
-            <span class="avatar">{{ iniciais(s.passageiro.nome) }}</span>
+            <AvatarUsuario :usuario="s.passageiro" />
             <div class="flex-grow-1" style="min-width: 12rem">
               <div class="fw-semibold">
                 <RouterLink :to="`/usuarios/${s.passageiro.id}`" class="text-reset">{{ s.passageiro.nome }}</RouterLink>
@@ -168,6 +168,7 @@ import { useRoute } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
+import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import ReputacaoResumo from '../components/ReputacaoResumo.vue'
@@ -175,7 +176,7 @@ import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api from '../services/api'
-import { iniciais, jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
 import { regras } from '../utils/validacao'
 
 const route = useRoute()

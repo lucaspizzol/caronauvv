@@ -37,6 +37,10 @@
           </div>
 
           <div class="bg-light rounded-3 p-3 small">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <AvatarUsuario :usuario="v.motorista" :tamanho="3" />
+              <span class="text-secondary">Quem está dirigindo</span>
+            </div>
             <div><i class="bi bi-person-fill me-2"></i><strong>Motorista:</strong> {{ v.motorista.nome }}
               <i v-if="v.motorista.verificado" class="bi bi-patch-check-fill text-primary" title="Perfil verificado pela UVV"></i>
               <span v-if="v.motorista.curso" class="text-secondary"> · {{ v.motorista.curso }}</span>
@@ -69,6 +73,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import AoVivo from '../components/AoVivo.vue'
+import AvatarUsuario from '../components/AvatarUsuario.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api from '../services/api'

@@ -31,13 +31,7 @@
       <!-- DADOS PESSOAIS -->
       <div class="col-lg-7">
         <form class="card p-4 h-100" novalidate @submit.prevent="salvarPerfil">
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <span class="avatar" style="width: 3.2rem; height: 3.2rem; font-size: 1.1rem">{{ iniciais(perfil.nome) }}</span>
-            <div>
-              <div class="fw-bold">{{ auth.usuario?.nome }}</div>
-              <div class="small text-secondary">Matrícula {{ auth.usuario?.matricula }} · {{ auth.usuario?.email }}</div>
-            </div>
-          </div>
+          <FotoPerfilEditor />
 
           <AlertaMensagem :texto="msgPerfil.texto" :tipo="msgPerfil.tipo" @fechar="msgPerfil.texto = ''" />
 
@@ -106,9 +100,9 @@
         </form>
       </div>
 
-      <!-- SENHA -->
-      <div class="col-lg-5">
-        <form class="card p-4 h-100" novalidate @submit.prevent="trocarSenha">
+      <!-- SENHA E VERIFICACAO EM DUAS ETAPAS -->
+      <div class="col-lg-5 d-flex flex-column gap-4">
+        <form class="card p-4" novalidate @submit.prevent="trocarSenha">
           <h2 class="h5 fw-bold mb-3"><i class="bi bi-key me-1"></i>Trocar senha</h2>
           <AlertaMensagem :texto="msgSenha.texto" :tipo="msgSenha.tipo" @fechar="msgSenha.texto = ''" />
           <div class="mb-3">
@@ -125,12 +119,13 @@
             <button class="btn btn-outline-primary" :disabled="salvandoSenha">Trocar senha</button>
           </div>
         </form>
+        <DoisFatores />
       </div>
 
       <!-- SEGURANCA: contatos de confianca -->
       <div id="seguranca" class="col-12">
         <div class="card p-4">
-          <h2 class="h5 fw-bold mb-1"><i class="bi bi-shield-heart me-1"></i>Contatos de confiança</h2>
+          <h2 class="h5 fw-bold mb-1"><i class="bi bi-person-heart me-1"></i>Contatos de confiança</h2>
           <p class="small text-secondary">
             Pessoas que recebem o link para acompanhar sua viagem e o aviso se você apertar o botão de emergência (até 5).
           </p>
@@ -202,10 +197,12 @@ import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
+import DoisFatores from '../components/DoisFatores.vue'
+import FotoPerfilEditor from '../components/FotoPerfilEditor.vue'
 import api from '../services/api'
-import { atualizarUsuario, auth } from '../stores/auth'
+import { atualizarUsuario, auth, entrar } from '../stores/auth'
 import { BAIRROS } from '../utils/bairros'
-import { iniciais, PREF_CONVERSA, telefoneFormatado } from '../utils/formato'
+import { PREF_CONVERSA, telefoneFormatado } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const perfil = reactive({
@@ -322,9 +319,11 @@ async function trocarSenha() {
   if (Object.keys(errosSenha.value).length) return
   salvandoSenha.value = true
   try {
-    await api.put('/auth/me', senha)
+    const { data } = await api.put('/auth/me', senha)
+    // A troca de senha encerra os logins antigos; este aparelho recebe um token novo
+    if (data.token) entrar(data.token, data.usuario)
     Object.assign(senha, { senha_atual: '', nova_senha: '' })
-    msgSenha.texto = 'Senha alterada.'
+    msgSenha.texto = 'Senha alterada. Os outros aparelhos em que você estava logado foram desconectados.'
     msgSenha.tipo = 'success'
   } catch (e) {
     msgSenha.texto = e.mensagem

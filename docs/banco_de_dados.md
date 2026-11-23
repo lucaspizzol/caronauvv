@@ -1,6 +1,6 @@
 # CaronaUVV — Banco de dados
 
-Modelo físico do banco do CaronaUVV: 15 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
+Modelo físico do banco do CaronaUVV: 17 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
 e versionadas com Flask-Migrate (`backend/migrations/`).
 
 > O diagrama e o dicionário abaixo são gerados a partir do código (`db.metadata`), então refletem exatamente
@@ -20,13 +20,13 @@ flask --app app.py db migrate -m "descricao"   # depois de alterar um models.py
 ```
 
 Usuários de exemplo do seed: `admin@uvv.br` (admin), `kaua@uvv.br` e `lucas@uvv.br` (motoristas),
-`ana@uvv.br` e `pedro@uvv.br` (passageiros).
+`ana@uvv.br` e `pedro@uvv.br` (passageiros), `beatriz@uvv.br` (com verificação em duas etapas).
 
 ## Tabelas por módulo
 
 | Módulo | Tabelas | Prioridade |
 |---|---|---|
-| `auth` | `usuarios`, `veiculos`, `contatos_confianca` | núcleo / recomendada / extra |
+| `auth` | `usuarios`, `veiculos`, `contatos_confianca`, `fotos_perfil`, `codigos_reserva` | núcleo / recomendada / extra / extra / extra |
 | `caronas` | `caronas`, `solicitacoes`, `posicoes_gps` | núcleo / núcleo / extra |
 | `avaliacoes` | `avaliacoes`, `avaliacao_tags`, `pagamentos` | recomendada / recomendada / extra |
 | `notificacoes` | `notificacoes` | recomendada |
@@ -47,6 +47,9 @@ Usuários de exemplo do seed: `admin@uvv.br` (admin), `kaua@uvv.br` e `lucas@uvv
 | Chaves estrangeiras sempre válidas | `PRAGMA foreign_keys=ON` no SQLite (no PostgreSQL já é padrão) |
 | Apagar carona apaga pedidos, GPS, alertas e links; apagar veículo deixa a carona sem veículo | `ON DELETE CASCADE` / `SET NULL` |
 | Senha nunca em texto puro | hash Werkzeug em `usuarios.senha_hash` |
+| Uma foto por aluno, com endereço único | `UNIQUE usuario_id` e `UNIQUE token` em `fotos_perfil` |
+| Códigos de reserva e de recuperação nunca em texto | só o HMAC-SHA256 em `codigos_reserva.codigo_hash` e `usuarios.reset_codigo_hash` |
+| Apagar o aluno apaga a foto e os códigos de reserva | `ON DELETE CASCADE` |
 
 Regras que dependem de contexto (vagas restantes, carona no passado, telefone só após aceite,
 expiração do pedido) ficam nos `services.py` e têm testes pytest.
@@ -57,6 +60,8 @@ expiração do pedido) ficam nos `services.py` e têm testes pytest.
 erDiagram
     usuarios ||--o{ veiculos : "usuario_id"
     usuarios ||--o{ contatos_confianca : "usuario_id"
+    usuarios ||--o| fotos_perfil : "usuario_id"
+    usuarios ||--o{ codigos_reserva : "usuario_id"
     usuarios ||--o{ caronas : "motorista_id"
     veiculos |o--o{ caronas : "veiculo_id"
     caronas ||--o{ solicitacoes : "carona_id"
@@ -103,6 +108,17 @@ erDiagram
         integer codigo_tentativas
         datetime verificacao_solicitada_em
         string senha_hash
+        integer sessao_versao
+        string reset_codigo_hash
+        datetime reset_expira_em
+        integer reset_tentativas
+        datetime reset_enviado_em
+        string totp_segredo
+        boolean totp_ativo
+        datetime totp_ativado_em
+        biginteger totp_ultimo_passo
+        integer totp_falhas
+        datetime totp_bloqueado_ate
         boolean is_admin
         boolean verificado
         boolean is_active
@@ -123,6 +139,22 @@ erDiagram
         integer usuario_id FK
         string nome
         string telefone
+        datetime created_at
+    }
+    fotos_perfil {
+        integer id PK
+        integer usuario_id FK,UK
+        string token UK
+        string mime
+        integer tamanho
+        largebinary dados
+        datetime created_at
+    }
+    codigos_reserva {
+        integer id PK
+        integer usuario_id FK
+        string codigo_hash
+        datetime usado_em
         datetime created_at
     }
     caronas {
@@ -301,6 +333,17 @@ erDiagram
 | `codigo_tentativas` | INTEGER | não |  | `0` |
 | `verificacao_solicitada_em` | DATETIME | sim |  |  |
 | `senha_hash` | STRING(255) | não |  |  |
+| `sessao_versao` | INTEGER | não |  | `0` |
+| `reset_codigo_hash` | STRING(255) | sim |  |  |
+| `reset_expira_em` | DATETIME | sim |  |  |
+| `reset_tentativas` | INTEGER | não |  | `0` |
+| `reset_enviado_em` | DATETIME | sim |  |  |
+| `totp_segredo` | STRING(64) | sim |  |  |
+| `totp_ativo` | BOOLEAN | não |  | `False` |
+| `totp_ativado_em` | DATETIME | sim |  |  |
+| `totp_ultimo_passo` | BIGINTEGER | sim |  |  |
+| `totp_falhas` | INTEGER | não |  | `0` |
+| `totp_bloqueado_ate` | DATETIME | sim |  |  |
 | `is_admin` | BOOLEAN | não |  | `False` |
 | `verificado` | BOOLEAN | não |  | `False` |
 | `is_active` | BOOLEAN | não |  | `True` |
@@ -331,6 +374,28 @@ erDiagram
 | `usuario_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; índice |  |
 | `nome` | STRING(100) | não |  |  |
 | `telefone` | STRING(20) | não |  |  |
+| `created_at` | DATETIME | não |  | agora |
+
+### `fotos_perfil` (módulo `auth`)
+
+| Coluna | Tipo | Nulo | Chave | Padrão |
+|---|---|---|---|---|
+| `id` | INTEGER | não | PK |  |
+| `usuario_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; UNIQUE |  |
+| `token` | STRING(32) | não | UNIQUE |  |
+| `mime` | STRING(20) | não |  |  |
+| `tamanho` | INTEGER | não |  |  |
+| `dados` | LARGEBINARY | não |  |  |
+| `created_at` | DATETIME | não |  | agora |
+
+### `codigos_reserva` (módulo `auth`)
+
+| Coluna | Tipo | Nulo | Chave | Padrão |
+|---|---|---|---|---|
+| `id` | INTEGER | não | PK |  |
+| `usuario_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; índice |  |
+| `codigo_hash` | STRING(64) | não |  |  |
+| `usado_em` | DATETIME | sim |  |  |
 | `created_at` | DATETIME | não |  | agora |
 
 ### `caronas` (módulo `caronas`)

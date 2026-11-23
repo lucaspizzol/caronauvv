@@ -10,6 +10,8 @@ from .services import (
     listar_configuracoes,
     listar_denuncias,
     listar_usuarios,
+    remover_foto_usuario,
+    resetar_dois_fatores,
     resolver_alerta,
     resumo,
     suspender_usuario,
@@ -57,6 +59,18 @@ def verificar(usuario_id):
 def suspender(usuario_id):
     ativo = bool(_json().get("ativo", False))
     return {"usuario": _usuario_admin(suspender_usuario(usuario_id, g.usuario, ativo))}
+
+
+@bp.delete("/usuarios/<int:usuario_id>/foto")
+@admin_required
+def remover_foto(usuario_id):
+    return {"usuario": _usuario_admin(remover_foto_usuario(usuario_id))}
+
+
+@bp.post("/usuarios/<int:usuario_id>/resetar-2fa")
+@admin_required
+def resetar_2fa(usuario_id):
+    return {"usuario": _usuario_admin(resetar_dois_fatores(usuario_id))}
 
 
 # ---------------- denuncias ----------------

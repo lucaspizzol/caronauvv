@@ -13,6 +13,9 @@ transporte (BlaBlaCar, Uber, 99):
 |---|---|---|
 | Só alunos da UVV | Cadastro aceita apenas e-mail `@uvv.br` e confirma o e-mail com código de 6 números | BlaBlaCar (e-mail verificado) |
 | Perfil verificado | O aluno pede o selo e a administração confere a matrícula | BlaBlaCar (perfil verificado) |
+| Foto de perfil | O aluno envia a foto pelo perfil; ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família. O admin pode remover foto inadequada | Uber / BlaBlaCar |
+| Verificação em duas etapas | Com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy), o login pede a senha e um código de 6 números; 8 códigos de reserva de uso único | Uber, bancos, GitHub (2FA) |
+| Esqueci minha senha | Código de 6 números enviado ao e-mail da conta; a senha nova desconecta os outros aparelhos | Todos |
 | Reputação | Nota média, nível (Calouro → Veterano → Embaixador), viagens, faltas, taxa de cancelamento e selos | BlaBlaCar |
 | Avaliação "às cegas" | Motorista e passageiro se avaliam (1 a 5 + elogios); a nota só aparece quando os dois avaliam ou após 7 dias | BlaBlaCar |
 | Preferências | Conversa (silêncio / depende / adora conversar), música, animais, fumar | BlaBlaCar ("Bla, BlaBla, BlaBlaBla") |
@@ -29,8 +32,10 @@ transporte (BlaBlaCar, Uber, 99):
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 182 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 182 testes, 95% de cobertura) e Vitest (front-end, 15 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 255 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 255 testes, 96% de cobertura) e Vitest (front-end, 20 testes)
+- **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
+  tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons, responsivo para celular;
   `qrcode` (QR do Pix) e `mermaid` (diagrama do banco no painel)
 
@@ -47,23 +52,26 @@ backend/
     errors.py, logs.py    # erros em JSON e log de cada requisicao
     ext/db/               # SQLAlchemy, comandos init-db / seed-db / limpar-gps, seed
     auth/                 # usuarios, login, verificacao de e-mail, perfil publico, veiculos, contatos
+                          #   foto.py (foto de perfil), totp.py + dois_fatores.py (verificacao em duas etapas)
     caronas/              # caronas, pedidos de vaga, ciclo da viagem (iniciar, PIN, falta, GPS)
     avaliacoes/           # avaliacoes, reputacao e pagamento Pix
     notificacoes/         # notificacoes
     seguranca/            # link da familia, botao de emergencia, denuncias
     admin/                # painel: indicadores, moderacao, configuracoes, estrutura do banco
     (cada modulo: models.py, schemas.py, services.py, routes.py)
-  migrations/             # Flask-Migrate (Alembic): 2 versoes
+  migrations/             # Flask-Migrate (Alembic): 3 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 182 testes (pytest + pytest-flask)
+  tests/                  # 255 testes (pytest + pytest-flask)
 frontend/
   src/
     router/, services/api.js, stores/auth.js, composables/useAoVivo.js
     views/                # 15 telas (busca, oferecer, minhas caronas, pedidos, avaliacoes,
-                          #   notificacoes, perfil, perfil publico, admin, link da familia...)
-    components/           # NavBar, CaronaInfo, ReputacaoResumo, EstrelasNota, PixPagamento,
-                          #   SegurancaViagem, StatusBadge, AlertaMensagem, BotaoConfirmar
-    utils/                # formatacao e validacao (+ testes *.test.js)
+                          #   notificacoes, perfil, perfil publico, admin, link da familia,
+                          #   login em duas etapas, recuperar senha...)
+    components/           # NavBar, CaronaInfo, AvatarUsuario, FotoPerfilEditor, DoisFatores,
+                          #   ReputacaoResumo, EstrelasNota, PixPagamento, SegurancaViagem,
+                          #   StatusBadge, AlertaMensagem, BotaoConfirmar
+    utils/                # formatacao, validacao e recorte da foto (+ testes *.test.js)
 docs/                     # documentacao do banco (gerada a partir dos modelos)
 ```
 
@@ -86,7 +94,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 182 testes
+python -m pytest                           # 255 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
@@ -101,7 +109,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 15 testes do front (Vitest)
+npm test                         # 20 testes do front (Vitest)
 ```
 
 O Vite repassa as chamadas `/api` para o Flask em `localhost:5000` (proxy em `vite.config.js`).
@@ -129,8 +137,18 @@ O sistema está publicado em **https://caronauvv.vercel.app**:
 Publicar de novo: `vercel deploy --prod` na pasta raiz. **Zerar o banco online** com os dados de exemplo
 (faça antes de apresentar): `invoke resetvercel` dentro de `backend/`, com a CLI da Vercel logada.
 
+> **Atenção ao publicar uma versão com migração nova** (como a da foto de perfil e do autenticador): o banco
+> online precisa ser atualizado junto, senão a API responde erro 500. Rode `invoke resetvercel` logo depois do
+> `vercel deploy --prod` (ele aplica as migrações e recria os dados de exemplo). Para manter os dados que já
+> estão lá, rode só `flask --app app.py db upgrade` com a `DATABASE_URL` do Neon.
+
+As fotos de perfil ficam no próprio banco (tabela `fotos_perfil`), porque a função serverless não guarda
+arquivos em disco.
+
 > A versão online usa as mesmas contas de exemplo (senha `123456`): qualquer pessoa com o link
 > consegue entrar. É uma demonstração; para uso real, troque as senhas e configure um servidor de e-mail.
+> Com `MOSTRAR_CODIGO_DEV=1`, os códigos de verificação de e-mail e de "esqueci minha senha" aparecem na tela
+> em vez de irem só para o e-mail: em produção de verdade, use `MOSTRAR_CODIGO_DEV=0` e configure o SMTP.
 
 ## Usuários de exemplo (senha `123456`)
 
@@ -141,10 +159,12 @@ Publicar de novo: `vercel deploy --prod` na pasta raiz. **Zerar o banco online**
 | `ana@uvv.br` | Passageira com contatos de confiança (Mãe, Júlia) |
 | `pedro@uvv.br` | Passageiro com 2 faltas (aparece para o motorista antes de aceitar) |
 | `marina@uvv.br` | Pediu o selo de verificado (aprovar no painel) |
-| `joao@uvv.br`, `beatriz@uvv.br` | Outros motoristas (Jardim Camburi, Praia de Itaparica) |
+| `joao@uvv.br` | Outro motorista (Jardim Camburi) |
+| `beatriz@uvv.br` | Motorista (Praia de Itaparica) que **já usa a verificação em duas etapas**: o login pede o código. Use um código de reserva de exemplo (`UVVA-2026`, `UVVB-2026`, `UVVC-2026`, `UVVD-2026`; cada um vale uma vez) ou cadastre a chave `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` num aplicativo autenticador |
 | `admin@uvv.br` | Painel da administração (`/admin`) |
 
-Também dá para entrar com a matrícula no lugar do e-mail. Sem servidor de e-mail configurado, o
+Kauã, Lucas, Ana e João já vêm com foto de perfil (avatares desenhados, não são fotos de pessoas reais); os
+outros aparecem com as iniciais. Também dá para entrar com a matrícula no lugar do e-mail. Sem servidor de e-mail configurado, o
 código de verificação do cadastro aparece na própria tela ("modo de demonstração") e no log da API.
 
 ### Roteiro de demonstração (duas abas: motorista e passageiro)
@@ -160,14 +180,21 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 4. **Aba 2 — Lucas:** busque "Itapuã" → veja a nota do Kauã → clique no nome (perfil público) →
    **Pedir vaga**. Na aba 1 o pedido chega sozinho; aceite. Em **Meus pedidos** do Lucas: PIN, Pix com
    QR Code, **Compartilhar viagem** e **Emergência**.
-5. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina), Denúncias, Alertas
-   (a emergência do passo 4 aparece aqui) e **Banco de dados** (diagrama ER gerado ao vivo).
+5. **Foto e autenticador (qualquer conta):** Perfil → **Trocar foto** (a barra do topo muda na hora) →
+   **Ativar com aplicativo autenticador** → leia o QR Code com o Google Authenticator do celular → digite o
+   código → guarde os códigos de reserva. Saia e entre de novo: depois da senha, o login pede o código.
+   No login, **Esqueci minha senha** mostra a recuperação por código.
+6. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
+   autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui) e
+   **Banco de dados** (diagrama ER gerado ao vivo).
 
 ## API
 
 | Recurso | Rotas |
 |---|---|
-| Autenticação | `POST /api/auth/cadastro`, `/login`, `/logout`, `/verificar-email`, `/reenviar-codigo`, `/solicitar-verificacao`, `GET/PUT /api/auth/me` |
+| Autenticação | `POST /api/auth/cadastro`, `/login`, `/login/2fa`, `/logout`, `/verificar-email`, `/reenviar-codigo`, `/solicitar-verificacao`, `/esqueci-senha`, `/redefinir-senha`, `GET/PUT /api/auth/me` |
+| Foto de perfil | `PUT/DELETE /api/auth/me/foto` (envio em `multipart/form-data`, campo `foto`), `GET /api/fotos/<token>` |
+| Duas etapas | `GET /api/auth/2fa`, `POST /api/auth/2fa/iniciar`, `/ativar`, `/desativar`, `/codigos-reserva` |
 | Usuários | `GET /api/usuarios/<id>` (perfil público com reputação) |
 | Veículos e contatos | `GET/POST /api/veiculos`, `PUT/DELETE /api/veiculos/<id>`, `GET/POST /api/contatos`, `DELETE /api/contatos/<id>` |
 | Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido`, `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
@@ -175,7 +202,7 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 | Avaliações e Pix | `GET /api/avaliacoes/pendentes`, `/tags`, `POST /api/solicitacoes/<id>/avaliacao`, `GET .../pix`, `POST .../pagamento` |
 | Segurança | `POST /api/caronas/<id>/compartilhar`, `GET /api/acompanhar/<token>` (público), `POST /api/caronas/<id>/sos`, `POST /api/denuncias` |
 | Notificações | `GET /api/notificacoes`, `GET /api/notificacoes/contagem`, `POST /api/notificacoes/lidas` |
-| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação |
+| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`) |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
 
@@ -197,9 +224,15 @@ Cada requisição é registrada no log com método, rota, status e tempo (`LOG_L
 - Só denuncia quem dividiu uma carona; o link da família para de funcionar quando a viagem termina.
 - Login bloqueia por 10 min após 5 senhas erradas; código de e-mail aceita 5 tentativas e vence em 30 min.
 - Senhas com hash (Werkzeug/scrypt); o código de verificação é guardado como HMAC-SHA256, nunca em texto.
+- Foto de perfil: só JPG, PNG ou WebP (conferido pelo conteúdo do arquivo), até 512 KB e 1024 px de lado; o
+  navegador já envia recortada em 400 × 400.
+- Verificação em duas etapas: cada código vale uma vez; 5 códigos errados bloqueiam por 10 min; ligar, desligar ou
+  gerar novos códigos de reserva exige a senha e um código; os códigos de reserva ficam só como HMAC.
+- Esqueci minha senha: código de 6 números, vale 30 min, 5 tentativas, um pedido por minuto; a resposta é a
+  mesma exista a conta ou não. Trocar ou redefinir a senha encerra os logins dos outros aparelhos.
 
 ## Banco de dados
 
-15 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
+17 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
 Para ver o diagrama: no painel admin, aba **Banco de dados** (gerado ao vivo dos modelos), ou cole
 [`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).

@@ -75,6 +75,19 @@ export function iniciais(nome) {
     .join('')
 }
 
+// Endereco completo da foto de perfil. A API devolve "/api/fotos/<token>"; se o
+// frontend estiver em outro dominio (VITE_API_URL), troca o comeco pelo da API.
+export function urlFoto(caminho, base = import.meta.env?.VITE_API_URL || '/api') {
+  if (!caminho) return ''
+  return caminho.startsWith('/api/') ? `${base.replace(/\/$/, '')}${caminho.slice(4)}` : caminho
+}
+
+// Codigo de reserva do autenticador: "abcdefgh" -> "ABCD-EFGH" enquanto a pessoa digita
+export function codigoReservaFormatado(texto) {
+  const limpo = String(texto || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
+  return limpo.length > 4 ? `${limpo.slice(0, 4)}-${limpo.slice(4)}` : limpo
+}
+
 // Data de hoje no fuso do navegador, no formato AAAA-MM-DD (para <input type="date">)
 export function hojeLocal(deslocamentoDias = 0) {
   const d = new Date()
@@ -114,6 +127,13 @@ export const MOTIVOS_DENUNCIA = {
   cobranca_indevida: 'Cobrança indevida',
   perfil_falso: 'Perfil falso',
   outro: 'Outro motivo'
+}
+
+// "2026-11-22T19:40" -> "22/11/2026"
+export function dataCurtaNumerica(iso) {
+  const d = paraData(iso)
+  if (!d) return ''
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
 export function dataHora(iso) {

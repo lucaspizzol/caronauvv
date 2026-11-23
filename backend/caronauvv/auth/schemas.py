@@ -81,6 +81,22 @@ class LoginSchema(Schema):
     senha: str = Field(min_length=1, max_length=128)
 
 
+class SegundaEtapaSchema(Schema):
+    """Segunda etapa do login: o desafio devolvido pelo /login + o codigo do aplicativo."""
+    desafio: str = Field(min_length=1, max_length=500)
+    codigo: str = Field(min_length=1, max_length=20)   # 6 numeros do app ou codigo de reserva (ABCD-EFGH)
+
+
+class SenhaECodigoSchema(Schema):
+    """Ligar, desligar e gerar codigos da verificacao em duas etapas pedem a senha e um codigo."""
+    senha: str = Field(min_length=1, max_length=128)
+    codigo: str = Field(min_length=1, max_length=20)
+
+
+class EsqueciSenhaSchema(Schema):
+    login: str = Field(min_length=1, max_length=255)   # e-mail ou matricula
+
+
 class CodigoSchema(Schema):
     codigo: Digitos = Field(min_length=1)
 
@@ -89,6 +105,26 @@ class CodigoSchema(Schema):
     def _seis_digitos(cls, v: str) -> str:
         if len(v) != 6:
             raise ValueError("O código tem 6 números.")
+        return v
+
+
+class RedefinirSenhaSchema(Schema):
+    login: str = Field(min_length=1, max_length=255)
+    codigo: Digitos = Field(min_length=1)
+    nova_senha: str = Field(min_length=1, max_length=128)
+
+    @field_validator("codigo")
+    @classmethod
+    def _seis_digitos(cls, v: str) -> str:
+        if len(v) != 6:
+            raise ValueError("O código tem 6 números.")
+        return v
+
+    @field_validator("nova_senha")
+    @classmethod
+    def _senha(cls, v: str) -> str:
+        if len(v) < SENHA_MINIMA:
+            raise ValueError(f"A senha precisa ter pelo menos {SENHA_MINIMA} caracteres.")
         return v
 
 
@@ -102,7 +138,6 @@ class PerfilSchema(Schema):
     bairro: str | None = Field(default=None, min_length=1, max_length=100)
     curso: TextoOpcional = Field(default=None, max_length=120)
     endereco: TextoOpcional = Field(default=None, max_length=255)
-    foto_url: TextoOpcional = Field(default=None, max_length=500)
     chave_pix: TextoOpcional = Field(default=None, max_length=150)
     bio: TextoOpcional = Field(default=None, max_length=300)
     pref_conversa: Literal[NIVEIS_CONVERSA] | None = None  # type: ignore[valid-type]

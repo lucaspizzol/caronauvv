@@ -49,6 +49,9 @@ function persistir() {
   }
 }
 
+// Aviso que precisa sobreviver a troca de tela (ex.: "voce entrou com um codigo de reserva")
+export const avisoGlobal = reactive({ texto: '', tipo: 'info' })
+
 export function entrar(token, usuario) {
   auth.token = token
   auth.usuario = usuario

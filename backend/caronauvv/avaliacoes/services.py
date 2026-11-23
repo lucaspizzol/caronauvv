@@ -241,7 +241,7 @@ def avaliacoes_pendentes(usuario) -> list[dict]:
         pendentes.append({
             "solicitacao_id": s.id,
             "papel_avaliado": "motorista" if avaliado.id == s.carona.motorista_id else "passageiro",
-            "avaliado": {"id": avaliado.id, "nome": avaliado.nome, "curso": avaliado.curso},
+            "avaliado": {"id": avaliado.id, "nome": avaliado.nome, "curso": avaliado.curso, "foto_url": avaliado.foto_url},
             "carona": {
                 "id": s.carona.id, "sentido": s.carona.sentido, "bairro_origem": s.carona.bairro_origem,
                 "destino": s.carona.destino,

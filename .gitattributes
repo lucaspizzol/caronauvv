@@ -1,0 +1,7 @@
+# Fim de linha LF em todo arquivo de texto (o projeto e editado no Windows e no Linux)
+* text=auto eol=lf
+*.jpg binary
+*.png binary
+*.pdf binary
+*.docx binary
+*.ico binary

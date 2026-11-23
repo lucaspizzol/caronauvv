@@ -125,6 +125,25 @@ def verificar_usuario(usuario_id: int, aprovado: bool = True) -> Usuario:
     return usuario
 
 
+def remover_foto_usuario(usuario_id: int) -> Usuario:
+    """Moderacao: tira uma foto de perfil inadequada e avisa o aluno."""
+    from caronauvv.auth.foto import remover_foto
+
+    usuario = _usuario(usuario_id)
+    if not usuario.foto_url:
+        raise ApiError("Este usuário não tem foto de perfil.")
+    notificar(usuario, "seguranca_conta", "Foto de perfil removida",
+              "A administração removeu sua foto de perfil. Envie uma foto em que apareça o seu rosto.")
+    return remover_foto(usuario)
+
+
+def resetar_dois_fatores(usuario_id: int) -> Usuario:
+    """Aluno ficou sem o celular e sem os codigos de reserva: desliga o autenticador da conta."""
+    from caronauvv.auth.dois_fatores import resetar_pelo_admin
+
+    return resetar_pelo_admin(_usuario(usuario_id))
+
+
 def suspender_usuario(usuario_id: int, admin: Usuario, ativo: bool) -> Usuario:
     usuario = _usuario(usuario_id)
     if usuario.id == admin.id:

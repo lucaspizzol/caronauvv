@@ -19,7 +19,7 @@
     <div v-else class="d-flex flex-column gap-3">
       <form v-for="p in pendentes" :key="p.solicitacao_id" class="card p-3" novalidate @submit.prevent="enviar(p)">
         <div class="d-flex align-items-center gap-3 mb-2">
-          <span class="avatar">{{ iniciais(p.avaliado.nome) }}</span>
+          <AvatarUsuario :usuario="p.avaliado" />
           <div>
             <div class="fw-bold">
               Como foi {{ p.papel_avaliado === 'motorista' ? 'a viagem com' : 'levar' }}
@@ -72,9 +72,10 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import AvatarUsuario from '../components/AvatarUsuario.vue'
 import EstrelasNota from '../components/EstrelasNota.vue'
 import api from '../services/api'
-import { dataCurta, hora, iniciais } from '../utils/formato'
+import { dataCurta, hora } from '../utils/formato'
 
 const pendentes = ref([])
 const carregando = ref(true)

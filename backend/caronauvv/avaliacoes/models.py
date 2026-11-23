@@ -53,7 +53,7 @@ class Avaliacao(db.Model):
             "nota": self.nota,
             "comentario": self.comentario,
             "tags": [t.tag for t in self.tags],
-            "avaliador": {"id": self.avaliador.id, "nome": self.avaliador.nome},
+            "avaliador": {"id": self.avaliador.id, "nome": self.avaliador.nome, "foto_url": self.avaliador.foto_url},
             "papel_avaliado": "motorista" if self.avaliado_id == self.solicitacao.carona.motorista_id else "passageiro",
             "criada_em": self.created_at.isoformat(timespec="minutes"),
         }

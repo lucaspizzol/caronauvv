@@ -69,7 +69,8 @@ def acompanhar(token: str) -> dict:
         "destino": carona.destino,
         "data_hora_saida": carona.data_hora_saida.isoformat(timespec="minutes"),
         "iniciada_em": carona.iniciada_em.isoformat(timespec="minutes") if carona.iniciada_em else None,
-        "motorista": {"nome": motorista.nome, "curso": motorista.curso, "verificado": motorista.verificado},
+        "motorista": {"nome": motorista.nome, "curso": motorista.curso, "verificado": motorista.verificado,
+                      "foto_url": motorista.foto_url},   # a familia ve o rosto de quem esta dirigindo
         # A placa aparece para a familia: e o dado mais importante para seguranca
         "veiculo": veiculo.to_dict(com_placa=True) if veiculo else None,
         "ultima_posicao": (

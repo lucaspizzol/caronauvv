@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  dinheiro, hora, iniciais, linkWhatsApp, listaPreferencias, membroDesde, nota, porcentagem, telefoneFormatado
+  codigoReservaFormatado, dinheiro, hora, iniciais, linkWhatsApp, listaPreferencias, membroDesde, nota, porcentagem,
+  telefoneFormatado, urlFoto
 } from './formato'
 
 describe('formatação para a tela', () => {
@@ -40,5 +41,20 @@ describe('reputação e preferências', () => {
   it('formata membro desde e porcentagem', () => {
     expect(membroDesde('2026-03-10')).toBe('mar/2026')
     expect(porcentagem(0.125)).toBe('13%')
+  })
+})
+
+describe('foto de perfil e autenticador', () => {
+  it('monta o endereço da foto com a base da API', () => {
+    expect(urlFoto('/api/fotos/abc123', '/api')).toBe('/api/fotos/abc123')
+    expect(urlFoto('/api/fotos/abc123', 'https://api.caronauvv.com/api/')).toBe('https://api.caronauvv.com/api/fotos/abc123')
+    expect(urlFoto(null)).toBe('')
+  })
+
+  it('formata o código de reserva enquanto a pessoa digita', () => {
+    expect(codigoReservaFormatado('abcdefgh')).toBe('ABCD-EFGH')
+    expect(codigoReservaFormatado('abcd-ef')).toBe('ABCD-EF')
+    expect(codigoReservaFormatado('ab c')).toBe('ABC')
+    expect(codigoReservaFormatado('abcdefghijkl')).toBe('ABCD-EFGH')
   })
 })

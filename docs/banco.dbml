@@ -25,6 +25,17 @@ Table usuarios {
   codigo_tentativas integer [not null, default: 0]
   verificacao_solicitada_em timestamp
   senha_hash varchar(255) [not null]
+  sessao_versao integer [not null, default: 0]
+  reset_codigo_hash varchar(255)
+  reset_expira_em timestamp
+  reset_tentativas integer [not null, default: 0]
+  reset_enviado_em timestamp
+  totp_segredo varchar(64)
+  totp_ativo boolean [not null, default: false]
+  totp_ativado_em timestamp
+  totp_ultimo_passo biginteger
+  totp_falhas integer [not null, default: 0]
+  totp_bloqueado_ate timestamp
   is_admin boolean [not null, default: false]
   verificado boolean [not null, default: false]
   is_active boolean [not null, default: true]
@@ -48,6 +59,24 @@ Table contatos_confianca {
   usuario_id integer [not null]
   nome varchar(100) [not null]
   telefone varchar(20) [not null]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table fotos_perfil {
+  id integer [pk]
+  usuario_id integer [unique, not null]
+  token varchar(32) [unique, not null]
+  mime varchar(20) [not null]
+  tamanho integer [not null]
+  dados largebinary [not null]
+  created_at timestamp [not null, default: `now()`]
+}
+
+Table codigos_reserva {
+  id integer [pk]
+  usuario_id integer [not null]
+  codigo_hash varchar(64) [not null]
+  usado_em timestamp
   created_at timestamp [not null, default: `now()`]
 }
 
@@ -229,6 +258,8 @@ Table configuracoes {
 
 Ref: veiculos.usuario_id > usuarios.id [delete: cascade]
 Ref: contatos_confianca.usuario_id > usuarios.id [delete: cascade]
+Ref: fotos_perfil.usuario_id - usuarios.id [delete: cascade]
+Ref: codigos_reserva.usuario_id > usuarios.id [delete: cascade]
 Ref: caronas.motorista_id > usuarios.id
 Ref: caronas.veiculo_id > veiculos.id [delete: set null]
 Ref: solicitacoes.carona_id > caronas.id [delete: cascade]
@@ -256,6 +287,8 @@ TableGroup auth {
   usuarios
   veiculos
   contatos_confianca
+  fotos_perfil
+  codigos_reserva
 }
 
 TableGroup caronas {

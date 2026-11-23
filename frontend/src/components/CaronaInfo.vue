@@ -26,7 +26,7 @@
 
       <div class="d-flex flex-wrap align-items-center gap-3 small">
         <span class="d-inline-flex align-items-center gap-2">
-          <span class="avatar" style="width: 1.9rem; height: 1.9rem; font-size: 0.75rem">{{ iniciais(carona.motorista?.nome) }}</span>
+          <AvatarUsuario :usuario="carona.motorista" :tamanho="2.2" />
           <span>
             <RouterLink :to="`/usuarios/${carona.motorista?.id}`" class="fw-semibold text-reset">{{ carona.motorista?.nome }}</RouterLink>
             <span v-if="carona.motorista?.curso" class="text-secondary d-none d-sm-inline"> · {{ carona.motorista.curso }}</span>
@@ -57,7 +57,8 @@
 </template>
 
 <script setup>
-import { dataCurta, dinheiro, hora, iniciais } from '../utils/formato'
+import { dataCurta, dinheiro, hora } from '../utils/formato'
+import AvatarUsuario from './AvatarUsuario.vue'
 import ReputacaoResumo from './ReputacaoResumo.vue'
 
 defineProps({

@@ -79,8 +79,13 @@
             <tbody>
               <tr v-for="u in usuarios" :key="u.id">
                 <td>
-                  <RouterLink :to="`/usuarios/${u.id}`" class="fw-semibold">{{ u.nome }}</RouterLink>
-                  <div class="text-secondary">{{ u.email }}</div>
+                  <div class="d-flex align-items-center gap-2">
+                    <AvatarUsuario :usuario="u" :tamanho="2.2" />
+                    <div>
+                      <RouterLink :to="`/usuarios/${u.id}`" class="fw-semibold">{{ u.nome }}</RouterLink>
+                      <div class="text-secondary">{{ u.email }}</div>
+                    </div>
+                  </div>
                 </td>
                 <td class="font-monospace">{{ u.matricula }}</td>
                 <td>
@@ -90,10 +95,13 @@
                   <span v-else class="badge text-bg-light border">Comum</span>
                   <span v-if="!u.email_verificado" class="badge text-bg-light border ms-1">e-mail pendente</span>
                   <span v-if="u.is_admin" class="badge text-bg-dark ms-1">admin</span>
+                  <span v-if="u.dois_fatores" class="badge text-bg-light border ms-1" title="Usa aplicativo autenticador"><i class="bi bi-shield-lock-fill me-1"></i>2 etapas</span>
                 </td>
                 <td class="text-end text-nowrap">
                   <button v-if="u.verificacao_solicitada_em && !u.verificado" class="btn btn-sm btn-success me-1" @click="verificar(u, true)">Aprovar selo</button>
                   <button v-if="u.verificacao_solicitada_em && !u.verificado" class="btn btn-sm btn-light me-1" @click="verificar(u, false)">Recusar</button>
+                  <BotaoConfirmar v-if="u.foto_url" class="me-1" texto="Remover foto" pergunta="Remover a foto?" icone="bi-person-x" classe="btn-outline-secondary" :acao="() => removerFoto(u)" />
+                  <BotaoConfirmar v-if="u.dois_fatores && u.id !== auth.usuario?.id" class="me-1" texto="Desligar 2 etapas" pergunta="Desligar o autenticador dele(a)?" icone="bi-shield-x" classe="btn-outline-secondary" :acao="() => resetar2fa(u)" />
                   <button v-if="u.is_active && !u.is_admin" class="btn btn-sm btn-outline-danger" @click="suspender(u, false)">Suspender</button>
                   <button v-if="!u.is_active" class="btn btn-sm btn-outline-success" @click="suspender(u, true)">Reativar</button>
                 </td>
@@ -227,8 +235,11 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import AvatarUsuario from '../components/AvatarUsuario.vue'
+import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import api from '../services/api'
+import { auth } from '../stores/auth'
 import { dataHora, MOTIVOS_DENUNCIA, nota, porcentagem } from '../utils/formato'
 
 const ABAS = [
@@ -327,6 +338,28 @@ async function verificar(u, aprovado) {
     await api.post(`/admin/usuarios/${u.id}/verificar`, { aprovado })
     avisar(aprovado ? `${u.nome} agora tem o selo de verificado.` : 'Pedido de verificação recusado.')
     await Promise.all([carregarUsuarios(), carregarResumo()])
+  } catch (e) {
+    avisar(e.mensagem, 'danger')
+  }
+}
+
+// Moderacao: foto inadequada
+async function removerFoto(u) {
+  try {
+    await api.delete(`/admin/usuarios/${u.id}/foto`)
+    avisar(`A foto de ${u.nome} foi removida e ele(a) foi avisado(a).`)
+    await carregarUsuarios()
+  } catch (e) {
+    avisar(e.mensagem, 'danger')
+  }
+}
+
+// Aluno ficou sem o celular e sem os codigos de reserva
+async function resetar2fa(u) {
+  try {
+    await api.post(`/admin/usuarios/${u.id}/resetar-2fa`)
+    avisar(`A verificação em duas etapas de ${u.nome} foi desligada. Agora ele(a) entra só com a senha.`, 'warning')
+    await carregarUsuarios()
   } catch (e) {
     avisar(e.mensagem, 'danger')
   }

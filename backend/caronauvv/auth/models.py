@@ -38,6 +38,7 @@ class Usuario(db.Model):
     endereco: Mapped[Optional[str]] = mapped_column(db.String(255))   # [EXTRA] tela Inicio: "Rua Itaunas, 120"
     casa_lat: Mapped[Optional[float]] = mapped_column(db.Float)        # [EXTRA] busca por proximidade da rota
     casa_lng: Mapped[Optional[float]] = mapped_column(db.Float)
+    # Endereco da foto de perfil (/api/fotos/<token>). O arquivo fica na tabela fotos_perfil.
     foto_url: Mapped[Optional[str]] = mapped_column(db.String(500))
     chave_pix: Mapped[Optional[str]] = mapped_column(db.String(150))  # [EXTRA] Pix do rateio
     bio: Mapped[Optional[str]] = mapped_column(db.String(300))  # "Curto rock e saio pontualmente"
@@ -64,6 +65,28 @@ class Usuario(db.Model):
     # SENHA LOCAL
     # ======================================================
     senha_hash: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    # Sobe a cada troca de senha: os tokens de login antigos deixam de valer
+    sessao_versao: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0, server_default="0")
+
+    # ======================================================
+    # RECUPERACAO DE SENHA ("esqueci minha senha"): codigo de 6 numeros
+    # enviado por e-mail, guardado so como HMAC (igual ao da verificacao)
+    # ======================================================
+    reset_codigo_hash: Mapped[Optional[str]] = mapped_column(db.String(255))
+    reset_expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    reset_tentativas: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0, server_default="0")
+    reset_enviado_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+
+    # ======================================================
+    # VERIFICACAO EM DUAS ETAPAS (aplicativo autenticador, TOTP)
+    # totp_ultimo_passo: cada codigo so vale uma vez (ver auth/totp.py)
+    # ======================================================
+    totp_segredo: Mapped[Optional[str]] = mapped_column(db.String(64))
+    totp_ativo: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    totp_ativado_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    totp_ultimo_passo: Mapped[Optional[int]] = mapped_column(db.BigInteger)
+    totp_falhas: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0, server_default="0")
+    totp_bloqueado_ate: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
 
     # ======================================================
     # AUDITORIA / PERMISSOES
@@ -89,6 +112,12 @@ class Usuario(db.Model):
     )
     contatos_confianca: Mapped[List["ContatoConfianca"]] = relationship(
         "ContatoConfianca", back_populates="usuario", cascade="all, delete-orphan"
+    )
+    foto: Mapped[Optional["FotoPerfil"]] = relationship(
+        "FotoPerfil", back_populates="usuario", cascade="all, delete-orphan", uselist=False
+    )
+    codigos_reserva: Mapped[List["CodigoReserva"]] = relationship(
+        "CodigoReserva", back_populates="usuario", cascade="all, delete-orphan"
     )
 
     # ======================================================
@@ -131,6 +160,7 @@ class Usuario(db.Model):
                 "endereco": self.endereco,
                 "chave_pix": self.chave_pix,
                 "is_admin": self.is_admin,
+                "dois_fatores": self.totp_ativo,
                 "verificacao_solicitada_em": (
                     self.verificacao_solicitada_em.isoformat(timespec="minutes")
                     if self.verificacao_solicitada_em else None
@@ -191,3 +221,40 @@ class ContatoConfianca(db.Model):
 
     def __repr__(self) -> str:
         return f"<ContatoConfianca id={self.id} nome='{self.nome}'>"
+
+
+# === FotoPerfil (arquivo da foto de perfil) ===  [EXTRA - confianca]
+# Fica no banco, e nao numa pasta, porque na hospedagem serverless (Vercel) o disco
+# e apagado a cada execucao. Tabela separada: listar usuarios nao carrega a imagem.
+class FotoPerfil(db.Model):
+    __tablename__ = "fotos_perfil"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, unique=True)
+    # Endereco aleatorio: so recebe o link quem esta logado, e ele muda a cada foto nova
+    token: Mapped[str] = mapped_column(db.String(32), nullable=False, unique=True, index=True)
+    mime: Mapped[str] = mapped_column(db.String(20), nullable=False)   # image/jpeg, image/png ou image/webp
+    tamanho: Mapped[int] = mapped_column(db.Integer, nullable=False)    # bytes
+    dados: Mapped[bytes] = mapped_column(db.LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
+
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="foto")
+
+    def __repr__(self) -> str:
+        return f"<FotoPerfil usuario_id={self.usuario_id} mime='{self.mime}' tamanho={self.tamanho}>"
+
+
+# === CodigoReserva (entra no lugar do autenticador se o aluno perder o celular) ===  [EXTRA - seguranca]
+class CodigoReserva(db.Model):
+    __tablename__ = "codigos_reserva"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    codigo_hash: Mapped[str] = mapped_column(db.String(64), nullable=False)  # HMAC-SHA256, nunca o codigo em texto
+    usado_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)         # cada codigo vale uma vez
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
+
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="codigos_reserva")
+
+    def __repr__(self) -> str:
+        return f"<CodigoReserva id={self.id} usuario_id={self.usuario_id} usado={self.usado_em is not None}>"

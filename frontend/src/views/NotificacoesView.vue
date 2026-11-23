@@ -63,6 +63,7 @@ const ICONES = {
   nova_avaliacao: { icone: 'bi-star-half', cor: 'text-warning' },
   pagamento_informado: { icone: 'bi-cash-coin', cor: 'text-success' },
   perfil_verificado: { icone: 'bi-patch-check-fill', cor: 'text-primary' },
+  seguranca_conta: { icone: 'bi-shield-lock-fill', cor: 'text-primary' },
   alerta_seguranca: { icone: 'bi-exclamation-octagon-fill', cor: 'text-danger' }
 }
 const icone = (tipo) => ICONES[tipo] || { icone: 'bi-bell-fill', cor: 'text-secondary' }

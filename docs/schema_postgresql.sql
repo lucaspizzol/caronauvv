@@ -34,6 +34,17 @@ CREATE TABLE usuarios (
 	codigo_tentativas INTEGER DEFAULT '0' NOT NULL, 
 	verificacao_solicitada_em TIMESTAMP WITHOUT TIME ZONE, 
 	senha_hash VARCHAR(255) NOT NULL, 
+	sessao_versao INTEGER DEFAULT '0' NOT NULL, 
+	reset_codigo_hash VARCHAR(255), 
+	reset_expira_em TIMESTAMP WITHOUT TIME ZONE, 
+	reset_tentativas INTEGER DEFAULT '0' NOT NULL, 
+	reset_enviado_em TIMESTAMP WITHOUT TIME ZONE, 
+	totp_segredo VARCHAR(64), 
+	totp_ativo BOOLEAN DEFAULT false NOT NULL, 
+	totp_ativado_em TIMESTAMP WITHOUT TIME ZONE, 
+	totp_ultimo_passo BIGINT, 
+	totp_falhas INTEGER DEFAULT '0' NOT NULL, 
+	totp_bloqueado_ate TIMESTAMP WITHOUT TIME ZONE, 
 	is_admin BOOLEAN NOT NULL, 
 	verificado BOOLEAN NOT NULL, 
 	is_active BOOLEAN NOT NULL, 
@@ -67,6 +78,18 @@ CREATE INDEX ix_buscas_bairro ON buscas (bairro);
 CREATE INDEX ix_buscas_created_at ON buscas (created_at);
 CREATE INDEX ix_buscas_usuario_id ON buscas (usuario_id);
 
+CREATE TABLE codigos_reserva (
+	id SERIAL NOT NULL, 
+	usuario_id INTEGER NOT NULL, 
+	codigo_hash VARCHAR(64) NOT NULL, 
+	usado_em TIMESTAMP WITHOUT TIME ZONE, 
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
+	CONSTRAINT pk_codigos_reserva PRIMARY KEY (id), 
+	CONSTRAINT fk_codigos_reserva_usuario_id_usuarios FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_codigos_reserva_usuario_id ON codigos_reserva (usuario_id);
+
 CREATE TABLE contatos_confianca (
 	id SERIAL NOT NULL, 
 	usuario_id INTEGER NOT NULL, 
@@ -78,6 +101,21 @@ CREATE TABLE contatos_confianca (
 );
 
 CREATE INDEX ix_contatos_confianca_usuario_id ON contatos_confianca (usuario_id);
+
+CREATE TABLE fotos_perfil (
+	id SERIAL NOT NULL, 
+	usuario_id INTEGER NOT NULL, 
+	token VARCHAR(32) NOT NULL, 
+	mime VARCHAR(20) NOT NULL, 
+	tamanho INTEGER NOT NULL, 
+	dados BYTEA NOT NULL, 
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
+	CONSTRAINT pk_fotos_perfil PRIMARY KEY (id), 
+	CONSTRAINT uq_fotos_perfil_usuario_id UNIQUE (usuario_id), 
+	CONSTRAINT fk_fotos_perfil_usuario_id_usuarios FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ix_fotos_perfil_token ON fotos_perfil (token);
 
 CREATE TABLE veiculos (
 	id SERIAL NOT NULL, 

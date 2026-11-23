@@ -9,7 +9,7 @@
       <!-- CABECALHO -->
       <div class="card p-4 mt-2">
         <div class="d-flex flex-wrap align-items-center gap-3">
-          <span class="avatar" style="width: 4rem; height: 4rem; font-size: 1.4rem">{{ iniciais(u.nome) }}</span>
+          <AvatarUsuario :usuario="u" :tamanho="5" />
           <div class="flex-grow-1">
             <h1 class="h4 fw-bold mb-0">
               {{ u.nome }}
@@ -84,8 +84,9 @@
         <h2 class="h6 fw-bold">Avaliações recebidas</h2>
         <p v-if="!u.avaliacoes.length" class="small text-secondary mb-0">Ainda sem avaliações publicadas.</p>
         <div v-for="a in u.avaliacoes" :key="a.id" class="border-top py-2">
-          <div class="d-flex justify-content-between small">
-            <span>
+          <div class="d-flex justify-content-between align-items-center small">
+            <span class="d-inline-flex flex-wrap align-items-center gap-1">
+              <AvatarUsuario :usuario="a.avaliador" :tamanho="1.6" class="me-1" />
               <i v-for="n in 5" :key="n" :class="['bi', n <= a.nota ? 'bi-star-fill text-warning' : 'bi-star text-secondary']"></i>
               <span class="ms-2 fw-semibold">{{ a.avaliador.nome }}</span>
               <span class="text-secondary"> · como {{ a.papel_avaliado }}</span>
@@ -137,10 +138,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
+import AvatarUsuario from '../components/AvatarUsuario.vue'
 import api from '../services/api'
 import { auth } from '../stores/auth'
 import {
-  dataCurta, iniciais, listaPreferencias, membroDesde, MOTIVOS_DENUNCIA, nota, porcentagem
+  dataCurta, listaPreferencias, membroDesde, MOTIVOS_DENUNCIA, nota, porcentagem
 } from '../utils/formato'
 import { regras, validar } from '../utils/validacao'
 

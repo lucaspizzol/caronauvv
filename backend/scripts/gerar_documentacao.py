@@ -93,6 +93,7 @@ def diagrama_dominio(nomes: tuple[str, ...]) -> str:
 COLUNAS_DESTAQUE = {
     "nome", "status", "tipo", "token", "expira_em", "motivo", "nota", "tag", "valor", "lat", "lng",
     "bairro", "lida", "chave", "qtd_resultados", "data_hora_saida", "pin_embarque",
+    "mime", "tamanho", "usado_em", "foto_url", "totp_ativo",
 }
 
 DOMINIOS = (
@@ -100,6 +101,8 @@ DOMINIOS = (
      ("usuarios", "veiculos", "caronas", "solicitacoes", "posicoes_gps", "avaliacoes", "avaliacao_tags", "pagamentos")),
     ("Segurança: contatos de confiança, link da família, alertas e denúncias",
      ("usuarios", "caronas", "contatos_confianca", "links_compartilhados", "alertas", "denuncias")),
+    ("Conta: foto de perfil e verificação em duas etapas",
+     ("usuarios", "fotos_perfil", "codigos_reserva")),
     ("Notificações e administração",
      ("usuarios", "caronas", "notificacoes", "buscas", "configuracoes")),
 )
@@ -193,6 +196,8 @@ DESCRICAO_TABELAS = {
     "veiculos": "Carros do motorista (placa única)",
     "contatos_confianca": "Quem recebe o link da viagem e o aviso de emergência",
     "caronas": "Oferta do motorista: trajeto, horário, vagas, rateio e status",
+    "fotos_perfil": "Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)",
+    "codigos_reserva": "Códigos de uso único da verificação em duas etapas (só o HMAC)",
     "solicitacoes": "Pedido de vaga: status, PIN de embarque, embarque e falta",
     "posicoes_gps": "Trilha GPS da viagem em andamento (link da família)",
     "avaliacoes": "Nota de 1 a 5 entre motorista e passageiro",
@@ -234,7 +239,11 @@ def contar_testes() -> int:
                 n = 1
                 for d in no.decorator_list:
                     if isinstance(d, ast.Call) and getattr(d.func, "attr", "") == "parametrize":
-                        n = len(d.args[1].elts)
+                        casos = d.args[1]
+                        if isinstance(casos, ast.Name):   # lista guardada numa constante do arquivo
+                            casos = next(x.value for x in arvore.body if isinstance(x, ast.Assign)
+                                         and any(getattr(t, "id", "") == casos.id for t in x.targets))
+                        n = len(casos.elts)
                 total += n
     return total
 
@@ -244,6 +253,10 @@ def contar_testes_front() -> int:
         f.read_text(encoding="utf-8").count("\n  it(")
         for f in (RAIZ / "frontend" / "src").rglob("*.test.js")
     )
+
+
+def contar_migracoes() -> int:
+    return len(list((BACKEND / "migrations" / "versions").glob("*.py")))
 
 
 def contar_telas() -> int:
@@ -261,6 +274,7 @@ def imagem(nome: str, legenda: str, classe: str = "") -> str:
 def montar(app) -> str:
     n_rotas, n_tabelas = contar_rotas(app), len(db.metadata.tables)
     n_testes, n_front, n_telas = contar_testes(), contar_testes_front(), contar_telas()
+    n_migracoes = contar_migracoes()
     s = []
     a = s.append
 
@@ -306,7 +320,7 @@ def montar(app) -> str:
 
     # ---------------- 1. DESCRICAO ----------------
     a("""
-<section class="quebra">
+<section class="quebra compacto">
   <h2>1. Descrição geral do produto</h2>
   <p>O <b>CaronaUVV</b> é uma aplicação web que conecta alunos da UVV que fazem trajetos parecidos até o campus,
   para oferecer e pedir caronas de forma organizada e <b>segura</b>.</p>
@@ -324,7 +338,7 @@ def montar(app) -> str:
   <table>
     <thead><tr><th>Funcionalidade</th><th>O que o sistema faz</th></tr></thead>
     <tbody>
-      <tr><td>Cadastro e login</td><td>Cadastro com nome, matrícula, e-mail UVV, telefone, bairro e senha; confirmação do e-mail por código; login por e-mail ou matrícula.</td></tr>
+      <tr><td>Cadastro e login</td><td>Cadastro com nome, matrícula, e-mail UVV, telefone, bairro e senha; confirmação do e-mail por código; login por e-mail ou matrícula; "esqueci minha senha" com código por e-mail.</td></tr>
       <tr><td>Oferecer carona</td><td>Sentido (ida/volta), bairro, ponto de saída, destino no campus, data, horário, 1 a 6 vagas, rateio (com valor sugerido), carro e observações. Editar e cancelar.</td></tr>
       <tr><td>Buscar caronas</td><td>Só caronas futuras e com vaga, com filtros por bairro, sentido, data e faixa de horário; cada cartão mostra a nota e o nível do motorista.</td></tr>
       <tr><td>Pedir vaga</td><td>O passageiro pede a vaga (ponto de embarque e mensagem opcionais); o motorista aceita ou recusa, ou usa a reserva automática.</td></tr>
@@ -340,6 +354,8 @@ def montar(app) -> str:
     <tbody>
       <tr><td>Comunidade fechada</td><td>Cadastro só com e-mail <code>@uvv.br</code> (ou subdomínio); código de 6 números confirma o e-mail. Sem e-mail confirmado não dá para oferecer nem pedir carona.</td><td>BlaBlaCar (e-mail verificado)</td></tr>
       <tr><td>Perfil verificado</td><td>O aluno pede o selo; a administração confere a matrícula e aprova.</td><td>BlaBlaCar (ID verificado)</td></tr>
+      <tr><td>Foto de perfil</td><td>O aluno envia a foto pelo perfil (câmera ou galeria no celular). Ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família, para motorista e passageiro se reconhecerem no ponto de encontro. A administração pode remover foto inadequada.</td><td>Uber / BlaBlaCar (foto no perfil)</td></tr>
+      <tr><td>Verificação em duas etapas</td><td>Com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy), o login pede a senha e um código de 6 números que muda a cada 30 s. Vem com 8 códigos de reserva de uso único.</td><td>Uber, bancos, GitHub (2FA)</td></tr>
       <tr><td>Reputação</td><td>Nota média, número de avaliações, nível de experiência (Calouro, Veterano, Embaixador), viagens como motorista e passageiro, faltas, taxa de cancelamento e selos (Super pontual, Muito bem avaliado, Nunca faltou...).</td><td>BlaBlaCar (perfil e níveis)</td></tr>
       <tr><td>Avaliação "às cegas"</td><td>Motorista e passageiro se avaliam (1 a 5 + elogios + comentário) em até 14 dias; a nota só aparece quando os dois avaliam ou depois de 7 dias, para ninguém avaliar por vingança.</td><td>BlaBlaCar (two-way ratings)</td></tr>
       <tr><td>Preferências</td><td>Conversa (prefere silêncio / depende / adora conversar), música, animais e cigarro, no perfil público.</td><td>BlaBlaCar ("Bla, BlaBla, BlaBlaBla")</td></tr>
@@ -367,6 +383,10 @@ def montar(app) -> str:
     <li>Avaliação só depois da carona concluída, uma por pessoa e por viagem, em até 14 dias.</li>
     <li>Login bloqueado por 10 min depois de 5 senhas erradas; o código de e-mail aceita 5 tentativas e vence em 30 min.</li>
     <li>Senhas com hash (Werkzeug/scrypt); o código de verificação é guardado como HMAC-SHA256, nunca em texto.</li>
+    <li>Foto de perfil: só JPG, PNG ou WebP (conferido pelo conteúdo do arquivo, não pelo nome), até 512 KB e 1024 px de lado.</li>
+    <li>Verificação em duas etapas: cada código vale uma vez; 5 códigos errados bloqueiam a segunda etapa por 10 min; ligar e desligar exigem a senha e um código.</li>
+    <li>"Esqueci minha senha": código de 6 números por e-mail, vale 30 min e aceita 5 tentativas; a resposta é a mesma exista a conta ou não.</li>
+    <li>Trocar ou redefinir a senha encerra os logins abertos nos outros aparelhos.</li>
   </ul>
 </section>""")
 
@@ -376,8 +396,8 @@ def montar(app) -> str:
   <h2>2. Telas do sistema</h2>
   <p>O front-end é uma SPA em Vue 3 com Bootstrap 5. No computador o menu fica no topo; no celular vira uma barra
   fixa embaixo, como num aplicativo. São {n_telas} telas.</p>
-  {imagem("01_busca.jpg", "Buscar caronas: cada cartão mostra a nota, o nível e o selo de verificado do motorista, além das observações da carona.")}
-  {imagem("09_cadastro_validacao.jpg", "Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic).")}
+  {imagem("01_busca.jpg", "Buscar caronas: cada cartão mostra a foto, a nota, o nível e o selo de verificado do motorista, além das observações da carona.", "media")}
+  {imagem("09_cadastro_validacao.jpg", "Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic).", "media")}
 </section>
 <section class="quebra">
   {imagem("02_perfil_publico.jpg", "Perfil público: nível, selos de confiança, histórico (viagens, faltas, cancelamentos), preferências e elogios mais citados.")}
@@ -392,12 +412,21 @@ def montar(app) -> str:
   {imagem("07_admin.jpg", "Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona).")}
 </section>
 <section class="quebra">
+  {imagem("11_perfil_foto_autenticador.jpg", "Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador.", "alta")}
+  {imagem("12_login_duas_etapas.jpg", "Login de quem ligou a verificação em duas etapas: depois da senha, o sistema pede o código do aplicativo (ou um código de reserva).", "baixa")}
+</section>
+<section class="quebra">
   <div class="lado-a-lado">
     {imagem("10_celular.jpg", "No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo.", "celular")}
     <div>
       <h3>Responsividade</h3>
-      <p>Todas as telas foram conferidas em 375 px de largura, sem rolagem horizontal (medido no navegador).
+      <p>Todas as telas foram conferidas em 360, 390, 768, 1024 e 1280 px de largura, sem rolagem horizontal (medido no
+      navegador). Até 991 px (celular e tablet) o menu é a barra de baixo; a partir daí, o menu do topo.
       O grid do Bootstrap reorganiza filtros e cartões; botões e campos têm tamanho de toque.</p>
+      <h3>Foto de perfil em todas as telas</h3>
+      <p>Um único componente, <code>AvatarUsuario.vue</code>, mostra a foto ou, se o aluno não enviou nenhuma (ou se
+      ela não carregar), as iniciais do nome. É usado na barra do topo, na busca, nos pedidos, nas avaliações, no
+      perfil público, no painel da administração e no link da família.</p>
       <h3>Acessibilidade</h3>
       <p>Campos com <code>label</code>, mensagens de erro ligadas ao campo (<code>invalid-feedback</code>),
       estrelas da avaliação como <code>radiogroup</code> com <code>aria-checked</code>, botões de elogio com
@@ -411,7 +440,7 @@ def montar(app) -> str:
 <section class="quebra">
   <h2>3. Banco de dados</h2>
   <p>O banco tem <b>{n_tabelas} tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
-  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 2 migrações).</p>
+  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, {n_migracoes} migrações).</p>
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
@@ -433,6 +462,13 @@ def montar(app) -> str:
   <div class="mermaid dominio">{html.escape(diagrama_dominio(DOMINIOS[1][1]))}</div>
   <h3>{DOMINIOS[2][0]}</h3>
   <div class="mermaid dominio">{html.escape(diagrama_dominio(DOMINIOS[2][1]))}</div>
+</section>
+<section class="quebra">
+  <h3>{DOMINIOS[3][0]}</h3>
+  <div class="mermaid dominio">{html.escape(diagrama_dominio(DOMINIOS[3][1]))}</div>
+  <p class="pequeno">A foto fica numa tabela separada de <code>usuarios</code> para que listar alunos não carregue as
+  imagens. Em <code>usuarios</code> ficam só o endereço da foto (<code>foto_url</code>) e o estado do autenticador
+  (segredo, se está ativo, último código usado e contador de erros).</p>
 </section>
 <section class="quebra">
   <h3>Tabelas</h3>
@@ -481,7 +517,7 @@ Flask ── create_app()   (Application Factory)
     <tbody>
       <tr><td><code>caronauvv/__init__.py</code></td><td>Application Factory: configuração, log, banco, CORS, registro dos 6 módulos e dos erros</td></tr>
       <tr><td><code>config.py</code> + <code>.env</code></td><td>Tudo por variável de ambiente: chave secreta, banco, CORS, log, e-mail, domínios aceitos, proteção do login</td></tr>
-      <tr><td><code>auth/</code></td><td>Cadastro, verificação de e-mail, login por token, perfil, perfil público, veículos e contatos de confiança; decorators <code>@login_required</code> e <code>@admin_required</code></td></tr>
+      <tr><td><code>auth/</code></td><td>Cadastro, verificação de e-mail, login por token, recuperação de senha, perfil, perfil público, veículos e contatos de confiança; <code>foto.py</code> (foto de perfil), <code>totp.py</code> e <code>dois_fatores.py</code> (verificação em duas etapas); decorators <code>@login_required</code> e <code>@admin_required</code></td></tr>
       <tr><td><code>caronas/</code></td><td>Caronas e pedidos: busca, criar, editar, cancelar, iniciar, embarque com PIN, falta, GPS, concluir, valor sugerido</td></tr>
       <tr><td><code>avaliacoes/</code></td><td>Avaliações às cegas, reputação, Pix copia e cola e pagamento</td></tr>
       <tr><td><code>notificacoes/</code></td><td>Criação (dentro da mesma transação da ação), listagem, contagem e leitura</td></tr>
@@ -543,7 +579,8 @@ Flask ── create_app()   (Application Factory)
 <section>
   <h3>5.5 Segurança</h3>
   <ul>
-    <li><b>Autenticação por token</b> assinado com a <code>SECRET_KEY</code> (itsdangerous), com validade; conta suspensa invalida o token na hora.</li>
+    <li><b>Autenticação por token</b> assinado com a <code>SECRET_KEY</code> (itsdangerous), com validade; conta suspensa invalida o token na hora, e trocar a senha derruba os tokens antigos (o token leva a "versão da sessão" do usuário).</li>
+    <li><b>Verificação em duas etapas</b> opcional com aplicativo autenticador (seção 5.6) e <b>recuperação de senha</b> por código enviado ao e-mail, sem revelar se a conta existe.</li>
     <li><b>Força bruta</b>: 5 senhas erradas em 10 minutos bloqueiam o login (HTTP 429).</li>
     <li><b>Código de e-mail</b> guardado como HMAC-SHA256, com validade de 30 min e 5 tentativas.</li>
     <li><b>PIN</b> comparado com <code>secrets.compare_digest</code> (tempo constante).</li>
@@ -554,7 +591,29 @@ Flask ── create_app()   (Application Factory)
   {codigo(funcao("backend/caronauvv/auth/decorators.py", "admin_required"), "backend/caronauvv/auth/decorators.py")}
 </section>
 <section>
-  <h3>5.6 Tratamento de erros, logging e variáveis de ambiente</h3>
+  <h3>5.6 Verificação em duas etapas (aplicativo autenticador)</h3>
+  <p>O código de 6 números segue o padrão TOTP (RFC 6238), o mesmo do Google Authenticator. Servidor e aplicativo
+  guardam o mesmo segredo e calculam um HMAC do número do intervalo de 30 segundos. Implementamos com a biblioteca
+  padrão do Python (sem dependência nova) e conferimos com os vetores oficiais da RFC nos testes:</p>
+  {codigo(funcao("backend/caronauvv/auth/totp.py", "codigo_do_passo") + chr(10) * 3 + funcao("backend/caronauvv/auth/totp.py", "verificar"), "backend/caronauvv/auth/totp.py")}
+  <p>O login vira duas chamadas. A primeira confere a senha e, se a conta usa autenticador, devolve um
+  <i>desafio</i> assinado (vale 5 minutos) no lugar do token. A segunda recebe o desafio e o código:</p>
+  {codigo(linhas("backend/caronauvv/auth/routes.py", '@bp.post("/login")', "return corpo"), "backend/caronauvv/auth/routes.py")}
+</section>
+<section>
+  <p>A conferência aceita o código do aplicativo ou um código de reserva, conta os erros no banco (vale também na
+  hospedagem serverless, que não guarda memória entre chamadas) e bloqueia depois de 5 tentativas:</p>
+  {codigo(funcao("backend/caronauvv/auth/dois_fatores.py", "conferir_segundo_fator"), "backend/caronauvv/auth/dois_fatores.py")}
+  <h3>5.7 Foto de perfil (upload de arquivo)</h3>
+  <p>O navegador recorta a foto em quadrado e reduz para 400 × 400 antes de enviar, então uma foto de celular de 5 MB
+  chega com cerca de 25 KB. O envio é um formulário <code>multipart/form-data</code>:</p>
+  {codigo(linhas("frontend/src/utils/imagem.js", "export async function prepararFoto", "'image/jpeg', 0.85)") + chr(10) + "  })" + chr(10) + "}", "frontend/src/utils/imagem.js", "javascript")}
+  <p>O servidor não confia no navegador: descobre o tipo pelos primeiros bytes do arquivo, lê largura e altura do
+  cabeçalho e limita o tamanho. A foto fica no banco e o endereço dela é aleatório:</p>
+  {codigo(funcao("backend/caronauvv/auth/foto.py", "identificar_imagem") + chr(10) * 3 + funcao("backend/caronauvv/auth/foto.py", "salvar_foto"), "backend/caronauvv/auth/foto.py")}
+</section>
+<section>
+  <h3>5.8 Tratamento de erros, logging e variáveis de ambiente</h3>
   <p>Toda resposta de erro tem o mesmo formato. Erros de regra de negócio viram <code>ApiError</code>; erros
   inesperados vão para o log com traceback, e o cliente recebe só uma mensagem genérica.</p>
   {codigo(funcao("backend/caronauvv/errors.py", "init_app"), "backend/caronauvv/errors.py")}
@@ -563,28 +622,31 @@ Flask ── create_app()   (Application Factory)
   {codigo(linhas("backend/caronauvv/config.py", "def _url_banco", "return url"), "backend/caronauvv/config.py")}
 </section>
 <section>
-  <h3>5.7 Testes automatizados</h3>
-  <p><b>{n_testes} testes no back-end</b> (pytest + pytest-flask), com <b>95% de cobertura</b> de código, cobrindo rotas,
-  regras de negócio, validação, permissões, banco (FK, CHECK, seed) e Pix. Cada teste roda num banco novo, criado
+  <h3>5.9 Testes automatizados</h3>
+  <p><b>{n_testes} testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil e verificação em duas etapas. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
-  No front-end, <b>{n_front} testes com Vitest</b> cobrem as regras de validação e a formatação.</p>
+  No front-end, <b>{n_front} testes com Vitest</b> cobrem as regras de validação, a formatação e o recorte da foto.</p>
   {codigo(funcao("backend/tests/conftest.py", "viagem"), "backend/tests/conftest.py")}
   {codigo(funcao("backend/tests/test_avaliacoes_pagamentos.py", "test_nota_fica_escondida_ate_os_dois_avaliarem"), "backend/tests/test_avaliacoes_pagamentos.py")}
   <table>
     <thead><tr><th>Arquivo</th><th>O que testa</th></tr></thead>
     <tbody>
       <tr><td><code>test_auth.py</code>, <code>test_validacao_cadastro.py</code></td><td>Cadastro, e-mail institucional, código de verificação, força bruta, perfil e preferências</td></tr>
+      <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
+      <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
+      <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
       <tr><td><code>test_caronas.py</code>, <code>test_solicitacoes.py</code></td><td>Criar, buscar, editar, cancelar; pedir, aceitar, recusar, lotação, expiração</td></tr>
       <tr><td><code>test_ciclo_viagem.py</code>, <code>test_conclusao_e_erros.py</code></td><td>Iniciar, PIN, falta, GPS, concluir, teto e valor sugerido, erros em JSON</td></tr>
       <tr><td><code>test_avaliacoes_pagamentos.py</code></td><td>Avaliação às cegas, reputação, perfil público, Pix e pagamento</td></tr>
       <tr><td><code>test_seguranca_notificacoes.py</code></td><td>Notificações, contatos, link da família, emergência, denúncias</td></tr>
       <tr><td><code>test_admin.py</code>, <code>test_banco.py</code>, <code>test_models.py</code>, <code>test_veiculos.py</code></td><td>Painel, moderação, configurações, integridade do banco e seed</td></tr>
-      <tr><td><code>frontend/src/utils/*.test.js</code></td><td>Validação dos formulários e formatação (Vitest)</td></tr>
+      <tr><td><code>frontend/src/utils/*.test.js</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
     </tbody>
   </table>
 </section>
 <section>
-  <h3>5.8 Front-end em Vue 3</h3>
+  <h3>5.10 Front-end em Vue 3</h3>
   <p>Um único cliente HTTP coloca o token em toda requisição, volta para o login quando a sessão expira e repassa
   os erros de cada campo vindos do servidor:</p>
   {codigo(linhas("frontend/src/services/api.js", "api.interceptors.response.use(", "export default api", incluir_fim=False), "frontend/src/services/api.js", "javascript")}
@@ -606,13 +668,15 @@ Flask ── create_app()   (Application Factory)
       <tr><td>Pydantic 2</td><td>Validação dos formulários no servidor com schemas declarativos (equivalente ao WTForms/Flask-WTF para uma API JSON) e mensagens por campo.</td></tr>
       <tr><td>Flask-CORS e python-dotenv</td><td>Liberar o front-end para chamar a API; configuração por <code>.env</code>.</td></tr>
       <tr><td>itsdangerous, Werkzeug, hmac/secrets</td><td>Token de login assinado, hash de senha (scrypt), HMAC do código de verificação e PIN aleatório seguro.</td></tr>
+      <tr><td>TOTP (RFC 6238) com hmac, hashlib e struct</td><td>Código do aplicativo autenticador calculado com a biblioteca padrão do Python: nenhuma dependência nova no servidor, e compatível com qualquer aplicativo autenticador.</td></tr>
+      <tr><td>Canvas e FormData (navegador)</td><td>Recorte e redução da foto de perfil antes do envio em <code>multipart/form-data</code>.</td></tr>
       <tr><td>SQLite / PostgreSQL (psycopg 3)</td><td>SQLite no desenvolvimento e na apresentação (um arquivo, nada para instalar); PostgreSQL em produção, só trocando a <code>DATABASE_URL</code>. Testado nos dois.</td></tr>
       <tr><td>pytest, pytest-flask, pytest-cov</td><td>Testes das rotas e regras de negócio, com cobertura medida.</td></tr>
       <tr><td>invoke e pyproject.toml</td><td>Empacotamento e tarefas (<code>invoke test</code>, <code>invoke resetdb</code>, <code>invoke docsdb</code>).</td></tr>
       <tr><td>Vue 3, Vite, vue-router, axios</td><td>SPA que consome a API, no padrão do front-end do TaskFlow.</td></tr>
       <tr><td>Bootstrap 5 e Bootstrap Icons</td><td>Framework CSS: grid responsivo, formulários com estado de erro, componentes e ícones.</td></tr>
       <tr><td>Vitest</td><td>Testes do front-end (validação e formatação).</td></tr>
-      <tr><td>qrcode, Mermaid</td><td>QR Code do Pix gerado no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
+      <tr><td>qrcode, Mermaid</td><td>QR Code do Pix e do autenticador gerados no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
       <tr><td>OpenStreetMap</td><td>Mapa do link da família, sem chave de API.</td></tr>
       <tr><td>Git e GitHub</td><td>Versionamento, com commits por etapa.</td></tr>
     </tbody>
@@ -624,7 +688,7 @@ Flask ── create_app()   (Application Factory)
 
     # ---------------- 7. COMO RODAR ----------------
     a("""
-<section class="quebra">
+<section class="quebra compacto">
   <h2>7. Como rodar o projeto</h2>
   <p><b>Online:</b> <b>https://caronauvv.vercel.app</b> (Vercel: Vue como site estático, API Flask como função
   serverless e banco PostgreSQL Neon; logins de exemplo abaixo). Para rodar na própria máquina:</p>
@@ -655,6 +719,7 @@ npm test                           # testes do front-end (Vitest)</pre>
       <tr><td><code>lucas@uvv.br</code></td><td>Passageiro com uma avaliação pendente</td></tr>
       <tr><td><code>ana@uvv.br</code> / <code>pedro@uvv.br</code></td><td>Passageira com contatos de confiança / passageiro com 2 faltas</td></tr>
       <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado (aprovar no painel)</td></tr>
+      <tr><td><code>beatriz@uvv.br</code></td><td>Já usa a verificação em duas etapas: o login pede o código. Use um código de reserva de exemplo (<code>UVVA-2026</code>, <code>UVVB-2026</code>, <code>UVVC-2026</code>, <code>UVVD-2026</code>; cada um vale uma vez)</td></tr>
       <tr><td><code>admin@uvv.br</code></td><td>Painel da administração</td></tr>
     </tbody>
   </table>
@@ -664,14 +729,15 @@ npm test                           # testes do front-end (Vitest)</pre>
     <li><b>Cadastro:</b> tentar um e-mail <code>@gmail.com</code> (bloqueado), depois um <code>@uvv.br</code> e confirmar o código.</li>
     <li><b>Aba 1, Kauã:</b> Minhas caronas → carona de hoje → Iniciar viagem → PIN errado e depois 4821 → Compartilhar viagem (abrir o link numa janela anônima) → Concluir → Avaliações.</li>
     <li><b>Aba 2, Lucas:</b> buscar "Itapuã", ver a nota do Kauã e abrir o perfil dele → Pedir vaga. Na aba 1 o pedido chega sozinho; aceitar. Em Meus pedidos: PIN, Pix com QR Code e Emergência.</li>
-    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas e o diagrama na aba Banco de dados.</li>
+    <li><b>Foto e autenticador:</b> no Perfil, trocar a foto (ela muda na barra na hora). Ativar a verificação em duas etapas lendo o QR Code com o Google Authenticator do celular, guardar os códigos de reserva, sair e entrar de novo: o login pede o código. No login, "Esqueci minha senha" mostra a recuperação por código.</li>
+    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
 </section>""")
 
     # ---------------- 8. DESAFIOS ----------------
     a("""
-<section class="quebra">
+<section class="quebra compacto">
   <h2>8. Principais desafios e como foram resolvidos</h2>
   <p><b>Confiança entre desconhecidos.</b> Num grupo de WhatsApp, não dá para saber quem é a pessoa. Estudamos como
   BlaBlaCar e Uber resolvem isso e adaptamos para a faculdade: comunidade fechada por e-mail institucional,
@@ -700,6 +766,15 @@ npm test                           # testes do front-end (Vitest)</pre>
   limite de tentativas) e os testes usam um hash de senha mais leve: a suíte roda em cerca de 12 s.</p>
   <p><b>Login numa API sem páginas.</b> O Flask-Login depende de sessão e templates; como o front é uma SPA, usamos
   token assinado no cabeçalho <code>Authorization</code>, validado por <code>@login_required</code>.</p>
+  <p><b>Foto de perfil numa hospedagem sem disco.</b> Na Vercel a API roda como função serverless: o disco é apagado
+  a cada execução, então salvar a foto numa pasta não funciona. Guardamos a imagem no próprio banco (tabela
+  <code>fotos_perfil</code>). Para ela não pesar, o navegador recorta e reduz antes de enviar; e como a tag
+  <code>&lt;img&gt;</code> não manda o token de login, cada foto tem um endereço aleatório que muda a cada troca, o que
+  também permite o navegador guardar a imagem em cache.</p>
+  <p><b>Segundo fator sem guardar estado no servidor.</b> Entre a senha e o código do aplicativo, o servidor precisa
+  lembrar que a senha já foi conferida, mas a API não tem sessão. A primeira etapa devolve um desafio assinado com
+  validade de 5 minutos, que não serve como token. O contador de erros e o último código usado ficam no banco, porque
+  na hospedagem serverless a memória não dura de uma chamada para a outra.</p>
   <p><b>Pedidos que ninguém respondeu.</b> Sem agendador, um pedido pendente ficaria pendente para sempre. Cada pedido
   tem prazo (<code>expira_em</code>) e os vencidos expiram quando as listas são consultadas, quando a viagem é iniciada
   ou quando a carona é concluída.</p>
@@ -707,7 +782,8 @@ npm test                           # testes do front-end (Vitest)</pre>
   consulta a API a cada poucos segundos e destaca o que mudou; o login fica no <code>sessionStorage</code>, então
   motorista e passageiro podem ficar lado a lado no mesmo navegador.</p>
   <p><b>Uso no celular.</b> A maioria dos alunos usa o celular: grid do Bootstrap, barra de navegação embaixo e cada
-  tela conferida em 375 px de largura, sem rolagem horizontal.</p>
+  tela conferida de 360 a 1280 px de largura, sem rolagem horizontal. A conferência automática achou o menu do topo
+  estourando em tablets (768 px) e para o administrador, que tem um item a mais; o menu de baixo passou a valer até 991 px.</p>
 </section>""")
 
     # ---------------- 9. CRITERIOS ----------------
@@ -719,10 +795,10 @@ npm test                           # testes do front-end (Vitest)</pre>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
       <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; {n_rotas} rotas (seção 4).</td></tr>
-      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.js</code>) (seção 5.2).</td></tr>
+      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.js</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
       <tr><td>4. Interface / front-end</td><td>Vue 3 + Bootstrap 5, {n_telas} telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>{n_testes} testes pytest (rotas e regras, 95% de cobertura, também no PostgreSQL) + {n_front} testes Vitest (seção 5.7).</td></tr>
-      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, {n_tabelas} tabelas com FK, CHECK, UNIQUE e índices; 2 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>{n_testes} testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + {n_front} testes Vitest (seção 5.9).</td></tr>
+      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, {n_tabelas} tabelas com FK, CHECK, UNIQUE e índices; {n_migracoes} migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>
   </table>
@@ -733,7 +809,7 @@ npm test                           # testes do front-end (Vitest)</pre>
 CSS = """
 @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
 * { box-sizing: border-box; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1d2433; font-size: 10.5pt; line-height: 1.45; margin: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1d2433; font-size: 10.2pt; line-height: 1.42; margin: 0; }
 h2 { color: #0b2a5b; font-size: 18pt; margin: 0 0 8px; border-bottom: 3px solid #ffc72c; padding-bottom: 4px; }
 h3 { color: #163f82; font-size: 12.5pt; margin: 14px 0 6px; }
 p { margin: 6px 0; }
@@ -760,6 +836,9 @@ table.compacta { font-size: 8.4pt; } table.compacta td, table.compacta th { padd
 .sumario li { margin: 6px 0; font-size: 12pt; }
 figure { margin: 8px 0 14px; text-align: center; page-break-inside: avoid; }
 figure img { max-width: 100%; max-height: 118mm; border: 1px solid #d5dce8; border-radius: 6px; }
+figure.alta img { max-height: 132mm; }
+figure.media img { max-height: 102mm; }
+figure.baixa img { max-height: 92mm; }
 figcaption { font-size: 9pt; color: #5b6880; margin-top: 4px; }
 .lado-a-lado { display: flex; gap: 16px; align-items: flex-start; }
 .lado-a-lado figure.celular img { max-height: 190mm; }
@@ -767,7 +846,8 @@ figcaption { font-size: 9pt; color: #5b6880; margin-top: 4px; }
 .codigo { margin: 8px 0; border: 1px solid #d5dce8; border-radius: 6px; }
 .codigo .arquivo { background: #0b2a5b; color: #fff; font-size: 8.5pt; padding: 3px 8px; font-family: Consolas, monospace; break-after: avoid; }
 h3, h2 { break-after: avoid; }
-.codigo pre { margin: 0; padding: 8px; background: #f6f8fb; font-size: 8pt; line-height: 1.35; white-space: pre-wrap; }
+.codigo pre { margin: 0; padding: 7px 8px; background: #f6f8fb; font-size: 7.5pt; line-height: 1.32; white-space: pre-wrap; }
+.codigo pre code { font-size: inherit; background: none; padding: 0; }
 pre.diagrama { font-size: 7.4pt !important; line-height: 1.2 !important; }
 pre.terminal { font-size: 7.6pt !important; line-height: 1.25 !important; padding: 6px 10px !important; }
 pre.diagrama, pre.terminal { background: #0f1a2e; color: #e6edf7; padding: 8px 10px; border-radius: 6px; font-size: 8pt; line-height: 1.3; white-space: pre-wrap; page-break-inside: avoid; }
@@ -780,6 +860,9 @@ pre.diagrama, pre.terminal { background: #0f1a2e; color: #e6edf7; padding: 8px 1
 .mermaid.dominio svg { max-height: 112mm; width: auto !important; max-width: 100%; }
 section.quebra:has(.dominio) .mermaid.dominio:only-of-type svg { max-height: 215mm; }
 .pequeno { font-size: 9pt; color: #5b6880; }
+.compacto { font-size: 9.4pt; line-height: 1.36; }
+.compacto p { margin: 4.5px 0; } .compacto li { margin: 2px 0; } .compacto h3 { margin: 10px 0 4px; }
+.compacto table { font-size: 8.7pt; margin: 6px 0; } .compacto th, .compacto td { padding: 3px 6px; }
 ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 """
 
@@ -791,19 +874,29 @@ def gerar(pdf: bool) -> Path:
     pagina = f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><title>CaronaUVV - Documentação</title>
 <style>{CSS}</style>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
 </head><body>
 {corpo}
 <script>
-  mermaid.initialize({{ startOnLoad: false, theme: 'neutral', er: {{ useMaxWidth: true }} }});
-  mermaid.run({{ querySelector: '.mermaid' }}).then(() => {{ document.body.dataset.pronto = '1'; }});
+  // Mermaid: usa a copia instalada pelo npm (funciona sem internet); sem ela, baixa do CDN
+  function desenhar() {{
+    mermaid.initialize({{ startOnLoad: false, theme: 'neutral', er: {{ useMaxWidth: true }} }});
+    mermaid.run({{ querySelector: '.mermaid' }}).then(() => {{ document.body.dataset.pronto = '1'; }});
+  }}
+  function carregar(endereco, seFalhar) {{
+    const s = document.createElement('script');
+    s.src = endereco; s.onload = desenhar; s.onerror = seFalhar;
+    document.head.appendChild(s);
+  }}
+  carregar('../frontend/node_modules/mermaid/dist/mermaid.min.js',
+           () => carregar('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js'));
 </script>
 </body></html>"""
     saida = DOCS / "CaronaUVV_Documentacao.html"
     saida.write_text(pagina, encoding="utf-8")
     print(f"HTML: {saida}")
     if pdf:
-        navegador = (shutil.which("msedge") or shutil.which("chrome")
+        navegador = (shutil.which("msedge") or shutil.which("chrome") or shutil.which("google-chrome")
+                     or shutil.which("chromium") or shutil.which("chromium-browser") or shutil.which("microsoft-edge")
                      or next((p for p in (r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
                                           r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
                                           r"C:\Program Files\Google\Chrome\Application\chrome.exe")
@@ -811,8 +904,10 @@ def gerar(pdf: bool) -> Path:
         if not navegador:
             raise SystemExit("Edge/Chrome nao encontrado para gerar o PDF.")
         destino = DOCS / "CaronaUVV_Documentacao.pdf"
+        # no Linux, o Chrome so roda como root (ex.: container) com --no-sandbox
+        extra = ["--no-sandbox"] if hasattr(os, "geteuid") and os.geteuid() == 0 else []
         subprocess.run([
-            navegador, "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
+            navegador, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", "--allow-file-access-from-files", *extra,
             "--virtual-time-budget=20000", f"--print-to-pdf={destino}", saida.as_uri(),
         ], check=True, capture_output=True)
         print(f"PDF: {destino}")

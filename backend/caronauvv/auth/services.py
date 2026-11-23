@@ -158,6 +158,88 @@ def autenticar(login: str, senha: str) -> Usuario:
 
 
 # ==========================================================
+# ESQUECI MINHA SENHA
+# 1) /esqueci-senha: manda um codigo de 6 numeros para o e-mail da conta
+# 2) /redefinir-senha: codigo certo + senha nova
+# A resposta do passo 1 e sempre a mesma, exista a conta ou nao, para ninguem
+# descobrir por ali quem tem cadastro. O codigo vence em 30 min, aceita 5
+# tentativas e so pode ser pedido de novo depois de 1 minuto.
+# ==========================================================
+INTERVALO_REENVIO_SEG = 60
+
+
+def _por_login(login: str) -> Usuario | None:
+    login = (login or "").strip()
+    return db.session.scalar(
+        db.select(Usuario).where(or_(Usuario.email == login.lower(), Usuario.matricula == login))
+    )
+
+
+def _hash_reset(usuario: Usuario, codigo: str) -> str:
+    chave = current_app.config["SECRET_KEY"].encode()
+    return hmac.new(chave, f"reset:{usuario.id}:{codigo}".encode(), hashlib.sha256).hexdigest()
+
+
+def pedir_recuperacao(login: str) -> str | None:
+    """Gera e envia o codigo. Devolve o codigo (para o modo de demonstracao) ou None."""
+    usuario = _por_login(login)
+    if usuario is None or not usuario.is_active:
+        return None
+    agora = datetime.now()
+    if usuario.reset_enviado_em and (agora - usuario.reset_enviado_em).total_seconds() < INTERVALO_REENVIO_SEG:
+        return None   # acabou de pedir: nao deixa encher a caixa de e-mail de ninguem
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    usuario.reset_codigo_hash = _hash_reset(usuario, codigo)
+    usuario.reset_tentativas = 0
+    usuario.reset_enviado_em = agora
+    usuario.reset_expira_em = agora + timedelta(minutes=current_app.config["CODIGO_VALIDADE_MIN"])
+    db.session.commit()
+    enviar_email(
+        usuario.email,
+        "CaronaUVV - código para criar uma senha nova",
+        f"Olá, {usuario.nome.split()[0]}! Seu código para criar uma senha nova no CaronaUVV é {codigo}. "
+        f"Ele vale por {current_app.config['CODIGO_VALIDADE_MIN']} minutos. "
+        "Se não foi você que pediu, ignore este e-mail: sua senha continua a mesma.",
+    )
+    return codigo
+
+
+def redefinir_senha(login: str, codigo: str, nova_senha: str) -> Usuario:
+    usuario = _por_login(login)
+    invalido = ApiError("Código incorreto ou vencido. Peça um novo código.", campos={"codigo": "Código incorreto ou vencido."})
+    if usuario is None or not usuario.is_active or not usuario.reset_codigo_hash or not usuario.reset_expira_em:
+        raise invalido
+    if usuario.reset_expira_em < datetime.now():
+        raise invalido
+    if usuario.reset_tentativas >= MAX_TENTATIVAS_CODIGO:
+        raise ApiError("Muitas tentativas erradas. Peça um novo código.", 429)
+    if not hmac.compare_digest(usuario.reset_codigo_hash, _hash_reset(usuario, codigo)):
+        usuario.reset_tentativas += 1
+        db.session.commit()
+        raise invalido
+
+    usuario.set_senha(nova_senha)
+    usuario.sessao_versao += 1            # quem estava logado com a senha antiga sai
+    usuario.reset_codigo_hash = None
+    usuario.reset_expira_em = None
+    usuario.reset_tentativas = 0
+    _falhas_login().pop(usuario.email, None)
+    _falhas_login().pop(usuario.matricula, None)
+
+    from caronauvv.notificacoes.services import notificar
+    notificar(usuario, "seguranca_conta", "Senha alterada",
+              "Sua senha foi trocada pelo \"esqueci minha senha\". Se não foi você, fale com a administração.")
+    db.session.commit()
+    enviar_email(
+        usuario.email,
+        "CaronaUVV - sua senha foi alterada",
+        f"Olá, {usuario.nome.split()[0]}! A senha da sua conta no CaronaUVV acabou de ser alterada. "
+        "Se não foi você, responda este e-mail ou procure a administração.",
+    )
+    return usuario
+
+
+# ==========================================================
 # TOKEN (assinado com a SECRET_KEY via itsdangerous)
 # O token nao fica salvo no banco: logout = o frontend descarta o token.
 # ==========================================================
@@ -166,7 +248,8 @@ def _serializer() -> URLSafeTimedSerializer:
 
 
 def gerar_token(usuario: Usuario) -> str:
-    return _serializer().dumps({"id": usuario.id})
+    # "v" = versao da sessao: trocar a senha sobe o numero e derruba os tokens antigos
+    return _serializer().dumps({"id": usuario.id, "v": usuario.sessao_versao})
 
 
 def usuario_do_token(token: str) -> Usuario:
@@ -180,6 +263,8 @@ def usuario_do_token(token: str) -> Usuario:
     usuario = db.session.get(Usuario, dados.get("id"))
     if usuario is None or not usuario.is_active:
         raise ApiError("Token inválido.", 401)
+    if dados.get("v", 0) != usuario.sessao_versao:
+        raise ApiError("Sua senha foi alterada. Faça login novamente.", 401)
     return usuario
 
 
@@ -198,6 +283,7 @@ def atualizar_perfil(usuario: Usuario, dados: PerfilSchema) -> Usuario:
         if not usuario.check_senha(senha_atual or ""):
             raise ApiError("Senha atual incorreta.", 403)
         usuario.set_senha(nova_senha)
+        usuario.sessao_versao += 1   # sai de todos os outros aparelhos (a rota devolve um token novo)
 
     db.session.commit()
     return usuario

@@ -5,10 +5,15 @@ Dados iniciais do CaronaUVV (uso: flask --app app.py seed-db).
 - Dados de exemplo (usuarios, caronas, pedidos...): so se o banco estiver vazio.
   Todos os usuarios de exemplo tem a senha 123456.
 """
+import hashlib
 from datetime import date, datetime, time, timedelta
+from pathlib import Path
+
+from flask import current_app
 
 from caronauvv.admin.models import Busca, Configuracao
-from caronauvv.auth.models import ContatoConfianca, Usuario, Veiculo
+from caronauvv.auth.dois_fatores import _hash_reserva
+from caronauvv.auth.models import CodigoReserva, ContatoConfianca, FotoPerfil, Usuario, Veiculo
 from caronauvv.avaliacoes.models import Avaliacao, AvaliacaoTag, Pagamento
 from caronauvv.avaliacoes.services import gerar_pix_copia_cola
 from caronauvv.caronas.models import Carona, PosicaoGps, Solicitacao
@@ -18,6 +23,15 @@ from caronauvv.seguranca.models import Alerta, Denuncia, LinkCompartilhado
 from . import db
 
 SENHA_EXEMPLO = "123456"
+
+# Conta de exemplo com a verificacao em duas etapas ja ligada (beatriz@uvv.br).
+# Para entrar: cadastre esta chave num aplicativo autenticador (Google Authenticator,
+# Microsoft Authenticator...) ou use um dos codigos de reserva. So para demonstracao!
+SEGREDO_2FA_EXEMPLO = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+CODIGOS_RESERVA_EXEMPLO = ("UVVA-2026", "UVVB-2026", "UVVC-2026", "UVVD-2026")
+
+# Avatares desenhados (nao sao fotos de pessoas reais) para as contas de exemplo
+PASTA_FOTOS = Path(__file__).parent / "fotos_exemplo"
 
 # Coordenadas aproximadas (Vila Velha - ES)
 UVV = (-20.3617, -40.3075)
@@ -46,6 +60,18 @@ def _configuracoes_padrao() -> int:
             db.session.add(Configuracao(chave=chave, valor=valor, descricao=descricao))
             novas += 1
     return novas
+
+
+def _foto_exemplo(usuario: Usuario, arquivo: str) -> None:
+    caminho = PASTA_FOTOS / arquivo
+    if not caminho.exists():
+        return
+    dados = caminho.read_bytes()
+    # token fixo por conta: o endereco da foto de exemplo e o mesmo em todo banco novo
+    chave = current_app.config["SECRET_KEY"]
+    token = hashlib.sha256(f"{chave}:foto-exemplo:{usuario.email}".encode()).hexdigest()[:22]
+    usuario.foto = FotoPerfil(token=token, mime="image/jpeg", tamanho=len(dados), dados=dados)
+    usuario.foto_url = f"/api/fotos/{token}"
 
 
 def _usuario(matricula, email, nome, bairro, **extra) -> Usuario:
@@ -99,6 +125,18 @@ def _dados_de_exemplo() -> None:
     beatriz = _usuario("202410005", "beatriz@uvv.br", "Beatriz Nunes", "Praia de Itaparica",
                        curso="Medicina Veterinária", telefone="27999997777", chave_pix="beatriz@uvv.br",
                        pref_animais=True, bio="Volto da UVV depois da aula das 22h.")
+
+    for usuario, arquivo in ((kaua, "kaua.jpg"), (lucas, "lucas.jpg"), (ana, "ana.jpg"), (joao, "joao.jpg")):
+        _foto_exemplo(usuario, arquivo)
+
+    # Beatriz ja usa o autenticador: o login dela pede o codigo de 6 numeros
+    db.session.flush()   # os codigos de reserva sao assinados com o id da conta
+    beatriz.totp_segredo = SEGREDO_2FA_EXEMPLO
+    beatriz.totp_ativo = True
+    beatriz.totp_ativado_em = datetime.now() - timedelta(days=3)
+    for codigo in CODIGOS_RESERVA_EXEMPLO:
+        beatriz.codigos_reserva.append(
+            CodigoReserva(codigo_hash=_hash_reserva(beatriz, codigo.replace("-", ""))))
 
     hb20 = Veiculo(dono=kaua, modelo="HB20", cor="Branco", placa="KAU2B34")
     onix = Veiculo(dono=lucas, modelo="Onix", cor="Prata", placa="LUC4E56")

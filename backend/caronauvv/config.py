@@ -86,6 +86,23 @@ class Config:
     LOGIN_MAX_TENTATIVAS = int(os.getenv("LOGIN_MAX_TENTATIVAS", 5))
     LOGIN_JANELA_MIN = int(os.getenv("LOGIN_JANELA_MIN", 10))
 
+    # ------------------------------------------------------
+    # VERIFICACAO EM DUAS ETAPAS (aplicativo autenticador)
+    # ------------------------------------------------------
+    # Tempo para digitar o codigo depois de acertar a senha (segundos)
+    DOIS_FATORES_DESAFIO_SEG = int(os.getenv("DOIS_FATORES_DESAFIO_SEG", 300))
+    # N codigos errados seguidos bloqueiam a segunda etapa por X minutos (fica no banco)
+    DOIS_FATORES_MAX_TENTATIVAS = int(os.getenv("DOIS_FATORES_MAX_TENTATIVAS", 5))
+    DOIS_FATORES_BLOQUEIO_MIN = int(os.getenv("DOIS_FATORES_BLOQUEIO_MIN", 10))
+
+    # ------------------------------------------------------
+    # FOTO DE PERFIL (guardada no banco; o navegador ja envia reduzida)
+    # ------------------------------------------------------
+    FOTO_MAX_KB = int(os.getenv("FOTO_MAX_KB", 512))
+    FOTO_MAX_LADO_PX = int(os.getenv("FOTO_MAX_LADO_PX", 1024))
+    # Tamanho maximo de qualquer requisicao: acima disso o Flask responde 413 sem ler o corpo
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_UPLOAD_MB", 2)) * 1024 * 1024
+
 
 class TestConfig(Config):
     TESTING = True

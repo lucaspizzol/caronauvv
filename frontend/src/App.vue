@@ -9,6 +9,9 @@
         <RouterLink to="/verificar-email" class="btn btn-sm btn-dark ms-auto">Confirmar agora</RouterLink>
       </div>
     </div>
+    <div v-if="mostrarMenu && avisoGlobal.texto" class="container pt-3">
+      <AlertaMensagem class="mb-0" :texto="avisoGlobal.texto" :tipo="avisoGlobal.tipo" @fechar="avisoGlobal.texto = ''" />
+    </div>
     <RouterView />
   </main>
 </template>
@@ -17,9 +20,10 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
+import AlertaMensagem from './components/AlertaMensagem.vue'
 import NavBar from './components/NavBar.vue'
 import api from './services/api'
-import { atualizarUsuario, auth, logado } from './stores/auth'
+import { atualizarUsuario, auth, avisoGlobal, logado } from './stores/auth'
 
 const route = useRoute()
 const mostrarMenu = computed(() => logado.value && !route.meta.publica)

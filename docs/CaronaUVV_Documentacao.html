@@ -3,7 +3,7 @@
 <style>
 @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
 * { box-sizing: border-box; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1d2433; font-size: 10.5pt; line-height: 1.45; margin: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1d2433; font-size: 10.2pt; line-height: 1.42; margin: 0; }
 h2 { color: #0b2a5b; font-size: 18pt; margin: 0 0 8px; border-bottom: 3px solid #ffc72c; padding-bottom: 4px; }
 h3 { color: #163f82; font-size: 12.5pt; margin: 14px 0 6px; }
 p { margin: 6px 0; }
@@ -30,6 +30,9 @@ table.compacta { font-size: 8.4pt; } table.compacta td, table.compacta th { padd
 .sumario li { margin: 6px 0; font-size: 12pt; }
 figure { margin: 8px 0 14px; text-align: center; page-break-inside: avoid; }
 figure img { max-width: 100%; max-height: 118mm; border: 1px solid #d5dce8; border-radius: 6px; }
+figure.alta img { max-height: 132mm; }
+figure.media img { max-height: 102mm; }
+figure.baixa img { max-height: 92mm; }
 figcaption { font-size: 9pt; color: #5b6880; margin-top: 4px; }
 .lado-a-lado { display: flex; gap: 16px; align-items: flex-start; }
 .lado-a-lado figure.celular img { max-height: 190mm; }
@@ -37,7 +40,8 @@ figcaption { font-size: 9pt; color: #5b6880; margin-top: 4px; }
 .codigo { margin: 8px 0; border: 1px solid #d5dce8; border-radius: 6px; }
 .codigo .arquivo { background: #0b2a5b; color: #fff; font-size: 8.5pt; padding: 3px 8px; font-family: Consolas, monospace; break-after: avoid; }
 h3, h2 { break-after: avoid; }
-.codigo pre { margin: 0; padding: 8px; background: #f6f8fb; font-size: 8pt; line-height: 1.35; white-space: pre-wrap; }
+.codigo pre { margin: 0; padding: 7px 8px; background: #f6f8fb; font-size: 7.5pt; line-height: 1.32; white-space: pre-wrap; }
+.codigo pre code { font-size: inherit; background: none; padding: 0; }
 pre.diagrama { font-size: 7.4pt !important; line-height: 1.2 !important; }
 pre.terminal { font-size: 7.6pt !important; line-height: 1.25 !important; padding: 6px 10px !important; }
 pre.diagrama, pre.terminal { background: #0f1a2e; color: #e6edf7; padding: 8px 10px; border-radius: 6px; font-size: 8pt; line-height: 1.3; white-space: pre-wrap; page-break-inside: avoid; }
@@ -50,9 +54,11 @@ pre.diagrama, pre.terminal { background: #0f1a2e; color: #e6edf7; padding: 8px 1
 .mermaid.dominio svg { max-height: 112mm; width: auto !important; max-width: 100%; }
 section.quebra:has(.dominio) .mermaid.dominio:only-of-type svg { max-height: 215mm; }
 .pequeno { font-size: 9pt; color: #5b6880; }
+.compacto { font-size: 9.4pt; line-height: 1.36; }
+.compacto p { margin: 4.5px 0; } .compacto li { margin: 2px 0; } .compacto h3 { margin: 10px 0 4px; }
+.compacto table { font-size: 8.7pt; margin: 6px 0; } .compacto th, .compacto td { padding: 3px 6px; }
 ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
 </head><body>
 
 <section class="capa">
@@ -60,10 +66,10 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h1>Plataforma de caronas entre alunos da Universidade Vila Velha</h1>
   <p class="sub">Documentação do projeto final · Entrega do 2º bimestre (auditoria técnica)</p>
   <div class="numeros">
-    <div><b>59</b><span>rotas da API REST</span></div>
-    <div><b>15</b><span>tabelas no banco</span></div>
-    <div><b>197</b><span>testes automatizados</span></div>
-    <div><b>14</b><span>telas em Vue 3</span></div>
+    <div><b>72</b><span>rotas da API REST</span></div>
+    <div><b>17</b><span>tabelas no banco</span></div>
+    <div><b>275</b><span>testes automatizados</span></div>
+    <div><b>15</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
     <tr><th>Disciplina</th><td>Desenvolvimento de Sistemas para Web (CC5N)</td></tr>
@@ -91,7 +97,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   </ol>
 </section>
 
-<section class="quebra">
+<section class="quebra compacto">
   <h2>1. Descrição geral do produto</h2>
   <p>O <b>CaronaUVV</b> é uma aplicação web que conecta alunos da UVV que fazem trajetos parecidos até o campus,
   para oferecer e pedir caronas de forma organizada e <b>segura</b>.</p>
@@ -109,7 +115,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <table>
     <thead><tr><th>Funcionalidade</th><th>O que o sistema faz</th></tr></thead>
     <tbody>
-      <tr><td>Cadastro e login</td><td>Cadastro com nome, matrícula, e-mail UVV, telefone, bairro e senha; confirmação do e-mail por código; login por e-mail ou matrícula.</td></tr>
+      <tr><td>Cadastro e login</td><td>Cadastro com nome, matrícula, e-mail UVV, telefone, bairro e senha; confirmação do e-mail por código; login por e-mail ou matrícula; "esqueci minha senha" com código por e-mail.</td></tr>
       <tr><td>Oferecer carona</td><td>Sentido (ida/volta), bairro, ponto de saída, destino no campus, data, horário, 1 a 6 vagas, rateio (com valor sugerido), carro e observações. Editar e cancelar.</td></tr>
       <tr><td>Buscar caronas</td><td>Só caronas futuras e com vaga, com filtros por bairro, sentido, data e faixa de horário; cada cartão mostra a nota e o nível do motorista.</td></tr>
       <tr><td>Pedir vaga</td><td>O passageiro pede a vaga (ponto de embarque e mensagem opcionais); o motorista aceita ou recusa, ou usa a reserva automática.</td></tr>
@@ -125,6 +131,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     <tbody>
       <tr><td>Comunidade fechada</td><td>Cadastro só com e-mail <code>@uvv.br</code> (ou subdomínio); código de 6 números confirma o e-mail. Sem e-mail confirmado não dá para oferecer nem pedir carona.</td><td>BlaBlaCar (e-mail verificado)</td></tr>
       <tr><td>Perfil verificado</td><td>O aluno pede o selo; a administração confere a matrícula e aprova.</td><td>BlaBlaCar (ID verificado)</td></tr>
+      <tr><td>Foto de perfil</td><td>O aluno envia a foto pelo perfil (câmera ou galeria no celular). Ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família, para motorista e passageiro se reconhecerem no ponto de encontro. A administração pode remover foto inadequada.</td><td>Uber / BlaBlaCar (foto no perfil)</td></tr>
+      <tr><td>Verificação em duas etapas</td><td>Com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy), o login pede a senha e um código de 6 números que muda a cada 30 s. Vem com 8 códigos de reserva de uso único.</td><td>Uber, bancos, GitHub (2FA)</td></tr>
       <tr><td>Reputação</td><td>Nota média, número de avaliações, nível de experiência (Calouro, Veterano, Embaixador), viagens como motorista e passageiro, faltas, taxa de cancelamento e selos (Super pontual, Muito bem avaliado, Nunca faltou...).</td><td>BlaBlaCar (perfil e níveis)</td></tr>
       <tr><td>Avaliação "às cegas"</td><td>Motorista e passageiro se avaliam (1 a 5 + elogios + comentário) em até 14 dias; a nota só aparece quando os dois avaliam ou depois de 7 dias, para ninguém avaliar por vingança.</td><td>BlaBlaCar (two-way ratings)</td></tr>
       <tr><td>Preferências</td><td>Conversa (prefere silêncio / depende / adora conversar), música, animais e cigarro, no perfil público.</td><td>BlaBlaCar ("Bla, BlaBla, BlaBlaBla")</td></tr>
@@ -152,15 +160,19 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     <li>Avaliação só depois da carona concluída, uma por pessoa e por viagem, em até 14 dias.</li>
     <li>Login bloqueado por 10 min depois de 5 senhas erradas; o código de e-mail aceita 5 tentativas e vence em 30 min.</li>
     <li>Senhas com hash (Werkzeug/scrypt); o código de verificação é guardado como HMAC-SHA256, nunca em texto.</li>
+    <li>Foto de perfil: só JPG, PNG ou WebP (conferido pelo conteúdo do arquivo, não pelo nome), até 512 KB e 1024 px de lado.</li>
+    <li>Verificação em duas etapas: cada código vale uma vez; 5 códigos errados bloqueiam a segunda etapa por 10 min; ligar e desligar exigem a senha e um código.</li>
+    <li>"Esqueci minha senha": código de 6 números por e-mail, vale 30 min e aceita 5 tentativas; a resposta é a mesma exista a conta ou não.</li>
+    <li>Trocar ou redefinir a senha encerra os logins abertos nos outros aparelhos.</li>
   </ul>
 </section>
 
 <section class="quebra">
   <h2>2. Telas do sistema</h2>
   <p>O front-end é uma SPA em Vue 3 com Bootstrap 5. No computador o menu fica no topo; no celular vira uma barra
-  fixa embaixo, como num aplicativo. São 14 telas.</p>
-  <figure class=""><img src="img/01_busca.jpg" alt="Buscar caronas: cada cartão mostra a nota, o nível e o selo de verificado do motorista, além das observações da carona."><figcaption>Buscar caronas: cada cartão mostra a nota, o nível e o selo de verificado do motorista, além das observações da carona.</figcaption></figure>
-  <figure class=""><img src="img/09_cadastro_validacao.jpg" alt="Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic)."><figcaption>Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic).</figcaption></figure>
+  fixa embaixo, como num aplicativo. São 15 telas.</p>
+  <figure class="media"><img src="img/01_busca.jpg" alt="Buscar caronas: cada cartão mostra a foto, a nota, o nível e o selo de verificado do motorista, além das observações da carona."><figcaption>Buscar caronas: cada cartão mostra a foto, a nota, o nível e o selo de verificado do motorista, além das observações da carona.</figcaption></figure>
+  <figure class="media"><img src="img/09_cadastro_validacao.jpg" alt="Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic)."><figcaption>Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic).</figcaption></figure>
 </section>
 <section class="quebra">
   <figure class=""><img src="img/02_perfil_publico.jpg" alt="Perfil público: nível, selos de confiança, histórico (viagens, faltas, cancelamentos), preferências e elogios mais citados."><figcaption>Perfil público: nível, selos de confiança, histórico (viagens, faltas, cancelamentos), preferências e elogios mais citados.</figcaption></figure>
@@ -175,12 +187,21 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <figure class=""><img src="img/07_admin.jpg" alt="Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona)."><figcaption>Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona).</figcaption></figure>
 </section>
 <section class="quebra">
+  <figure class="alta"><img src="img/11_perfil_foto_autenticador.jpg" alt="Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador."><figcaption>Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador.</figcaption></figure>
+  <figure class="baixa"><img src="img/12_login_duas_etapas.jpg" alt="Login de quem ligou a verificação em duas etapas: depois da senha, o sistema pede o código do aplicativo (ou um código de reserva)."><figcaption>Login de quem ligou a verificação em duas etapas: depois da senha, o sistema pede o código do aplicativo (ou um código de reserva).</figcaption></figure>
+</section>
+<section class="quebra">
   <div class="lado-a-lado">
     <figure class="celular"><img src="img/10_celular.jpg" alt="No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo."><figcaption>No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo.</figcaption></figure>
     <div>
       <h3>Responsividade</h3>
-      <p>Todas as telas foram conferidas em 375 px de largura, sem rolagem horizontal (medido no navegador).
+      <p>Todas as telas foram conferidas em 360, 390, 768, 1024 e 1280 px de largura, sem rolagem horizontal (medido no
+      navegador). Até 991 px (celular e tablet) o menu é a barra de baixo; a partir daí, o menu do topo.
       O grid do Bootstrap reorganiza filtros e cartões; botões e campos têm tamanho de toque.</p>
+      <h3>Foto de perfil em todas as telas</h3>
+      <p>Um único componente, <code>AvatarUsuario.vue</code>, mostra a foto ou, se o aluno não enviou nenhuma (ou se
+      ela não carregar), as iniciais do nome. É usado na barra do topo, na busca, nos pedidos, nas avaliações, no
+      perfil público, no painel da administração e no link da família.</p>
       <h3>Acessibilidade</h3>
       <p>Campos com <code>label</code>, mensagens de erro ligadas ao campo (<code>invalid-feedback</code>),
       estrelas da avaliação como <code>radiogroup</code> com <code>aria-checked</code>, botões de elogio com
@@ -191,12 +212,12 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 
 <section class="quebra">
   <h2>3. Banco de dados</h2>
-  <p>O banco tem <b>15 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
-  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 2 migrações).</p>
+  <p>O banco tem <b>17 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
+  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 3 migrações).</p>
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
-  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 182 testes do back-end
+  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 255 testes do back-end
   e as migrações (upgrade, downgrade e upgrade de novo, com dados) foram executados nos dois bancos</b>.</p>
 
   <h3>Núcleo do modelo (principais colunas)</h3>
@@ -276,6 +297,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer id PK
     varchar nome
     varchar bairro
+    varchar foto_url
+    boolean totp_ativo
   }
   veiculos {
     integer id PK
@@ -339,6 +362,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer id PK
     varchar nome
     varchar bairro
+    varchar foto_url
+    boolean totp_ativo
   }
   contatos_confianca {
     integer id PK
@@ -389,6 +414,31 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   caronas ||--o{ links_compartilhados : &quot;carona_id&quot;
   usuarios ||--o{ links_compartilhados : &quot;usuario_id&quot;
   contatos_confianca |o--o{ links_compartilhados : &quot;contato_id&quot;</div>
+  <h3>Conta: foto de perfil e verificação em duas etapas</h3>
+  <div class="mermaid dominio">erDiagram
+  usuarios {
+    integer id PK
+    varchar nome
+    varchar bairro
+    varchar foto_url
+    boolean totp_ativo
+  }
+  codigos_reserva {
+    integer id PK
+    integer usuario_id FK
+    datetime usado_em
+  }
+  fotos_perfil {
+    integer id PK
+    integer usuario_id FK
+    varchar token
+    varchar mime
+    integer tamanho
+  }
+  usuarios ||--o{ codigos_reserva : &quot;usuario_id&quot;
+  usuarios ||--o{ fotos_perfil : &quot;usuario_id&quot;</div>
+</section>
+<section class="quebra">
   <h3>Notificações e administração</h3>
   <div class="mermaid dominio">erDiagram
   configuracoes {
@@ -399,6 +449,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer id PK
     varchar nome
     varchar bairro
+    varchar foto_url
+    boolean totp_ativo
   }
   buscas {
     integer id PK
@@ -424,12 +476,15 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   usuarios ||--o{ caronas : &quot;motorista_id&quot;
   usuarios ||--o{ notificacoes : &quot;usuario_id&quot;
   caronas |o--o{ notificacoes : &quot;carona_id&quot;</div>
+  <p class="pequeno">A foto fica numa tabela separada de <code>usuarios</code> para que listar alunos não carregue as
+  imagens. Em <code>usuarios</code> ficam só o endereço da foto (<code>foto_url</code>) e o estado do autenticador
+  (segredo, se está ativo, último código usado e contador de erros).</p>
 </section>
 <section class="quebra">
   <h3>Tabelas</h3>
   <p class="pequeno">O dicionário de dados completo (cada coluna, tipo e restrição) está em <code>docs/banco_de_dados.md</code>,
   e o esquema SQL do PostgreSQL em <code>docs/schema_postgresql.sql</code> (ambos gerados por <code>invoke docsdb</code>).</p>
-  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>29</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>6</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>25</td><td>usuarios, veiculos</td><td class='c'>4</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>18</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
+  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>6</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>25</td><td>usuarios, veiculos</td><td class='c'>4</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>18</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
   <h3>Integridade garantida pelo próprio banco</h3>
   <ul>
     <li><b>Chaves estrangeiras</b> com <code>ON DELETE CASCADE / SET NULL</code> conforme o caso (apagar uma carona apaga pedidos e GPS; apagar um carro deixa a carona antiga sem carro). No SQLite elas são ligadas com <code>PRAGMA foreign_keys=ON</code>.</li>
@@ -470,7 +525,7 @@ Flask ── create_app()   (Application Factory)
     <tbody>
       <tr><td><code>caronauvv/__init__.py</code></td><td>Application Factory: configuração, log, banco, CORS, registro dos 6 módulos e dos erros</td></tr>
       <tr><td><code>config.py</code> + <code>.env</code></td><td>Tudo por variável de ambiente: chave secreta, banco, CORS, log, e-mail, domínios aceitos, proteção do login</td></tr>
-      <tr><td><code>auth/</code></td><td>Cadastro, verificação de e-mail, login por token, perfil, perfil público, veículos e contatos de confiança; decorators <code>@login_required</code> e <code>@admin_required</code></td></tr>
+      <tr><td><code>auth/</code></td><td>Cadastro, verificação de e-mail, login por token, recuperação de senha, perfil, perfil público, veículos e contatos de confiança; <code>foto.py</code> (foto de perfil), <code>totp.py</code> e <code>dois_fatores.py</code> (verificação em duas etapas); decorators <code>@login_required</code> e <code>@admin_required</code></td></tr>
       <tr><td><code>caronas/</code></td><td>Caronas e pedidos: busca, criar, editar, cancelar, iniciar, embarque com PIN, falta, GPS, concluir, valor sugerido</td></tr>
       <tr><td><code>avaliacoes/</code></td><td>Avaliações às cegas, reputação, Pix copia e cola e pagamento</td></tr>
       <tr><td><code>notificacoes/</code></td><td>Criação (dentro da mesma transação da ação), listagem, contagem e leitura</td></tr>
@@ -725,7 +780,8 @@ def cadastro():
 <section>
   <h3>5.5 Segurança</h3>
   <ul>
-    <li><b>Autenticação por token</b> assinado com a <code>SECRET_KEY</code> (itsdangerous), com validade; conta suspensa invalida o token na hora.</li>
+    <li><b>Autenticação por token</b> assinado com a <code>SECRET_KEY</code> (itsdangerous), com validade; conta suspensa invalida o token na hora, e trocar a senha derruba os tokens antigos (o token leva a "versão da sessão" do usuário).</li>
+    <li><b>Verificação em duas etapas</b> opcional com aplicativo autenticador (seção 5.6) e <b>recuperação de senha</b> por código enviado ao e-mail, sem revelar se a conta existe.</li>
     <li><b>Força bruta</b>: 5 senhas erradas em 10 minutos bloqueiam o login (HTTP 429).</li>
     <li><b>Código de e-mail</b> guardado como HMAC-SHA256, com validade de 30 min e 5 tentativas.</li>
     <li><b>PIN</b> comparado com <code>secrets.compare_digest</code> (tempo constante).</li>
@@ -763,7 +819,164 @@ def cadastro():
     return wrapper</code></pre></div>
 </section>
 <section>
-  <h3>5.6 Tratamento de erros, logging e variáveis de ambiente</h3>
+  <h3>5.6 Verificação em duas etapas (aplicativo autenticador)</h3>
+  <p>O código de 6 números segue o padrão TOTP (RFC 6238), o mesmo do Google Authenticator. Servidor e aplicativo
+  guardam o mesmo segredo e calculam um HMAC do número do intervalo de 30 segundos. Implementamos com a biblioteca
+  padrão do Python (sem dependência nova) e conferimos com os vetores oficiais da RFC nos testes:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/auth/totp.py</div><pre><code class="language-python">def codigo_do_passo(segredo: str, passo: int) -&gt; str:
+    &quot;&quot;&quot;HOTP (RFC 4226) do intervalo: HMAC-SHA1 + truncamento dinamico.&quot;&quot;&quot;
+    resumo = hmac.new(_chave(segredo), struct.pack(&quot;&gt;Q&quot;, passo), hashlib.sha1).digest()
+    inicio = resumo[-1] &amp; 0x0F  # os 4 ultimos bits dizem de onde tirar os 4 bytes
+    numero = struct.unpack(&quot;&gt;I&quot;, resumo[inicio:inicio + 4])[0] &amp; 0x7FFFFFFF
+    return str(numero % 10**DIGITOS).zfill(DIGITOS)
+
+
+def verificar(segredo: str, codigo: str, instante: float | None = None, depois_do_passo: int | None = None) -&gt; int | None:
+    &quot;&quot;&quot;
+    Confere o codigo digitado. Devolve o numero do intervalo que bateu, ou None.
+
+    depois_do_passo: ultimo intervalo ja usado por este usuario. Um codigo so vale
+    uma vez, entao quem viu o codigo por cima do ombro nao consegue reaproveitar.
+    &quot;&quot;&quot;
+    codigo = &quot;&quot;.join(c for c in str(codigo or &quot;&quot;) if c.isdigit())
+    if len(codigo) != DIGITOS:
+        return None
+    agora = passo_atual(instante)
+    for passo in range(agora - JANELA, agora + JANELA + 1):
+        if depois_do_passo is not None and passo &lt;= depois_do_passo:
+            continue
+        # compare_digest: comparacao em tempo constante (nao vaza quantos digitos estao certos)
+        if hmac.compare_digest(codigo_do_passo(segredo, passo), codigo):
+            return passo
+    return None</code></pre></div>
+  <p>O login vira duas chamadas. A primeira confere a senha e, se a conta usa autenticador, devolve um
+  <i>desafio</i> assinado (vale 5 minutos) no lugar do token. A segunda recebe o desafio e o código:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/auth/routes.py</div><pre><code class="language-python">@bp.post(&quot;/login&quot;)
+def login():
+    dados = validar(LoginSchema, _json())
+    usuario = autenticar(dados.login, dados.senha)
+    if usuario.totp_ativo:
+        # Senha certa, mas a conta tem verificacao em duas etapas: ainda nao entrega o token.
+        # O &quot;desafio&quot; prova, na segunda chamada, que a senha ja foi conferida.
+        return {&quot;precisa_2fa&quot;: True, &quot;desafio&quot;: dois_fatores.gerar_desafio(usuario)}
+    return _sessao(usuario)
+
+
+@bp.post(&quot;/login/2fa&quot;)
+def login_segunda_etapa():
+    dados = validar(SegundaEtapaSchema, _json())
+    usuario = dois_fatores.usuario_do_desafio(dados.desafio)
+    metodo = dois_fatores.conferir_segundo_fator(usuario, dados.codigo)
+    corpo = _sessao(usuario)
+    if metodo == &quot;reserva&quot;:
+        restam = dois_fatores.codigos_restantes(usuario)
+        corpo[&quot;aviso&quot;] = f&quot;Você entrou com um código de reserva. Restam {restam}.&quot;
+    return corpo</code></pre></div>
+</section>
+<section>
+  <p>A conferência aceita o código do aplicativo ou um código de reserva, conta os erros no banco (vale também na
+  hospedagem serverless, que não guarda memória entre chamadas) e bloqueia depois de 5 tentativas:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/auth/dois_fatores.py</div><pre><code class="language-python">def conferir_segundo_fator(usuario: Usuario, codigo: str, status_erro: int = 401) -&gt; str:
+    &quot;&quot;&quot;
+    Aceita o codigo do aplicativo ou um codigo de reserva. Devolve &quot;app&quot; ou &quot;reserva&quot;.
+    status_erro: 401 no login (ainda nao entrou); 400 para quem ja esta logado, porque
+    o frontend trata 401 como &quot;sessao acabou&quot; e mandaria o aluno de volta ao login.
+    &quot;&quot;&quot;
+    cfg = current_app.config
+    agora = datetime.now()
+    if usuario.totp_bloqueado_ate and usuario.totp_bloqueado_ate &gt; agora:
+        minutos = max(1, round((usuario.totp_bloqueado_ate - agora).total_seconds() / 60))
+        raise ApiError(f&quot;Muitos códigos errados. Tente de novo em {minutos} min.&quot;, 429)
+
+    metodo = None
+    passo = totp.verificar(usuario.totp_segredo or &quot;&quot;, codigo, depois_do_passo=usuario.totp_ultimo_passo) \
+        if usuario.totp_segredo else None
+    if passo is not None:
+        usuario.totp_ultimo_passo = passo   # este codigo nao vale mais
+        metodo = &quot;app&quot;
+    else:
+        limpo = _limpar_reserva(codigo)
+        if len(limpo) == 8:
+            esperado = _hash_reserva(usuario, limpo)
+            for reserva in usuario.codigos_reserva:
+                if reserva.usado_em is None and hmac.compare_digest(reserva.codigo_hash, esperado):
+                    reserva.usado_em = agora
+                    metodo = &quot;reserva&quot;
+                    break
+
+    if metodo is None:
+        usuario.totp_falhas += 1
+        if usuario.totp_falhas &gt;= cfg[&quot;DOIS_FATORES_MAX_TENTATIVAS&quot;]:
+            usuario.totp_falhas = 0
+            usuario.totp_bloqueado_ate = agora + timedelta(minutes=cfg[&quot;DOIS_FATORES_BLOQUEIO_MIN&quot;])
+        db.session.commit()
+        raise ApiError(&quot;Código incorreto.&quot;, status_erro, campos={&quot;codigo&quot;: &quot;Código incorreto.&quot;})
+
+    usuario.totp_falhas = 0
+    usuario.totp_bloqueado_ate = None
+    db.session.commit()
+    return metodo</code></pre></div>
+  <h3>5.7 Foto de perfil (upload de arquivo)</h3>
+  <p>O navegador recorta a foto em quadrado e reduz para 400 × 400 antes de enviar, então uma foto de celular de 5 MB
+  chega com cerca de 25 KB. O envio é um formulário <code>multipart/form-data</code>:</p>
+  <div class="codigo"><div class="arquivo">frontend/src/utils/imagem.js</div><pre><code class="language-javascript">export async function prepararFoto(arquivo, lado = LADO_FOTO) {
+  const imagem = await carregar(arquivo)
+  const corte = recorteCentral(imagem.width, imagem.height)
+  const tela = document.createElement(&#x27;canvas&#x27;)
+  tela.width = tela.height = Math.min(lado, corte.lado)
+  const ctx = tela.getContext(&#x27;2d&#x27;)
+  ctx.fillStyle = &#x27;#ffffff&#x27; // PNG transparente vira fundo branco no JPEG
+  ctx.fillRect(0, 0, tela.width, tela.height)
+  ctx.imageSmoothingQuality = &#x27;high&#x27;
+  ctx.drawImage(imagem, corte.x, corte.y, corte.lado, corte.lado, 0, 0, tela.width, tela.height)
+  imagem.close?.()
+  return new Promise((resolve, reject) =&gt; {
+    tela.toBlob((blob) =&gt; (blob ? resolve(blob) : reject(new Error(&#x27;Não deu para preparar a foto.&#x27;))), &#x27;image/jpeg&#x27;, 0.85)
+  })
+}</code></pre></div>
+  <p>O servidor não confia no navegador: descobre o tipo pelos primeiros bytes do arquivo, lê largura e altura do
+  cabeçalho e limita o tamanho. A foto fica no banco e o endereço dela é aleatório:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/auth/foto.py</div><pre><code class="language-python">def identificar_imagem(dados: bytes) -&gt; tuple[str, int, int] | None:
+    &quot;&quot;&quot;Descobre o formato pelos primeiros bytes (&quot;numeros magicos&quot;) e le o tamanho em pixels.&quot;&quot;&quot;
+    if dados[:3] == b&quot;\xff\xd8\xff&quot;:
+        mime, medidas = &quot;image/jpeg&quot;, _jpeg(dados)
+    elif dados[:8] == b&quot;\x89PNG\r\n\x1a\n&quot;:
+        mime, medidas = &quot;image/png&quot;, _png(dados)
+    elif dados[:4] == b&quot;RIFF&quot; and dados[8:12] == b&quot;WEBP&quot;:
+        mime, medidas = &quot;image/webp&quot;, _webp(dados)
+    else:
+        return None
+    if not medidas or medidas[0] &lt; 1 or medidas[1] &lt; 1:
+        return None
+    return mime, medidas[0], medidas[1]
+
+
+def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
+    cfg = current_app.config
+    if not dados:
+        raise ApiError(&quot;Escolha uma foto para enviar.&quot;, campos={&quot;foto&quot;: &quot;Escolha uma foto.&quot;})
+    if len(dados) &gt; cfg[&quot;FOTO_MAX_KB&quot;] * 1024:
+        raise ApiError(f&quot;A foto passou de {cfg[&#x27;FOTO_MAX_KB&#x27;]} KB. Envie uma imagem menor.&quot;, 413)
+
+    imagem = identificar_imagem(dados)
+    if imagem is None:
+        raise ApiError(f&quot;Arquivo inválido: envie uma foto em {FORMATOS}.&quot;, 415)
+    mime, largura, altura = imagem
+    if max(largura, altura) &gt; cfg[&quot;FOTO_MAX_LADO_PX&quot;]:
+        raise ApiError(f&quot;A foto pode ter no máximo {cfg[&#x27;FOTO_MAX_LADO_PX&#x27;]} pixels de lado.&quot;, 413)
+
+    foto = usuario.foto or FotoPerfil(usuario=usuario)
+    foto.token = secrets.token_urlsafe(16)   # endereco novo: o cache da foto antiga nao atrapalha
+    foto.mime = mime
+    foto.tamanho = len(dados)
+    foto.dados = dados
+    db.session.add(foto)
+    usuario.foto_url = f&quot;/api/fotos/{foto.token}&quot;
+    db.session.commit()
+    return usuario</code></pre></div>
+</section>
+<section>
+  <h3>5.8 Tratamento de erros, logging e variáveis de ambiente</h3>
   <p>Toda resposta de erro tem o mesmo formato. Erros de regra de negócio viram <code>ApiError</code>; erros
   inesperados vão para o log com traceback, e o cliente recebe só uma mensagem genérica.</p>
   <div class="codigo"><div class="arquivo">backend/caronauvv/errors.py</div><pre><code class="language-python">def init_app(app: Flask) -&gt; None:
@@ -799,11 +1012,11 @@ def cadastro():
     return url</code></pre></div>
 </section>
 <section>
-  <h3>5.7 Testes automatizados</h3>
-  <p><b>182 testes no back-end</b> (pytest + pytest-flask), com <b>95% de cobertura</b> de código, cobrindo rotas,
-  regras de negócio, validação, permissões, banco (FK, CHECK, seed) e Pix. Cada teste roda num banco novo, criado
+  <h3>5.9 Testes automatizados</h3>
+  <p><b>255 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil e verificação em duas etapas. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
-  No front-end, <b>15 testes com Vitest</b> cobrem as regras de validação e a formatação.</p>
+  No front-end, <b>20 testes com Vitest</b> cobrem as regras de validação, a formatação e o recorte da foto.</p>
   <div class="codigo"><div class="arquivo">backend/tests/conftest.py</div><pre><code class="language-python">@pytest.fixture
 def viagem(client, novo_aluno, nova_carona):
     &quot;&quot;&quot;
@@ -840,17 +1053,20 @@ def viagem(client, novo_aluno, nova_carona):
     <thead><tr><th>Arquivo</th><th>O que testa</th></tr></thead>
     <tbody>
       <tr><td><code>test_auth.py</code>, <code>test_validacao_cadastro.py</code></td><td>Cadastro, e-mail institucional, código de verificação, força bruta, perfil e preferências</td></tr>
+      <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
+      <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
+      <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
       <tr><td><code>test_caronas.py</code>, <code>test_solicitacoes.py</code></td><td>Criar, buscar, editar, cancelar; pedir, aceitar, recusar, lotação, expiração</td></tr>
       <tr><td><code>test_ciclo_viagem.py</code>, <code>test_conclusao_e_erros.py</code></td><td>Iniciar, PIN, falta, GPS, concluir, teto e valor sugerido, erros em JSON</td></tr>
       <tr><td><code>test_avaliacoes_pagamentos.py</code></td><td>Avaliação às cegas, reputação, perfil público, Pix e pagamento</td></tr>
       <tr><td><code>test_seguranca_notificacoes.py</code></td><td>Notificações, contatos, link da família, emergência, denúncias</td></tr>
       <tr><td><code>test_admin.py</code>, <code>test_banco.py</code>, <code>test_models.py</code>, <code>test_veiculos.py</code></td><td>Painel, moderação, configurações, integridade do banco e seed</td></tr>
-      <tr><td><code>frontend/src/utils/*.test.js</code></td><td>Validação dos formulários e formatação (Vitest)</td></tr>
+      <tr><td><code>frontend/src/utils/*.test.js</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
     </tbody>
   </table>
 </section>
 <section>
-  <h3>5.8 Front-end em Vue 3</h3>
+  <h3>5.10 Front-end em Vue 3</h3>
   <p>Um único cliente HTTP coloca o token em toda requisição, volta para o login quando a sessão expira e repassa
   os erros de cada campo vindos do servidor:</p>
   <div class="codigo"><div class="arquivo">frontend/src/services/api.js</div><pre><code class="language-javascript">api.interceptors.response.use(
@@ -925,13 +1141,15 @@ def viagem(client, novo_aluno, nova_carona):
       <tr><td>Pydantic 2</td><td>Validação dos formulários no servidor com schemas declarativos (equivalente ao WTForms/Flask-WTF para uma API JSON) e mensagens por campo.</td></tr>
       <tr><td>Flask-CORS e python-dotenv</td><td>Liberar o front-end para chamar a API; configuração por <code>.env</code>.</td></tr>
       <tr><td>itsdangerous, Werkzeug, hmac/secrets</td><td>Token de login assinado, hash de senha (scrypt), HMAC do código de verificação e PIN aleatório seguro.</td></tr>
+      <tr><td>TOTP (RFC 6238) com hmac, hashlib e struct</td><td>Código do aplicativo autenticador calculado com a biblioteca padrão do Python: nenhuma dependência nova no servidor, e compatível com qualquer aplicativo autenticador.</td></tr>
+      <tr><td>Canvas e FormData (navegador)</td><td>Recorte e redução da foto de perfil antes do envio em <code>multipart/form-data</code>.</td></tr>
       <tr><td>SQLite / PostgreSQL (psycopg 3)</td><td>SQLite no desenvolvimento e na apresentação (um arquivo, nada para instalar); PostgreSQL em produção, só trocando a <code>DATABASE_URL</code>. Testado nos dois.</td></tr>
       <tr><td>pytest, pytest-flask, pytest-cov</td><td>Testes das rotas e regras de negócio, com cobertura medida.</td></tr>
       <tr><td>invoke e pyproject.toml</td><td>Empacotamento e tarefas (<code>invoke test</code>, <code>invoke resetdb</code>, <code>invoke docsdb</code>).</td></tr>
       <tr><td>Vue 3, Vite, vue-router, axios</td><td>SPA que consome a API, no padrão do front-end do TaskFlow.</td></tr>
       <tr><td>Bootstrap 5 e Bootstrap Icons</td><td>Framework CSS: grid responsivo, formulários com estado de erro, componentes e ícones.</td></tr>
       <tr><td>Vitest</td><td>Testes do front-end (validação e formatação).</td></tr>
-      <tr><td>qrcode, Mermaid</td><td>QR Code do Pix gerado no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
+      <tr><td>qrcode, Mermaid</td><td>QR Code do Pix e do autenticador gerados no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
       <tr><td>OpenStreetMap</td><td>Mapa do link da família, sem chave de API.</td></tr>
       <tr><td>Git e GitHub</td><td>Versionamento, com commits por etapa.</td></tr>
     </tbody>
@@ -941,7 +1159,7 @@ def viagem(client, novo_aluno, nova_carona):
   sobre o JSON, em vez de formulários renderizados pelo servidor.</p>
 </section>
 
-<section class="quebra">
+<section class="quebra compacto">
   <h2>7. Como rodar o projeto</h2>
   <p><b>Online:</b> <b>https://caronauvv.vercel.app</b> (Vercel: Vue como site estático, API Flask como função
   serverless e banco PostgreSQL Neon; logins de exemplo abaixo). Para rodar na própria máquina:</p>
@@ -972,6 +1190,7 @@ npm test                           # testes do front-end (Vitest)</pre>
       <tr><td><code>lucas@uvv.br</code></td><td>Passageiro com uma avaliação pendente</td></tr>
       <tr><td><code>ana@uvv.br</code> / <code>pedro@uvv.br</code></td><td>Passageira com contatos de confiança / passageiro com 2 faltas</td></tr>
       <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado (aprovar no painel)</td></tr>
+      <tr><td><code>beatriz@uvv.br</code></td><td>Já usa a verificação em duas etapas: o login pede o código. Use um código de reserva de exemplo (<code>UVVA-2026</code>, <code>UVVB-2026</code>, <code>UVVC-2026</code>, <code>UVVD-2026</code>; cada um vale uma vez)</td></tr>
       <tr><td><code>admin@uvv.br</code></td><td>Painel da administração</td></tr>
     </tbody>
   </table>
@@ -981,12 +1200,13 @@ npm test                           # testes do front-end (Vitest)</pre>
     <li><b>Cadastro:</b> tentar um e-mail <code>@gmail.com</code> (bloqueado), depois um <code>@uvv.br</code> e confirmar o código.</li>
     <li><b>Aba 1, Kauã:</b> Minhas caronas → carona de hoje → Iniciar viagem → PIN errado e depois 4821 → Compartilhar viagem (abrir o link numa janela anônima) → Concluir → Avaliações.</li>
     <li><b>Aba 2, Lucas:</b> buscar "Itapuã", ver a nota do Kauã e abrir o perfil dele → Pedir vaga. Na aba 1 o pedido chega sozinho; aceitar. Em Meus pedidos: PIN, Pix com QR Code e Emergência.</li>
-    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas e o diagrama na aba Banco de dados.</li>
+    <li><b>Foto e autenticador:</b> no Perfil, trocar a foto (ela muda na barra na hora). Ativar a verificação em duas etapas lendo o QR Code com o Google Authenticator do celular, guardar os códigos de reserva, sair e entrar de novo: o login pede o código. No login, "Esqueci minha senha" mostra a recuperação por código.</li>
+    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
 </section>
 
-<section class="quebra">
+<section class="quebra compacto">
   <h2>8. Principais desafios e como foram resolvidos</h2>
   <p><b>Confiança entre desconhecidos.</b> Num grupo de WhatsApp, não dá para saber quem é a pessoa. Estudamos como
   BlaBlaCar e Uber resolvem isso e adaptamos para a faculdade: comunidade fechada por e-mail institucional,
@@ -1015,6 +1235,15 @@ npm test                           # testes do front-end (Vitest)</pre>
   limite de tentativas) e os testes usam um hash de senha mais leve: a suíte roda em cerca de 12 s.</p>
   <p><b>Login numa API sem páginas.</b> O Flask-Login depende de sessão e templates; como o front é uma SPA, usamos
   token assinado no cabeçalho <code>Authorization</code>, validado por <code>@login_required</code>.</p>
+  <p><b>Foto de perfil numa hospedagem sem disco.</b> Na Vercel a API roda como função serverless: o disco é apagado
+  a cada execução, então salvar a foto numa pasta não funciona. Guardamos a imagem no próprio banco (tabela
+  <code>fotos_perfil</code>). Para ela não pesar, o navegador recorta e reduz antes de enviar; e como a tag
+  <code>&lt;img&gt;</code> não manda o token de login, cada foto tem um endereço aleatório que muda a cada troca, o que
+  também permite o navegador guardar a imagem em cache.</p>
+  <p><b>Segundo fator sem guardar estado no servidor.</b> Entre a senha e o código do aplicativo, o servidor precisa
+  lembrar que a senha já foi conferida, mas a API não tem sessão. A primeira etapa devolve um desafio assinado com
+  validade de 5 minutos, que não serve como token. O contador de erros e o último código usado ficam no banco, porque
+  na hospedagem serverless a memória não dura de uma chamada para a outra.</p>
   <p><b>Pedidos que ninguém respondeu.</b> Sem agendador, um pedido pendente ficaria pendente para sempre. Cada pedido
   tem prazo (<code>expira_em</code>) e os vencidos expiram quando as listas são consultadas, quando a viagem é iniciada
   ou quando a carona é concluída.</p>
@@ -1022,7 +1251,8 @@ npm test                           # testes do front-end (Vitest)</pre>
   consulta a API a cada poucos segundos e destaca o que mudou; o login fica no <code>sessionStorage</code>, então
   motorista e passageiro podem ficar lado a lado no mesmo navegador.</p>
   <p><b>Uso no celular.</b> A maioria dos alunos usa o celular: grid do Bootstrap, barra de navegação embaixo e cada
-  tela conferida em 375 px de largura, sem rolagem horizontal.</p>
+  tela conferida de 360 a 1280 px de largura, sem rolagem horizontal. A conferência automática achou o menu do topo
+  estourando em tablets (768 px) e para o administrador, que tem um item a mais; o menu de baixo passou a valer até 991 px.</p>
 </section>
 
 <section class="quebra">
@@ -1031,17 +1261,27 @@ npm test                           # testes do front-end (Vitest)</pre>
     <thead><tr><th>Critério</th><th>Onde conferir</th></tr></thead>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
-      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 59 rotas (seção 4).</td></tr>
-      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.js</code>) (seção 5.2).</td></tr>
-      <tr><td>4. Interface / front-end</td><td>Vue 3 + Bootstrap 5, 14 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>182 testes pytest (rotas e regras, 95% de cobertura, também no PostgreSQL) + 15 testes Vitest (seção 5.7).</td></tr>
-      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 15 tabelas com FK, CHECK, UNIQUE e índices; 2 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
+      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 72 rotas (seção 4).</td></tr>
+      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.js</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
+      <tr><td>4. Interface / front-end</td><td>Vue 3 + Bootstrap 5, 15 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>255 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 20 testes Vitest (seção 5.9).</td></tr>
+      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 17 tabelas com FK, CHECK, UNIQUE e índices; 3 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>
   </table>
 </section>
 <script>
-  mermaid.initialize({ startOnLoad: false, theme: 'neutral', er: { useMaxWidth: true } });
-  mermaid.run({ querySelector: '.mermaid' }).then(() => { document.body.dataset.pronto = '1'; });
+  // Mermaid: usa a copia instalada pelo npm (funciona sem internet); sem ela, baixa do CDN
+  function desenhar() {
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', er: { useMaxWidth: true } });
+    mermaid.run({ querySelector: '.mermaid' }).then(() => { document.body.dataset.pronto = '1'; });
+  }
+  function carregar(endereco, seFalhar) {
+    const s = document.createElement('script');
+    s.src = endereco; s.onload = desenhar; s.onerror = seFalhar;
+    document.head.appendChild(s);
+  }
+  carregar('../frontend/node_modules/mermaid/dist/mermaid.min.js',
+           () => carregar('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js'));
 </script>
 </body></html>

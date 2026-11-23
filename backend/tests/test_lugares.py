@@ -206,3 +206,37 @@ def test_busca_de_carona_ignora_acento(client, novo_aluno, nova_carona):
     assert len(client.get("/api/caronas?bairro=Glória", headers=ana).get_json()["caronas"]) == 1
     assert len(client.get("/api/caronas?bairro=GLOR", headers=ana).get_json()["caronas"]) == 1
     assert client.get("/api/caronas?bairro=Ibes", headers=ana).get_json()["caronas"] == []
+
+
+# ==========================================================
+# ONIBUS (estimativa, sem horario oficial)
+# ==========================================================
+def test_onibus_do_bairro_ate_a_uvv(client, aluno):
+    resp = client.get("/api/lugares/onibus?bairro=gloria&sentido=ida&hora=7", headers=aluno).get_json()
+    assert resp["estimativa"] is True
+    assert "ÔnibusGV" in resp["aviso"]
+    assert resp["link_oficial"].startswith("https://")
+    assert resp["terminal_troca"] == "T. Ibes"                      # a 607 (Gloria/Terminal Ibes) leva ao Ibes
+    assert "607" in [linha["numero"] for linha in resp["linhas_do_bairro"]]
+    assert [linha["numero"] for linha in resp["linhas_ate_uvv"]] == ["608", "606", "1721"]
+    assert "horário" not in resp["caminho"]                          # nunca inventa horario
+
+
+def test_onibus_a_noite_so_linhas_noturnas(client, aluno):
+    resp = client.get("/api/lugares/onibus?bairro=Praia da Costa&sentido=volta&hora=23", headers=aluno).get_json()
+    assert [linha["numero"] for linha in resp["linhas_ate_uvv"]] == ["664"]
+    assert "noturnas" in resp["caminho"]
+    assert resp["caminho"].startswith("Da UVV")
+
+
+def test_onibus_bairro_perto_sugere_ir_a_pe(client, aluno):
+    resp = client.get("/api/lugares/onibus?bairro=Boa Vista", headers=aluno).get_json()
+    assert "a pé" in resp["caminho"]
+    assert resp["terminal_troca"] is None
+
+
+def test_onibus_validacoes(client, aluno):
+    assert client.get("/api/lugares/onibus?bairro=Inventado", headers=aluno).status_code == 404
+    assert client.get("/api/lugares/onibus?bairro=Ibes&sentido=x", headers=aluno).status_code == 400
+    assert client.get("/api/lugares/onibus?bairro=Ibes&hora=25", headers=aluno).status_code == 400
+    assert client.get("/api/lugares/onibus?bairro=Ibes").status_code == 401

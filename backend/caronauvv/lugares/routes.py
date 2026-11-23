@@ -50,3 +50,22 @@ def distancia():
     if resultado is None:
         raise ApiError("Bairro fora da lista: informe a distância à mão.", 404)
     return resultado
+
+
+@bp.get("/onibus")
+@login_required
+@limitar(30, 60)
+def onibus():
+    """Sugestao de onibus (estimativa, sem horario oficial) entre o bairro e a UVV."""
+    from .onibus import recomendar_onibus
+
+    sentido = request.args.get("sentido", "ida")
+    if sentido not in ("ida", "volta"):
+        raise ApiError("sentido deve ser ida ou volta.")
+    hora = request.args.get("hora", default=7, type=int)
+    if not 0 <= hora <= 23:
+        raise ApiError("hora deve ser de 0 a 23.")
+    resultado = recomendar_onibus(request.args.get("bairro") or "", sentido, hora)
+    if resultado is None:
+        raise ApiError("Bairro fora da lista da Grande Vitória.", 404)
+    return resultado

@@ -53,6 +53,7 @@
             Até 3 pedidos abertos. A fila é por ordem de chegada; quem faltou numa viagem nos últimos 30 dias perde a prioridade.
           </p>
         </form>
+        <PlanoDeSaida class="mt-3" :bairro="form.bairro" :sentido="form.sentido" :data="form.data" :hora-inicial="form.hora_inicio" />
       </div>
 
       <!-- MEUS PEDIDOS DE CARONA -->
@@ -104,6 +105,7 @@ import { useRoute } from 'vue-router'
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CampoBairro from '../components/CampoBairro.vue'
+import PlanoDeSaida from '../components/PlanoDeSaida.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'

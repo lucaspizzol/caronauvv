@@ -430,3 +430,25 @@ export interface PedidoCarona {
   caronas_compativeis: number
   sem_prioridade_por_falta: boolean
 }
+
+// Onibus ate a UVV (lugares/onibus.py): ESTIMATIVA, sem horario oficial
+export interface LinhaOnibus {
+  numero: string
+  nome: string
+  noturna?: boolean
+}
+
+export interface RecomendacaoOnibus {
+  bairro: string
+  sentido: Sentido
+  hora: number
+  estimativa: true
+  caminho: string
+  terminal_troca: string | null
+  terminal_mais_proximo: { nome: string; distancia_km: number } | null
+  linhas_ate_uvv: LinhaOnibus[]
+  linhas_do_bairro: LinhaOnibus[]
+  aviso: string
+  fonte: string
+  link_oficial: string
+}

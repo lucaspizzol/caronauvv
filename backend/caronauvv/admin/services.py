@@ -57,8 +57,16 @@ def resumo() -> dict:
         .where(Busca.qtd_resultados == 0, Busca.created_at >= agora - timedelta(days=30))
         .group_by(Busca.bairro)
         .order_by(db.func.count().desc())
-        .limit(5)
+        .limit(30)
     ).all()
+    # So bairros de verdade (buscas antigas pela metade, como "S", ficam de fora), juntando grafias
+    from caronauvv.lugares.services import achar_bairro
+    demanda: dict[str, int] = {}
+    for nome, qtd in sem_resultado:
+        conhecido = achar_bairro(nome)
+        if conhecido:
+            demanda[conhecido["nome"]] = demanda.get(conhecido["nome"], 0) + qtd
+    sem_resultado = sorted(demanda.items(), key=lambda par: (-par[1], par[0]))[:5]
     bairros_oferta = db.session.execute(
         db.select(Carona.bairro_origem, db.func.count().label("caronas"))
         .group_by(Carona.bairro_origem)

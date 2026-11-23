@@ -438,7 +438,7 @@ def montar(app) -> str:
 </section>
 <section class="quebra">
   {imagem("03_avaliacoes.jpg", "Avaliação depois da viagem: estrelas, elogios e comentário. A nota fica escondida até os dois avaliarem.")}
-  {imagem("07_admin.jpg", "Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona).")}
+  {imagem("07_admin.jpg", "Visão geral da administração: quatro números principais, métricas das viagens, só o que precisa de atenção e os bairros com procura sem oferta.")}
 </section>
 <section class="quebra">
   {imagem("11_perfil_foto_autenticador.jpg", "Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador.", "alta")}

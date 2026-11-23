@@ -52,8 +52,8 @@ transporte (BlaBlaCar, Uber, 99):
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 379 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 379 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 382 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 382 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -89,7 +89,7 @@ backend/
     (cada modulo: models.py, schemas.py, services.py, routes.py)
   migrations/             # Flask-Migrate (Alembic): 8 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 379 testes (pytest + pytest-flask)
+  tests/                  # 382 testes (pytest + pytest-flask)
 frontend/
   src/
     types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
@@ -130,7 +130,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 379 testes
+python -m pytest                           # 382 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.

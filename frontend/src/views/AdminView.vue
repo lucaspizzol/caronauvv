@@ -46,45 +46,84 @@
 
     <!-- ===================== VISAO GERAL ===================== -->
     <template v-else-if="aba === 'resumo' && r">
-      <div class="row g-3">
-        <div v-for="k in kpis" :key="k.rotulo" class="col-6 col-lg-3">
-          <div :class="['card p-3 h-100 kpi', k.classe]">
-            <div class="small text-secondary">{{ k.rotulo }}</div>
-            <div class="valor">{{ k.valor }}</div>
-            <div class="small text-secondary">{{ k.detalhe }}</div>
+      <!-- 4 numeros principais -->
+      <div class="row g-3 mb-3">
+        <div v-for="d in destaques" :key="d.rotulo" class="col-6 col-lg-3">
+          <div class="destaque h-100">
+            <span :class="['icone-destaque', d.cor]"><i :class="['bi', d.icone]"></i></span>
+            <div class="min-w-0">
+              <div class="rotulo">{{ d.rotulo }}</div>
+              <div class="numero">{{ d.valor }}</div>
+              <div class="detalhe">{{ d.detalhe }}</div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="row g-3 mt-1">
-        <div class="col-md-6">
-          <div class="card p-3 h-100">
-            <h2 class="h6 fw-bold"><i class="bi bi-search me-1"></i>Demanda sem oferta (30 dias)</h2>
-            <p class="small text-secondary">Bairros que os alunos buscaram e não acharam carona. Bom lugar para incentivar motoristas.</p>
-            <p v-if="!r.demanda_sem_oferta.length" class="small mb-0">Nenhuma busca sem resultado.</p>
-            <div v-for="d in r.demanda_sem_oferta" :key="d.bairro" class="mb-2">
-              <div class="d-flex justify-content-between small"><span>{{ d.bairro }}</span><strong>{{ d.buscas }}</strong></div>
-              <div class="progress" style="height: 6px" role="progressbar" :aria-label="`Buscas em ${d.bairro}`">
-                <div class="progress-bar bg-danger" :style="{ width: `${(d.buscas / maxDemanda) * 100}%` }"></div>
+
+      <div class="row g-3">
+        <!-- Viagens: metricas agrupadas num bloco so -->
+        <div class="col-lg-7">
+          <section class="bloco h-100" aria-labelledby="t-viagens">
+            <h2 id="t-viagens" class="bloco-titulo"><i class="bi bi-car-front-fill"></i>Viagens</h2>
+            <div class="metricas">
+              <div v-for="m in metricasViagem" :key="m.rotulo" class="metrica">
+                <i :class="['bi', m.icone]"></i>
+                <div>
+                  <div class="valor-m">{{ m.valor }}</div>
+                  <div class="rotulo-m">{{ m.rotulo }}</div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card p-3 h-100">
-            <h2 class="h6 fw-bold"><i class="bi bi-geo-alt me-1"></i>Bairros com mais caronas oferecidas</h2>
-            <div v-for="d in r.bairros_com_mais_oferta" :key="d.bairro" class="mb-2">
-              <div class="d-flex justify-content-between small"><span>{{ d.bairro }}</span><strong>{{ d.caronas }}</strong></div>
-              <div class="progress" style="height: 6px" role="progressbar" :aria-label="`Caronas em ${d.bairro}`">
-                <div class="progress-bar" :style="{ width: `${(d.caronas / maxOferta) * 100}%` }"></div>
-              </div>
-            </div>
-            <h2 class="h6 fw-bold mt-3">Caronas por status</h2>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3 small">
+              <span class="text-secondary">Caronas por status:</span>
               <span v-for="(n, status) in r.caronas.por_status" :key="status" class="d-inline-flex align-items-center gap-1">
-                <StatusBadge :status="status" /> <strong class="small">{{ n }}</strong>
+                <StatusBadge :status="status" /><strong>{{ n }}</strong>
               </span>
             </div>
-          </div>
+          </section>
+        </div>
+
+        <!-- O que precisa de acao (so aparece o que tem pendencia) -->
+        <div class="col-lg-5">
+          <section class="bloco h-100" aria-labelledby="t-atencao">
+            <h2 id="t-atencao" class="bloco-titulo"><i class="bi bi-bell-fill"></i>Precisa de atenção</h2>
+            <button v-for="p in pendencias" :key="p.texto" type="button" class="pendencia" @click="trocarAba(p.aba)">
+              <span :class="['icone-pendencia', p.cor]"><i :class="['bi', p.icone]"></i></span>
+              <span class="flex-grow-1 text-start">{{ p.texto }}</span>
+              <span :class="['badge rounded-pill', p.cor === 'verde' ? 'text-bg-success' : p.cor === 'amarelo' ? 'text-bg-warning' : 'text-bg-danger']">{{ p.n }}</span>
+              <i class="bi bi-chevron-right text-secondary"></i>
+            </button>
+            <div v-if="!pendencias.length" class="tudo-em-dia">
+              <i class="bi bi-check-circle-fill"></i>Tudo em dia: nenhuma pendência agora.
+            </div>
+          </section>
+        </div>
+
+        <!-- Bairros: onde falta carona x onde mais tem -->
+        <div class="col-12">
+          <section class="bloco" aria-labelledby="t-bairros">
+            <h2 id="t-bairros" class="bloco-titulo"><i class="bi bi-geo-alt-fill"></i>Bairros nos últimos 30 dias</h2>
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div class="subtitulo">Procuraram e não acharam carona <span class="text-secondary fw-normal">(bom lugar para incentivar motoristas)</span></div>
+                <div v-for="d in r.demanda_sem_oferta" :key="d.bairro" class="barra-linha">
+                  <span class="nome">{{ d.bairro }}</span>
+                  <div class="barra"><div class="preenchido perigo" :style="{ width: `${(d.buscas / maxDemanda) * 100}%` }"></div></div>
+                  <strong>{{ d.buscas }}</strong>
+                </div>
+                <p v-if="!r.demanda_sem_oferta.length" class="small text-success mb-0"><i class="bi bi-check-circle me-1"></i>Ninguém ficou sem carona.</p>
+              </div>
+              <div class="col-md-6">
+                <div class="subtitulo">Mais caronas oferecidas</div>
+                <div v-for="d in r.bairros_com_mais_oferta" :key="d.bairro" class="barra-linha">
+                  <span class="nome">{{ d.bairro }}</span>
+                  <div class="barra"><div class="preenchido" :style="{ width: `${(d.caronas / maxOferta) * 100}%` }"></div></div>
+                  <strong>{{ d.caronas }}</strong>
+                </div>
+                <p v-if="!r.bairros_com_mais_oferta.length" class="small text-secondary mb-0">Nenhuma carona oferecida ainda.</p>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </template>
@@ -351,11 +390,20 @@ const ABAS: { id: IdAba; texto: string; icone: string }[] = [
 ]
 
 /** Cartao de indicador da visao geral. */
-interface Kpi {
+interface Destaque {
   rotulo: string
   valor: string | number
   detalhe: string
-  classe?: '' | 'verde' | 'alerta'
+  icone: string
+  cor: 'azul' | 'verde' | 'amarelo' | 'roxo'
+}
+
+interface Pendencia {
+  texto: string
+  n: number
+  aba: IdAba
+  icone: string
+  cor: 'vermelho' | 'amarelo' | 'verde'
 }
 
 const aba = ref<IdAba>('resumo')
@@ -403,23 +451,48 @@ function avisar(texto: string, tipo: TipoAviso = 'success'): void {
   aviso.tipo = tipo
 }
 
-const kpis = computed<Kpi[]>(() => {
+const minutos = (n: number | null) => (n === null ? '—' : `${decimal(n)} min`)
+
+// Os 4 numeros do topo
+const destaques = computed<Destaque[]>(() => {
   if (!r.value) return []
-  const { usuarios: u, viagens: v, confianca: c, medias: m } = r.value
-  const min = (n: number | null) => (n === null ? '—' : `${decimal(n)} min`)
+  const { usuarios: u, viagens: v, confianca: c } = r.value
   return [
-    { rotulo: 'Alunos cadastrados', valor: u.total, detalhe: `${u.ativos_30_dias} ativos nos últimos 30 dias` },
-    { rotulo: 'Viagens concluídas', valor: v.concluidas, detalhe: `${v.passageiros_transportados} passageiros levados`, classe: 'verde' },
-    { rotulo: 'Ocupação dos carros', valor: porcentagem(v.taxa_ocupacao), detalhe: 'assentos usados nas viagens' },
-    { rotulo: 'CO₂ evitado', valor: `${decimal(v.co2_evitado_kg)} kg`, detalhe: `${decimal(v.km_compartilhados)} km compartilhados`, classe: 'verde' },
-    { rotulo: 'Nota média', valor: nota(c.nota_media), detalhe: `${c.avaliacoes} avaliações` },
-    { rotulo: 'Faltas', valor: porcentagem(v.taxa_faltas), detalhe: 'das vagas confirmadas' },
-    { rotulo: 'Tempo médio de viagem', valor: min(m.tempo_medio_viagem_min), detalhe: `${m.viagens_medidas} viagens medidas pelo app` },
-    { rotulo: 'Atraso médio na saída', valor: min(m.atraso_medio_saida_min), detalhe: 'início da viagem x horário marcado' },
-    { rotulo: 'Velocidade média', valor: m.velocidade_media_kmh === null ? '—' : `${decimal(m.velocidade_media_kmh)} km/h`, detalhe: `tempo médio a bordo: ${min(m.tempo_medio_a_bordo_min)}` },
-    { rotulo: 'Denúncias abertas', valor: c.denuncias_abertas, detalhe: 'aguardando análise', classe: c.denuncias_abertas ? 'alerta' : '' },
-    { rotulo: 'Alertas de segurança', valor: c.alertas_aguardando, detalhe: 'sem resolução', classe: c.alertas_aguardando ? 'alerta' : '' }
+    { rotulo: 'Alunos', valor: u.total, detalhe: `${u.ativos_30_dias} ${u.ativos_30_dias === 1 ? 'ativo' : 'ativos'} em 30 dias`, icone: 'bi-people-fill', cor: 'azul' },
+    { rotulo: 'Viagens concluídas', valor: v.concluidas, detalhe: `${v.passageiros_transportados} passageiros levados`, icone: 'bi-flag-fill', cor: 'roxo' },
+    { rotulo: 'Nota média', valor: nota(c.nota_media), detalhe: `${c.avaliacoes} avaliações`, icone: 'bi-star-fill', cor: 'amarelo' },
+    { rotulo: 'CO₂ evitado', valor: `${decimal(v.co2_evitado_kg)} kg`, detalhe: `${decimal(v.km_compartilhados)} km compartilhados`, icone: 'bi-tree-fill', cor: 'verde' }
   ]
+})
+
+// Metricas das viagens, todas num bloco so
+const metricasViagem = computed(() => {
+  if (!r.value) return []
+  const { viagens: v, medias: m } = r.value
+  return [
+    { rotulo: 'ocupação dos carros', valor: porcentagem(v.taxa_ocupacao), icone: 'bi-person-plus-fill' },
+    { rotulo: 'tempo médio de viagem', valor: minutos(m.tempo_medio_viagem_min), icone: 'bi-stopwatch-fill' },
+    { rotulo: 'atraso médio na saída', valor: minutos(m.atraso_medio_saida_min), icone: 'bi-hourglass-split' },
+    { rotulo: 'velocidade média', valor: m.velocidade_media_kmh === null ? '—' : `${decimal(m.velocidade_media_kmh)} km/h`, icone: 'bi-speedometer2' },
+    { rotulo: 'tempo médio a bordo', valor: minutos(m.tempo_medio_a_bordo_min), icone: 'bi-person-check-fill' },
+    { rotulo: 'faltas nas vagas confirmadas', valor: porcentagem(v.taxa_faltas), icone: 'bi-person-x-fill' }
+  ]
+})
+
+// So o que precisa de acao agora (zeros nao aparecem)
+const pendencias = computed<Pendencia[]>(() => {
+  if (!r.value) return []
+  const { usuarios: u, viagens: v, confianca: c } = r.value
+  const outrosAlertas = Math.max(0, c.alertas_aguardando - c.avaliacoes_baixas_abertas)
+  const lista: Pendencia[] = [
+    { texto: 'Avaliações abaixo do limite', n: c.avaliacoes_baixas_abertas, aba: 'avaliacoes', icone: 'bi-star-half', cor: 'vermelho' },
+    { texto: 'Alertas de segurança sem resolução', n: outrosAlertas, aba: 'alertas', icone: 'bi-shield-exclamation', cor: 'vermelho' },
+    { texto: 'Denúncias aguardando análise', n: c.denuncias_abertas, aba: 'denuncias', icone: 'bi-flag-fill', cor: 'vermelho' },
+    { texto: 'Documentos para conferir', n: u.documentos_pendentes, aba: 'documentos', icone: 'bi-person-vcard', cor: 'amarelo' },
+    { texto: 'Pedidos de selo de verificado', n: u.verificacoes_pendentes, aba: 'usuarios', icone: 'bi-patch-check', cor: 'amarelo' },
+    { texto: 'Viagens acontecendo agora', n: v.em_andamento_agora, aba: 'aovivo', icone: 'bi-geo-alt-fill', cor: 'verde' }
+  ]
+  return lista.filter((p) => p.n > 0)
 })
 const maxDemanda = computed(() => Math.max(1, ...(r.value?.demanda_sem_oferta || []).map((d) => d.buscas)))
 const maxOferta = computed(() => Math.max(1, ...(r.value?.bairros_com_mais_oferta || []).map((d) => d.caronas)))
@@ -663,6 +736,183 @@ onMounted(() => trocarAba('resumo'))
 </script>
 
 <style scoped>
+/* ----- Visao geral: menos caixas brancas soltas, blocos agrupados ----- */
+.destaque {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 0.15rem 0.6rem rgba(11, 42, 91, 0.08);
+}
+
+.destaque .rotulo {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.destaque .numero {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--uvv-azul);
+}
+
+.destaque .detalhe {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+.icone-destaque,
+.icone-pendencia {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+}
+
+.icone-destaque {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.35rem;
+}
+
+.icone-destaque.azul { background: #e3ecfb; color: var(--uvv-azul-2); }
+.icone-destaque.roxo { background: #ece6fb; color: #5b3cc4; }
+.icone-destaque.amarelo { background: #fff3cd; color: #9a6b00; }
+.icone-destaque.verde { background: #dcf3e6; color: #157347; }
+
+.bloco {
+  padding: 1.1rem 1.25rem;
+  border-radius: 1rem;
+  background: #eef3fa;
+}
+
+.bloco-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--uvv-azul);
+  margin-bottom: 0.9rem;
+}
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.metrica {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.metrica > .bi {
+  font-size: 1.15rem;
+  color: var(--uvv-azul-2);
+}
+
+.metrica .valor-m {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--uvv-azul);
+  line-height: 1.1;
+}
+
+.metrica .rotulo-m {
+  font-size: 0.74rem;
+  color: var(--bs-secondary-color);
+}
+
+.pendencia {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.45rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+}
+
+.pendencia:hover,
+.pendencia:focus-visible {
+  background: #fff;
+  box-shadow: 0 0.15rem 0.5rem rgba(11, 42, 91, 0.1);
+}
+
+.icone-pendencia {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icone-pendencia.vermelho { background: #fde2e4; color: #b02a37; }
+.icone-pendencia.amarelo { background: #fff3cd; color: #9a6b00; }
+.icone-pendencia.verde { background: #dcf3e6; color: #157347; }
+
+.tudo-em-dia {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border-radius: 0.75rem;
+  background: #dcf3e6;
+  color: #0f5132;
+  font-weight: 600;
+}
+
+.subtitulo {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.barra-linha {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9.5rem) 1fr 1.6rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
+.barra-linha .nome {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barra-linha strong {
+  text-align: right;
+}
+
+.barra {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(11, 42, 91, 0.1);
+  overflow: hidden;
+}
+
+.barra .preenchido {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--uvv-azul-2);
+}
+
+.barra .preenchido.perigo {
+  background: #dc3545;
+}
+
 /* Cabecalho do painel: faixa azul UVV com os numeros do momento */
 .painel-topo {
   display: flex;

@@ -9,7 +9,7 @@ from caronauvv.auth.models import Usuario, Veiculo
 from caronauvv.auth.services import exigir_email_verificado
 from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
-from caronauvv.lugares.services import normalizar
+from caronauvv.lugares.services import achar_bairro, normalizar
 from caronauvv.notificacoes.services import notificar
 
 from .combustivel import calcular_rateio
@@ -226,13 +226,33 @@ def listar_caronas(filtros, usuario: Usuario | None = None) -> list[Carona]:
         caronas = [c for c in caronas if procurado in normalizar(c.bairro_origem)]
 
     if bairro:
-        db.session.add(Busca(
-            usuario_id=usuario.id if usuario else None, bairro=bairro[:100],
-            sentido=sentido or "ida", data_desejada=dia, hora_inicio=h_ini, hora_fim=h_fim,
-            qtd_resultados=len(caronas),
-        ))
-        db.session.commit()
+        _registrar_busca(usuario, bairro, sentido or "ida", dia, h_ini, h_fim, len(caronas))
     return caronas
+
+
+def _registrar_busca(usuario, bairro: str, sentido: str, dia: date, h_ini, h_fim, resultados: int) -> None:
+    """
+    Guarda a busca para o painel ("demanda sem oferta"), mas so quando faz sentido:
+    - o texto precisa ser um bairro conhecido ("S" ou "Santa" sao buscas pela metade);
+    - a mesma pessoa repetindo a mesma busca em 10 min conta uma vez so (a tela de busca
+      se atualiza sozinha a cada poucos segundos e nao pode inflar os numeros).
+    """
+    conhecido = achar_bairro(bairro)
+    if conhecido is None:
+        return
+    nome = conhecido["nome"]
+    if usuario is not None:
+        repetida = db.session.scalar(db.select(Busca.id).where(
+            Busca.usuario_id == usuario.id, Busca.bairro == nome, Busca.sentido == sentido,
+            Busca.data_desejada == dia, Busca.created_at >= datetime.now() - timedelta(minutes=10),
+        ).limit(1))
+        if repetida is not None:
+            return
+    db.session.add(Busca(
+        usuario_id=usuario.id if usuario else None, bairro=nome[:100], sentido=sentido,
+        data_desejada=dia, hora_inicio=h_ini, hora_fim=h_fim, qtd_resultados=resultados,
+    ))
+    db.session.commit()
 
 
 def caronas_do_motorista(usuario: Usuario, status: str | None = None) -> list[Carona]:

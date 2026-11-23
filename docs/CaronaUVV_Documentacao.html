@@ -68,7 +68,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <div class="numeros">
     <div><b>90</b><span>rotas da API REST</span></div>
     <div><b>19</b><span>tabelas no banco</span></div>
-    <div><b>417</b><span>testes automatizados</span></div>
+    <div><b>420</b><span>testes automatizados</span></div>
     <div><b>17</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
@@ -209,7 +209,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 </section>
 <section class="quebra">
   <figure class=""><img src="img/03_avaliacoes.jpg" alt="Avaliação depois da viagem: estrelas, elogios e comentário. A nota fica escondida até os dois avaliarem."><figcaption>Avaliação depois da viagem: estrelas, elogios e comentário. A nota fica escondida até os dois avaliarem.</figcaption></figure>
-  <figure class=""><img src="img/07_admin.jpg" alt="Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona)."><figcaption>Painel da administração: indicadores e demanda sem oferta por bairro (buscas que não acharam carona).</figcaption></figure>
+  <figure class=""><img src="img/07_admin.jpg" alt="Visão geral da administração: quatro números principais, métricas das viagens, só o que precisa de atenção e os bairros com procura sem oferta."><figcaption>Visão geral da administração: quatro números principais, métricas das viagens, só o que precisa de atenção e os bairros com procura sem oferta.</figcaption></figure>
 </section>
 <section class="quebra">
   <figure class="alta"><img src="img/11_perfil_foto_autenticador.jpg" alt="Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador."><figcaption>Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador.</figcaption></figure>
@@ -273,7 +273,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
-  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 379 testes do back-end
+  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 382 testes do back-end
   e as migrações (upgrade, downgrade e upgrade de novo, com dados) foram executados nos dois bancos</b>.</p>
 
   <h3>Núcleo do modelo (principais colunas)</h3>
@@ -1233,7 +1233,7 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
 </section>
 <section>
   <h3>5.11 Testes automatizados</h3>
-  <p><b>379 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  <p><b>382 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
   regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos, cálculo do combustível com trânsito, fila do Pedir carona, bairros/APIs externas e resumo da viagem. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
   No front-end, <b>38 testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
@@ -1763,7 +1763,7 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
       <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 90 rotas (seção 4).</td></tr>
       <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulários com envio de arquivo (foto de perfil e documentos, seções 5.7 e 5.9).</td></tr>
       <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 17 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>379 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 38 testes Vitest (seção 5.11).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>382 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 38 testes Vitest (seção 5.11).</td></tr>
       <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 19 tabelas com FK, CHECK, UNIQUE e índices; 8 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>

@@ -1,4 +1,6 @@
 """Painel da administracao: acesso, indicadores, moderacao, configuracoes e banco."""
+from datetime import date
+
 from caronauvv.admin.models import Busca
 from caronauvv.ext.db import db
 from caronauvv.ext.db.seed import popular_banco
@@ -30,7 +32,31 @@ def test_busca_por_bairro_fica_registrada(client, novo_aluno):
     _, h = novo_aluno("1", "Ana")
     client.get("/api/caronas?bairro=Gloria&sentido=ida", headers=h)
     busca = db.session.scalar(db.select(Busca))
-    assert (busca.bairro, busca.qtd_resultados) == ("Gloria", 0)
+    # grava com o nome oficial do bairro (com acento), mesmo digitado sem acento
+    assert (busca.bairro, busca.qtd_resultados) == ("Glória", 0)
+
+
+def test_busca_pela_metade_nao_conta_como_demanda(client, novo_aluno):
+    _, h = novo_aluno("1", "Ana")
+    for texto in ("S", "Santa", "rua x"):
+        client.get(f"/api/caronas?bairro={texto}&sentido=ida", headers=h)
+    assert db.session.scalar(db.select(db.func.count()).select_from(Busca)) == 0
+
+
+def test_atualizacao_automatica_nao_repete_a_busca(client, novo_aluno):
+    _, h = novo_aluno("1", "Ana")
+    for _ in range(5):   # a tela de busca se atualiza sozinha a cada 5 s
+        client.get("/api/caronas?bairro=Itapuã&sentido=ida", headers=h)
+    assert db.session.scalar(db.select(db.func.count()).select_from(Busca)) == 1
+
+
+def test_painel_ignora_buscas_antigas_pela_metade(client, admin):
+    hoje = date.today()
+    db.session.add_all([Busca(bairro=b, sentido="ida", data_desejada=hoje, qtd_resultados=0)
+                        for b in ("S", "Gloria", "Glória")])
+    db.session.commit()
+    demanda = client.get("/api/admin/resumo", headers=admin[1]).get_json()["resumo"]["demanda_sem_oferta"]
+    assert demanda == [{"bairro": "Glória", "buscas": 2}]
 
 
 def test_aprovar_selo_de_verificado(client, admin, novo_aluno):

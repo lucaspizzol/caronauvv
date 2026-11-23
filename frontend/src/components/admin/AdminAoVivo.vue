@@ -1,11 +1,9 @@
 <template>
   <!-- Todas as viagens em tempo real, com a posicao do GPS (atualiza sozinho a cada 5 s) -->
   <section aria-labelledby="titulo-ao-vivo">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-      <div>
-        <h2 id="titulo-ao-vivo" class="h5 fw-bold mb-0"><i class="bi bi-geo-alt-fill me-1 text-danger"></i>Viagens ao vivo</h2>
-        <div class="small text-secondary">Acontecendo agora, saindo nas próximas 3 horas e concluídas nas últimas 3 horas.</div>
-      </div>
+    <!-- titulo e descricao ficam no cabecalho do painel; aqui so o indicador "ao vivo" -->
+    <h2 id="titulo-ao-vivo" class="visually-hidden">Viagens ao vivo</h2>
+    <div class="d-flex justify-content-end mb-2">
       <AoVivo :atualizado-em="atualizadoEm" />
     </div>
 

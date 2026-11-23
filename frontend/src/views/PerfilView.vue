@@ -2,13 +2,13 @@
   <div class="container py-4" style="max-width: 860px">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
       <h1 class="titulo-pagina h3 mb-0">Meu perfil</h1>
-      <RouterLink v-if="auth.usuario" :to="`/usuarios/${auth.usuario.id}`" class="btn btn-sm btn-outline-primary">
+      <RouterLink v-if="auth.usuario && !ehAdmin" :to="`/usuarios/${auth.usuario.id}`" class="btn btn-sm btn-outline-primary">
         <i class="bi bi-eye me-1"></i>Ver como os outros me veem
       </RouterLink>
     </div>
 
-    <!-- CONFIANCA: e-mail confirmado e selo de perfil verificado -->
-    <div class="card p-3 mb-4">
+    <!-- CONFIANCA: e-mail confirmado e selo de perfil verificado (so alunos) -->
+    <div v-if="!ehAdmin" class="card p-3 mb-4">
       <div class="d-flex flex-wrap gap-3 align-items-center">
         <span :class="['selo', { 'bg-warning-subtle text-warning-emphasis': !auth.usuario?.email_verificado }]">
           <i :class="['bi', auth.usuario?.email_verificado ? 'bi-envelope-check-fill' : 'bi-envelope-exclamation']"></i>
@@ -27,7 +27,7 @@
       <AlertaMensagem class="mt-2 mb-0" :texto="msgSelo.texto" :tipo="msgSelo.tipo" @fechar="msgSelo.texto = ''" />
     </div>
 
-    <DocumentosVerificacao id="documentos" class="mb-4" />
+    <DocumentosVerificacao v-if="!ehAdmin" id="documentos" class="mb-4" />
 
     <div class="row g-4">
       <!-- DADOS PESSOAIS -->
@@ -69,7 +69,7 @@
             </div>
 
             <!-- Preferencias de viagem (como o "Bla, BlaBla, BlaBlaBla" do BlaBlaCar) -->
-            <div class="col-12">
+            <div v-if="!ehAdmin" class="col-12">
               <div class="form-label">Preferências na viagem</div>
               <div class="btn-group btn-group-sm w-100 mb-2" role="group" aria-label="Conversa">
                 <template v-for="(info, nivel) in PREF_CONVERSA" :key="nivel">
@@ -124,7 +124,7 @@
       </div>
 
       <!-- SEGURANCA: contatos de confianca -->
-      <div id="seguranca" class="col-12">
+      <div v-if="!ehAdmin" id="seguranca" class="col-12">
         <div class="card p-4">
           <h2 class="h5 fw-bold mb-1"><i class="bi bi-person-heart me-1"></i>Contatos de confiança</h2>
           <p class="small text-secondary">
@@ -154,7 +154,7 @@
       </div>
 
       <!-- VEICULOS -->
-      <div id="veiculos" class="col-12">
+      <div v-if="!ehAdmin" id="veiculos" class="col-12">
         <div class="card p-4">
           <h2 class="h5 fw-bold mb-1"><i class="bi bi-car-front me-1"></i>Meus carros</h2>
           <p class="small text-secondary">
@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import CampoBairro from '../components/CampoBairro.vue'
@@ -236,6 +236,9 @@ import { atualizarUsuario, auth, entrar, type TipoAviso } from '../stores/auth'
 import type { ContatoConfianca, Energia, ErrosCampos, NivelConversa, UsuarioLogado, Veiculo } from '../types/api'
 import { ENERGIAS, numeroBr, PREF_CONVERSA, telefoneFormatado, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
+
+// O administrador nao oferece nem pede carona: o perfil dele mostra so dados, foto, senha e duas etapas
+const ehAdmin = computed(() => Boolean(auth.usuario?.is_admin))
 
 /** Mensagem curta mostrada embaixo de cada cartao da tela. */
 type Aviso = { texto: string; tipo: TipoAviso }

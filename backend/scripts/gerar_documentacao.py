@@ -372,7 +372,7 @@ def montar(app) -> str:
       <tr><td>Rateio solidário</td><td>Teto por passageiro (padrão R$ 5,00) e valor sugerido = combustível ÷ ocupantes; pagamento por Pix copia e cola com QR Code.</td><td>BlaBlaCar (preço sugerido)</td></tr>
       <tr><td>Notificações</td><td>Sino com contador: pedido novo, vaga confirmada/recusada, viagem iniciada, embarque, pagamento, avaliação.</td><td>Todos</td></tr>
       <tr><td>Denúncias e moderação</td><td>Só denuncia quem dividiu uma carona; o admin analisa, encerra com resolução e pode suspender a conta.</td><td>Todos</td></tr>
-      <tr><td>Painel da administração</td><td>Indicadores (ocupação, CO₂ evitado, faltas, nota média), demanda sem oferta por bairro, verificação de perfis, denúncias, alertas, regras e o banco de dados ao vivo.</td><td>—</td></tr>
+      <tr><td>Painel da administração</td><td>Interface só do administrador, com menu lateral próprio (ele não vê as telas de pedir ou oferecer carona) e contadores de pendências em cada seção: indicadores (ocupação, CO₂ evitado, faltas, nota média), demanda sem oferta por bairro, verificação de perfis, documentos, denúncias, alertas, regras e o banco de dados ao vivo.</td><td>—</td></tr>
     </tbody>
   </table>
 
@@ -438,7 +438,7 @@ def montar(app) -> str:
 </section>
 <section class="quebra">
   {imagem("03_avaliacoes.jpg", "Avaliação depois da viagem: estrelas, elogios e comentário. A nota fica escondida até os dois avaliarem.")}
-  {imagem("07_admin.jpg", "Visão geral da administração: quatro números principais, métricas das viagens, só o que precisa de atenção e os bairros com procura sem oferta.")}
+  {imagem("07_admin.jpg", "Interface do administrador: menu lateral com contadores de pendências e a visão geral (quatro números principais, métricas das viagens, só o que precisa de atenção e os bairros com procura sem oferta).")}
 </section>
 <section class="quebra">
   {imagem("11_perfil_foto_autenticador.jpg", "Meu perfil: foto de perfil (trocar ou remover) e ativação da verificação em duas etapas com o QR Code lido pelo aplicativo autenticador.", "alta")}
@@ -472,8 +472,8 @@ def montar(app) -> str:
   </div>
 </section>
 <section class="quebra">
-  {imagem("24_admin_avaliacoes.jpg", "Painel da administração, aba Avaliações: notas em tempo real (a nota 1 acabou de chegar e gerou alerta), média geral, distribuição e alunos em risco.")}
-  {imagem("25_admin_ao_vivo.jpg", "Painel da administração, aba Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa.")}
+  {imagem("24_admin_avaliacoes.jpg", "Painel da administração, seção Avaliações: notas em tempo real, média geral, distribuição e alunos em risco.")}
+  {imagem("25_admin_ao_vivo.jpg", "Painel da administração, seção Ao vivo: viagem em andamento com o passageiro a bordo, velocidade, sinal do GPS e o trajeto no mapa.")}
 </section>
 <section class="quebra">
   <div class="lado-a-lado">
@@ -955,7 +955,8 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   motorista e passageiro podem ficar lado a lado no mesmo navegador.</p>
   <p><b>Uso no celular.</b> A maioria dos alunos usa o celular: grid do Bootstrap, barra de navegação embaixo e cada
   tela conferida de 360 a 1280 px de largura, sem rolagem horizontal. A conferência automática achou o menu do topo
-  estourando em tablets (768 px) e para o administrador, que tem um item a mais; o menu de baixo passou a valer até 991 px.</p>
+  estourando em tablets (768 px); o menu de baixo passou a valer até 991 px. O administrador ganhou interface própria:
+  menu lateral no computador e, no celular, barra de baixo com as seções mais usadas e um menu que abre por cima.</p>
   <p><b>Front-end e back-end falando a mesma língua.</b> Em JavaScript, ler um campo que a API não manda (ou que pode
   vir <code>null</code>) só aparece como erro na tela, na hora da apresentação. Passamos o front-end para TypeScript
   em modo estrito e descrevemos cada resposta da API em <code>types/api.ts</code>, copiando os <code>to_dict()</code>

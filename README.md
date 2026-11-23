@@ -39,7 +39,7 @@ transporte (BlaBlaCar, Uber, 99):
 | Rateio solidário | Teto por passageiro e valor sugerido (combustível ÷ ocupantes); Pix copia e cola com QR Code | BlaBlaCar (preço sugerido) |
 | Notificações | Sino com contador: pedido novo, vaga confirmada, viagem iniciada, avaliação etc. | Todos |
 | Denúncias e moderação | Só denuncia quem dividiu carona; admin analisa, encerra e pode suspender | Todos |
-| Painel admin | KPIs (ocupação, CO₂ evitado, faltas, tempo médio de viagem, atraso médio na saída, velocidade média), demanda sem oferta por bairro, regras e **banco de dados ao vivo** | — |
+| Painel admin | Interface só do administrador, com menu lateral próprio e contadores de pendências (no celular, barra de baixo + menu). KPIs (ocupação, CO₂ evitado, faltas, tempo médio de viagem, atraso médio na saída, velocidade média), demanda sem oferta por bairro, regras e **banco de dados ao vivo** | — |
 | 30 min para responder | Pedido de vaga sem resposta expira em 30 min (ou 2 h antes da saída, o que vier antes), com contagem regressiva para os dois lados e aviso ao passageiro | 99 / Uber (tempo para aceitar) |
 | Bairros da Grande Vitória | Sugestões enquanto digita (512 bairros de Vila Velha, Vitória, Cariacica e Serra, sem precisar de acento), CEP que preenche rua e bairro (ViaCEP), sugestão de rua e distância real até a UVV (OSRM) | Apps de mapa |
 | Pedir carona (fila) | Sem carona? O aluno entra na fila do bairro/horário; quando aparece carona compatível ele é avisado e, nos primeiros 15 min, só quem estava na fila pede vaga (com reserva automática a vaga fica guardada para o primeiro) | BlaBlaCar (alertas de viagem) |
@@ -53,7 +53,7 @@ transporte (BlaBlaCar, Uber, 99):
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
 - **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 382 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 382 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
+- **Testes:** pytest + pytest-flask (back-end, 382 testes, 96% de cobertura) e Vitest (front-end, 42 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -145,7 +145,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 38 testes do front (Vitest)
+npm test                         # 42 testes do front (Vitest)
 npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { ehAba } from '../stores/admin'
 import { auth, logado } from '../stores/auth'
 
 // Campos extras que cada rota pode ter em `meta` (o TypeScript confere o nome e o tipo)
@@ -34,7 +35,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/notificacoes', name: 'notificacoes', component: () => import('../views/NotificacoesView.vue'), meta: { titulo: 'Notificações' } },
   { path: '/perfil', name: 'perfil', component: () => import('../views/PerfilView.vue'), meta: { titulo: 'Meu perfil' } },
   { path: '/usuarios/:id', name: 'usuario', component: () => import('../views/PerfilPublicoView.vue'), props: true, meta: { titulo: 'Perfil do aluno' } },
-  { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { titulo: 'Administração', admin: true } },
+  // /admin = visao geral; /admin/avaliacoes, /admin/aovivo... = cada secao do painel (link direto e botao voltar funcionam)
+  { path: '/admin/:aba?', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { titulo: 'Administração', admin: true } },
   { path: '/:pathMatch(.*)*', name: 'nao-encontrada', component: () => import('../views/NaoEncontradaView.vue'), meta: { titulo: 'Página não encontrada', publica: true, livre: true } }
 ]
 
@@ -44,19 +46,31 @@ const router = createRouter({
   scrollBehavior: (to) => (to.hash ? { el: to.hash } : { top: 0 })
 })
 
-// Telas de quem ainda nao entrou: quem ja esta logado vai direto para a busca
+// Telas de quem ainda nao entrou: quem ja esta logado vai direto para a busca (o admin, para o painel)
 const ROTAS_DE_ENTRADA = ['login', 'cadastro', 'recuperar-senha']
+
+// O administrador tem interface propria: das telas com login, so usa o painel, o perfil,
+// as notificacoes e o perfil publico dos alunos (as telas de pedir/oferecer carona sao dos alunos)
+const ROTAS_DO_ADMIN = ['admin', 'perfil', 'notificacoes', 'usuario', 'verificar-email']
 
 // Rotas protegidas: sem login vai para /login e volta depois
 router.beforeEach((to) => {
   if (!to.meta.publica && !logado.value) {
     return { name: 'login', query: { volta: to.fullPath } }
   }
+  const ehAdmin = Boolean(auth.usuario?.is_admin)
   if (ROTAS_DE_ENTRADA.includes(String(to.name)) && logado.value) {
+    return { name: ehAdmin ? 'admin' : 'buscar' }
+  }
+  if (to.meta.admin && !ehAdmin) {
     return { name: 'buscar' }
   }
-  if (to.meta.admin && !auth.usuario?.is_admin) {
-    return { name: 'buscar' }
+  if (ehAdmin && !to.meta.publica && !ROTAS_DO_ADMIN.includes(String(to.name))) {
+    return { name: 'admin' }
+  }
+  // secao que nao existe (/admin/qualquer-coisa): volta para a visao geral
+  if (to.name === 'admin' && to.params.aba && !ehAba(to.params.aba)) {
+    return { name: 'admin' }
   }
   return true
 })

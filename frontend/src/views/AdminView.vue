@@ -1,45 +1,31 @@
 <template>
-  <div class="container py-4">
-    <div class="painel-topo mb-3">
-      <div>
-        <div class="small text-uppercase fw-semibold opacity-75">CaronaUVV · Administração</div>
-        <h1 class="h3 fw-bold mb-1">Painel da administração</h1>
-        <div class="small opacity-75">Viagens ao vivo, controle de avaliações, moderação, segurança e regras.</div>
+  <div>
+    <!-- Cabecalho da secao (o menu lateral fica no AdminShell) -->
+    <header class="secao-topo mb-3">
+      <div class="min-w-0">
+        <h1 class="h3 fw-bold mb-1"><i :class="['bi me-2', secao.icone]"></i>{{ secao.texto }}</h1>
+        <p class="text-secondary mb-0">{{ secao.descricao }}</p>
       </div>
       <div v-if="r" class="d-flex flex-wrap gap-2">
-        <button type="button" class="chip-topo" @click="trocarAba('aovivo')">
+        <RouterLink to="/admin/aovivo" class="chip-topo">
           <span class="ponto" :class="{ ativo: r.viagens.em_andamento_agora }"></span>{{ r.viagens.em_andamento_agora }} em viagem agora
-        </button>
-        <button type="button" class="chip-topo" @click="trocarAba('avaliacoes')">
+        </RouterLink>
+        <RouterLink to="/admin/avaliacoes" class="chip-topo">
           <i class="bi bi-star-fill text-warning"></i>média {{ nota(r.confianca.nota_media) }}
-        </button>
-        <button type="button" :class="['chip-topo', { perigo: r.confianca.alertas_aguardando }]" @click="trocarAba('alertas')">
-          <i class="bi bi-bell-fill"></i>{{ r.confianca.alertas_aguardando }} alerta(s)
-        </button>
+        </RouterLink>
+        <RouterLink to="/admin/alertas" :class="['chip-topo', { perigo: r.confianca.alertas_aguardando }]">
+          <i class="bi bi-bell-fill"></i>{{ r.confianca.alertas_aguardando }} {{ r.confianca.alertas_aguardando === 1 ? 'alerta' : 'alertas' }}
+        </RouterLink>
       </div>
-    </div>
+    </header>
 
-    <!-- Alerta em qualquer aba: chegou avaliacao abaixo do limite -->
+    <!-- Alerta em qualquer secao: chegou avaliacao abaixo do limite -->
     <div v-if="novaNotaBaixa && aba !== 'avaliacoes'" class="alert alert-danger d-flex flex-wrap align-items-center gap-2 shadow-sm" role="alert" aria-live="assertive">
       <i class="bi bi-exclamation-octagon-fill fs-5"></i>
       <span class="flex-grow-1"><strong>Nova avaliação baixa.</strong> {{ novaNotaBaixa }}</span>
       <button type="button" class="btn btn-sm btn-danger" @click="novaNotaBaixa = ''; trocarAba('avaliacoes')">Ver avaliações</button>
       <button type="button" class="btn-close" aria-label="Fechar aviso" @click="novaNotaBaixa = ''"></button>
     </div>
-
-    <ul class="nav nav-pills mb-3 flex-nowrap flex-md-wrap gap-1 overflow-auto">
-      <li v-for="a in ABAS" :key="a.id" class="nav-item">
-        <button :class="['nav-link text-nowrap', { active: aba === a.id }]" @click="trocarAba(a.id)">
-          <i :class="['bi me-1', a.icone]"></i>{{ a.texto }}
-          <span v-if="a.id === 'aovivo' && r?.viagens.em_andamento_agora" class="badge text-bg-success ms-1">{{ r.viagens.em_andamento_agora }}</span>
-          <span v-if="a.id === 'avaliacoes' && r?.confianca.avaliacoes_baixas_abertas" class="badge text-bg-danger ms-1">{{ r.confianca.avaliacoes_baixas_abertas }}</span>
-          <span v-if="a.id === 'usuarios' && r?.usuarios.verificacoes_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.verificacoes_pendentes }}</span>
-          <span v-if="a.id === 'documentos' && r?.usuarios.documentos_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.documentos_pendentes }}</span>
-          <span v-if="a.id === 'denuncias' && r?.confianca.denuncias_abertas" class="badge text-bg-danger ms-1">{{ r.confianca.denuncias_abertas }}</span>
-          <span v-if="a.id === 'alertas' && r?.confianca.alertas_aguardando" class="badge text-bg-danger ms-1">{{ r.confianca.alertas_aguardando }}</span>
-        </button>
-      </li>
-    </ul>
 
     <AlertaMensagem :texto="aviso.texto" :tipo="aviso.tipo" @fechar="aviso.texto = ''" />
     <div v-if="carregando" class="text-center py-5"><span class="spinner-border text-primary"></span></div>
@@ -361,7 +347,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import AdminAoVivo from '../components/admin/AdminAoVivo.vue'
 import AdminAvaliacoes from '../components/admin/AdminAvaliacoes.vue'
@@ -369,25 +356,11 @@ import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'
+import { carregarResumo, ehAba, painel, SECOES, type IdAba } from '../stores/admin'
 import { auth, type TipoAviso } from '../stores/auth'
-import type { Alerta, Configuracao, Denuncia, DocumentoAdmin, EstruturaBanco, ResumoAdmin, StatusDocumento, UsuarioAdmin } from '../types/api'
+import type { Alerta, Configuracao, Denuncia, DocumentoAdmin, EstruturaBanco, StatusDocumento, UsuarioAdmin } from '../types/api'
 import { dataCurtaNumerica, dataHora, nota, porcentagem, textoMotivo } from '../utils/formato'
-
-type IdAba = 'resumo' | 'aovivo' | 'avaliacoes' | 'usuarios' | 'documentos' | 'denuncias' | 'alertas' | 'regras' | 'banco'
-
-const ABAS: { id: IdAba; texto: string; icone: string }[] = [
-  { id: 'resumo', texto: 'Visão geral', icone: 'bi-speedometer2' },
-  { id: 'aovivo', texto: 'Ao vivo', icone: 'bi-geo-alt' },
-  { id: 'avaliacoes', texto: 'Avaliações', icone: 'bi-star-half' },
-  { id: 'usuarios', texto: 'Usuários', icone: 'bi-people' },
-  { id: 'documentos', texto: 'Documentos', icone: 'bi-person-vcard' },
-  { id: 'denuncias', texto: 'Denúncias', icone: 'bi-flag' },
-  { id: 'alertas', texto: 'Alertas', icone: 'bi-shield-exclamation' },
-  { id: 'regras', texto: 'Regras', icone: 'bi-sliders' },
-  { id: 'banco', texto: 'Banco de dados', icone: 'bi-database' }
-]
 
 /** Cartao de indicador da visao geral. */
 interface Destaque {
@@ -406,11 +379,16 @@ interface Pendencia {
   cor: 'vermelho' | 'amarelo' | 'verde'
 }
 
-const aba = ref<IdAba>('resumo')
+const route = useRoute()
+const router = useRouter()
+// A secao aberta vem do endereco (/admin/avaliacoes): o menu lateral e o botao voltar funcionam
+const aba = computed<IdAba>(() => (ehAba(route.params.aba) ? route.params.aba : 'resumo'))
+const secao = computed(() => SECOES.find((s) => s.id === aba.value) ?? SECOES[0]!)
 const carregando = ref(true)
 const aviso = reactive<{ texto: string; tipo: TipoAviso }>({ texto: '', tipo: 'success' })
 
-const r = ref<ResumoAdmin | null>(null)
+// Resumo compartilhado com o menu lateral (que o atualiza a cada 10 s)
+const r = computed(() => painel.resumo)
 const usuarios = ref<UsuarioAdmin[]>([])
 const busca = ref('')
 const soPendentes = ref(false)
@@ -498,11 +476,6 @@ const maxDemanda = computed(() => Math.max(1, ...(r.value?.demanda_sem_oferta ||
 const maxOferta = computed(() => Math.max(1, ...(r.value?.bairros_com_mais_oferta || []).map((d) => d.caronas)))
 const totalLinhas = computed(() => (banco.value?.tabelas || []).reduce((s, t) => s + t.linhas, 0))
 
-async function carregarResumo(): Promise<void> {
-  const { data } = await api.get<{ resumo: ResumoAdmin }>('/admin/resumo')
-  r.value = data.resumo
-}
-
 async function carregarUsuarios(): Promise<void> {
   const { data } = await api.get<{ usuarios: UsuarioAdmin[] }>('/admin/usuarios', {
     params: { busca: busca.value, pendentes: soPendentes.value ? 1 : 0 }
@@ -528,8 +501,12 @@ const CARREGADORES: Record<IdAba, () => Promise<unknown>> = {
   }
 }
 
-async function trocarAba(id: IdAba): Promise<void> {
-  aba.value = id
+/** Abre uma secao do painel (muda o endereco; o watch abaixo carrega os dados). */
+function trocarAba(id: IdAba): void {
+  void router.push(id === 'resumo' ? '/admin' : `/admin/${id}`)
+}
+
+async function abrirSecao(id: IdAba): Promise<void> {
   carregando.value = true
   aviso.texto = ''
   try {
@@ -730,9 +707,7 @@ watch(
     }
   }
 )
-useAoVivo(carregarResumo, 10000)
-
-onMounted(() => trocarAba('resumo'))
+watch(aba, (id) => void abrirSecao(id), { immediate: true })
 </script>
 
 <style scoped>
@@ -762,6 +737,26 @@ onMounted(() => trocarAba('resumo'))
 .destaque .detalhe {
   font-size: 0.78rem;
   color: var(--bs-secondary-color);
+}
+
+/* Celular: icone em cima e numero logo abaixo (lado a lado ficava apertado) */
+@media (max-width: 575.98px) {
+  .destaque {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.85rem;
+  }
+
+  .destaque .numero {
+    font-size: 1.5rem;
+  }
+
+  .destaque .icone-destaque {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.05rem;
+  }
 }
 
 .icone-destaque,
@@ -913,53 +908,59 @@ onMounted(() => trocarAba('resumo'))
   background: #dc3545;
 }
 
-/* Cabecalho do painel: faixa azul UVV com os numeros do momento */
-.painel-topo {
+/* Cabecalho da secao: titulo a esquerda, numeros do momento a direita */
+.secao-topo {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  border-radius: 1rem;
-  color: #fff;
-  background: linear-gradient(120deg, var(--uvv-azul) 0%, var(--uvv-azul-2) 70%, #1f56a8 100%);
-  box-shadow: 0 0.5rem 1.5rem rgba(11, 42, 91, 0.18);
+  gap: 0.75rem 1rem;
+}
+
+.secao-topo h1 {
+  color: var(--uvv-azul);
+}
+
+.min-w-0 {
+  min-width: 0;
 }
 
 .chip-topo {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  border: 1px solid #dfe5ef;
+  background: #fff;
+  color: var(--uvv-azul);
   border-radius: 999px;
   padding: 0.3rem 0.8rem;
   font-size: 0.85rem;
   font-weight: 600;
+  text-decoration: none;
 }
 
 .chip-topo:hover,
 .chip-topo:focus-visible {
-  background: rgba(255, 255, 255, 0.24);
+  border-color: var(--uvv-azul-2);
+  background: #eef3fa;
 }
 
 .chip-topo.perigo {
   background: #dc3545;
   border-color: #dc3545;
+  color: #fff;
 }
 
 .chip-topo .ponto {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
+  background: #b8c2d3;
 }
 
 .chip-topo .ponto.ativo {
-  background: #3ddc84;
-  box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.35);
+  background: #1db96a;
+  box-shadow: 0 0 0 3px rgba(29, 185, 106, 0.25);
 }
 
 /* Documento enviado para conferencia (ocupa a largura do cartao, sem passar da tela) */

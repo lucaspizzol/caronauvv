@@ -1,11 +1,9 @@
 <template>
   <!-- Controle de avaliacoes em tempo real (atualiza sozinho a cada 5 s) -->
   <section aria-labelledby="titulo-avaliacoes">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-      <div>
-        <h2 id="titulo-avaliacoes" class="h5 fw-bold mb-0"><i class="bi bi-star-half me-1 text-warning"></i>Controle de avaliações</h2>
-        <div class="small text-secondary">Todas as notas na hora, inclusive as que o aluno ainda não vê (avaliação às cegas).</div>
-      </div>
+    <!-- titulo e descricao ficam no cabecalho do painel; aqui so o indicador "ao vivo" -->
+    <h2 id="titulo-avaliacoes" class="visually-hidden">Controle de avaliações</h2>
+    <div class="d-flex justify-content-end mb-2">
       <AoVivo :atualizado-em="atualizadoEm" />
     </div>
 

@@ -31,12 +31,12 @@
             {{ naoLidas > 9 ? '9+' : naoLidas }}
           </span>
         </RouterLink>
-        <RouterLink to="/perfil" class="text-white text-decoration-none d-flex align-items-center gap-2">
+        <RouterLink to="/perfil" class="text-white text-decoration-none d-flex align-items-center gap-2" title="Meu perfil" aria-label="Meu perfil">
           <AvatarUsuario :usuario="auth.usuario" :tamanho="2" />
           <span :class="`d-none d-${largo}-inline small text-truncate`" style="max-width: 7rem">{{ primeiroNome }}</span>
         </RouterLink>
-        <button class="btn btn-sm btn-outline-light" title="Sair" @click="fazerLogout">
-          <i class="bi bi-box-arrow-right"></i><span class="d-none d-sm-inline ms-1">Sair</span>
+        <button class="btn btn-sm btn-outline-light" title="Sair" aria-label="Sair" @click="fazerLogout">
+          <i class="bi bi-box-arrow-right"></i><span class="d-none d-xl-inline ms-1">Sair</span>
         </button>
       </div>
     </div>
@@ -76,7 +76,8 @@ const itens: ItemMenu[] = [
   { to: '/meus-pedidos', texto: 'Meus pedidos', curto: 'Pedidos', icone: 'bi-ticket-perforated' },
   { to: '/avaliacoes', texto: 'Avaliações', curto: 'Avaliar', icone: 'bi-star' }
 ]
-const itensCelular: ItemMenu[] = [...itens.slice(0, 5), { to: '/perfil', texto: 'Perfil', icone: 'bi-person-circle' }]
+// Celular: no maximo 5 itens na barra de baixo (o perfil fica na foto, no topo)
+const itensCelular: ItemMenu[] = itens.slice(0, 5)
 
 const primeiroNome = computed(() => (auth.usuario?.nome || '').split(' ')[0])
 // O admin tem um item a mais no menu: os nomes completos so cabem em telas bem largas (>= 1400 px)

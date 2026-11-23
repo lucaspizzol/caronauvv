@@ -1,10 +1,24 @@
 <template>
-  <div class="tela-login d-flex align-items-center py-5">
-    <div class="container" style="max-width: 420px">
-      <div class="text-center mb-4">
-        <div class="marca display-6"><i class="bi bi-car-front-fill me-2"></i>Carona<span>UVV</span></div>
-        <p class="text-white-50 mb-0">Caronas entre alunos da UVV, com vaga garantida.</p>
+  <div class="tela-login d-flex align-items-center py-4 py-lg-5">
+    <div class="container" style="max-width: 1040px">
+      <div class="row g-4 align-items-center">
+      <!-- VITRINE: o que o app faz (no celular, so o essencial) -->
+      <div class="col-lg-6 text-white vitrine">
+        <div class="marca display-6 mb-2 text-center text-lg-start"><i class="bi bi-car-front-fill me-2"></i>Carona<span>UVV</span></div>
+        <p class="lead mb-3 text-center text-lg-start chamada">Vá para a UVV com quem faz o mesmo caminho e divida só o combustível.</p>
+        <ul class="list-unstyled d-none d-lg-flex flex-column gap-3 mb-4">
+          <li v-for="v in VANTAGENS" :key="v.titulo" class="d-flex gap-3 align-items-start">
+            <span class="icone-vitrine" aria-hidden="true"><i :class="['bi', v.icone]"></i></span>
+            <span><strong class="d-block">{{ v.titulo }}</strong><span class="texto-suave small">{{ v.texto }}</span></span>
+          </li>
+        </ul>
+        <div class="d-flex d-lg-none flex-wrap justify-content-center gap-2 mb-1">
+          <span v-for="v in VANTAGENS" :key="v.titulo" class="selo-vitrine"><i :class="['bi me-1', v.icone]" aria-hidden="true"></i>{{ v.curto }}</span>
+        </div>
       </div>
+
+      <div class="col-lg-6">
+      <div class="mx-auto" style="max-width: 420px">
 
       <!-- ETAPA 1: e-mail (ou matricula) e senha -->
       <div v-if="!desafio" class="card p-4">
@@ -79,10 +93,20 @@
         </div>
       </div>
     </div>
+      </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+// Vitrine da tela de entrada: o que o professor (e o aluno) ve primeiro
+const VANTAGENS = [
+  { icone: 'bi-patch-check-fill', titulo: 'Só alunos da UVV', curto: 'Só alunos UVV', texto: 'Cadastro com e-mail @uvv.br e documentos verificados.' },
+  { icone: 'bi-shield-lock-fill', titulo: 'Viagem segura', curto: 'PIN e link da família', texto: 'PIN de embarque, link para a família acompanhar e botão de emergência.' },
+  { icone: 'bi-fuel-pump-fill', titulo: 'Valor justo e aberto', curto: 'Divide o combustível', texto: 'A conta do combustível (com trânsito) aparece passo a passo, com teto por pessoa.' },
+  { icone: 'bi-people-fill', titulo: 'Fila com prioridade', curto: 'Fila com prioridade', texto: 'Sem carona? Entre na fila e seja avisado primeiro quando aparecer uma.' }
+]
 import { nextTick, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -195,3 +219,16 @@ function voltar(): void {
   erroApi.value = ''
 }
 </script>
+
+<style scoped>
+.chamada { color: rgba(255, 255, 255, 0.9); }
+.texto-suave { color: rgba(255, 255, 255, 0.78); }
+.icone-vitrine {
+  flex: 0 0 2.6rem; height: 2.6rem; border-radius: 0.8rem; display: grid; place-items: center;
+  background: rgba(255, 199, 44, 0.15); color: var(--uvv-amarelo); font-size: 1.2rem;
+}
+.selo-vitrine {
+  font-size: 0.8rem; padding: 0.3rem 0.7rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2);
+}
+</style>

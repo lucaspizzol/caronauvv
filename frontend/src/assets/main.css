@@ -155,7 +155,7 @@ body {
 .vazio {
   text-align: center;
   padding: 3rem 1rem;
-  color: #6c7a92;
+  color: #56637a;
 }
 
 .vazio > i {
@@ -179,10 +179,10 @@ body {
 .nav-celular a {
   flex: 1;
   text-align: center;
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   min-width: 0;
   white-space: nowrap;
-  color: #6c7a92;
+  color: #56637a;
   text-decoration: none;
   padding: 0.45rem 0 0.35rem;
 }
@@ -429,4 +429,82 @@ body {
 .lista-sugestoes li.ativo {
   background: rgba(22, 63, 130, 0.1);
   box-shadow: inset 3px 0 0 var(--uvv-azul-2);
+}
+
+/* ==========================================================
+   Acabamento visual (revisao de 23/11): foco visivel, cartoes,
+   botoes com resposta ao toque e movimento reduzido
+   ========================================================== */
+
+/* Foco do teclado bem visivel (WCAG 2.4.7): anel azul + borda amarela */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--uvv-amarelo);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(11, 42, 91, 0.35);
+}
+.navbar-uvv :where(a, button):focus-visible,
+.tela-login :where(a, button):focus-visible { box-shadow: none; }
+
+/* Cartoes: borda suave e sombra leve; levantam um pouco ao passar o mouse */
+.card {
+  border-color: #e3e8f0;
+  box-shadow: 0 1px 2px rgba(11, 42, 91, 0.05), 0 2px 8px rgba(11, 42, 91, 0.04);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+@media (hover: hover) {
+  .container > .d-flex > .card:hover,
+  .cartao-pedido:hover { box-shadow: 0 4px 16px rgba(11, 42, 91, 0.1); }
+}
+
+/* Botoes: resposta ao toque (afunda de leve) */
+.btn { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.08s ease; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.99); }
+
+/* Titulos das paginas com um detalhe amarelo UVV */
+.titulo-pagina {
+  font-weight: 800;
+  color: var(--uvv-azul);
+  position: relative;
+  padding-bottom: 0.35rem;
+}
+.titulo-pagina::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 2.5rem;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--uvv-amarelo);
+}
+
+/* Estados vazios: icone dentro de um circulo suave */
+.vazio > i {
+  width: 4.5rem;
+  height: 4.5rem;
+  line-height: 4.5rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 50%;
+  background: rgba(22, 63, 130, 0.08);
+  color: var(--uvv-azul-2);
+  font-size: 2rem;
+}
+
+/* Barra do celular: item ativo com marcador amarelo e area de toque de 44px+ */
+.nav-celular a { min-height: 48px; position: relative; }
+.nav-celular a.router-link-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 30%;
+  right: 30%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--uvv-amarelo);
+}
+
+/* Quem prefere menos movimento nao ve animacoes */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  .btn:active:not(:disabled) { transform: none; }
 }

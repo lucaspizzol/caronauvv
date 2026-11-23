@@ -79,6 +79,9 @@
             classe="btn-primary"
             :acao="() => iniciar(carona)"
           />
+          <button v-if="carona.status === 'concluida'" class="btn btn-sm btn-outline-primary" :aria-expanded="resumos.has(carona.id)" @click="alternarResumo(carona.id)">
+            <i class="bi bi-graph-up me-1"></i>Resumo da viagem
+          </button>
           <RouterLink v-if="podeAvaliarPassageiros(carona)" to="/avaliacoes" class="btn btn-sm btn-warning">
             <i class="bi bi-star-fill me-1"></i>Avaliar passageiros
           </RouterLink>
@@ -98,6 +101,8 @@
             :acao="() => cancelar(carona)"
           />
         </div>
+
+        <ResumoViagem v-if="resumos.has(carona.id)" class="mt-3" :carona-id="carona.id" />
 
         <!-- Pedidos recebidos -->
         <div v-if="abertas_.has(carona.id)" class="mt-3">
@@ -119,7 +124,14 @@
                 </a>
               </div>
             </div>
-            <span v-if="s.embarcou_em" class="badge text-bg-success"><i class="bi bi-person-check-fill me-1"></i>Embarcou</span>
+            <span v-if="s.desembarcou_em" class="badge text-bg-secondary"><i class="bi bi-box-arrow-right me-1"></i>Desceu às {{ hora(s.desembarcou_em) }}</span>
+            <span v-else-if="s.embarcou_em" class="badge text-bg-success"><i class="bi bi-person-check-fill me-1"></i>Embarcou às {{ hora(s.embarcou_em) }}</span>
+            <button
+              v-if="carona.status === 'em_andamento' && s.embarcou_em && !s.desembarcou_em"
+              class="btn btn-sm btn-outline-secondary" :disabled="respondendo === s.id" @click="desembarcar(carona, s)"
+            >
+              <i class="bi bi-box-arrow-right me-1"></i>Desembarcou
+            </button>
             <span v-else-if="s.faltou" class="badge text-bg-warning">Não apareceu</span>
             <span v-if="s.pagamento?.status === 'pago'" class="badge text-bg-light border text-success"><i class="bi bi-cash-coin me-1"></i>Pago</span>
             <StatusBadge :status="s.status" tipo="pedido" />
@@ -172,6 +184,7 @@ import AoVivo from '../components/AoVivo.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import ContagemRegressiva from '../components/ContagemRegressiva.vue'
+import ResumoViagem from '../components/ResumoViagem.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import ReputacaoResumo from '../components/ReputacaoResumo.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'
@@ -180,7 +193,8 @@ import { useAoVivo } from '../composables/useAoVivo'
 import api, { camposDoErro, mensagemDeErro } from '../services/api'
 import type { TipoAviso } from '../stores/auth'
 import type { Carona, Solicitacao, StatusCarona } from '../types/api'
-import { jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { hora, jaSaiu, linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { posicaoAtual } from '../utils/gps'
 import { regras } from '../utils/validacao'
 
 const route = useRoute()
@@ -338,12 +352,33 @@ async function iniciar(carona: Carona): Promise<void> {
   }
 }
 
+// Resumo da viagem (entrada/saida, tempo a bordo, mapa) das caronas concluidas
+const resumos = reactive(new Set<number>())
+function alternarResumo(id: number): void {
+  if (resumos.has(id)) resumos.delete(id)
+  else resumos.add(id)
+}
+
+async function desembarcar(carona: Carona, s: Solicitacao): Promise<void> {
+  respondendo.value = s.id
+  try {
+    await api.post(`/solicitacoes/${s.id}/desembarque`, (await posicaoAtual()) || {})
+    await carregarPedidos(carona)
+    avisar(`Desembarque de ${s.passageiro.nome.split(' ')[0]} registrado.`)
+  } catch (e) {
+    avisar(mensagemDeErro(e), 'danger')
+  } finally {
+    respondendo.value = null
+  }
+}
+
 async function confirmarEmbarque(carona: Carona, s: Solicitacao): Promise<void> {
   errosPin[s.id] = regras.pin(pins[s.id])
   if (errosPin[s.id]) return
   respondendo.value = s.id
   try {
-    await api.post(`/solicitacoes/${s.id}/embarque`, { pin: pins[s.id] })
+    // GPS opcional: registra onde o passageiro entrou (se o navegador permitir)
+    await api.post(`/solicitacoes/${s.id}/embarque`, { pin: pins[s.id], ...((await posicaoAtual()) || {}) })
     await carregarPedidos(carona)
     avisar(`${s.passageiro.nome.split(' ')[0]} embarcou. PIN conferido!`)
   } catch (e) {

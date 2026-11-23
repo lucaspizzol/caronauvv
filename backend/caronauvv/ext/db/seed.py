@@ -275,6 +275,8 @@ def _dados_de_exemplo() -> None:
         endereco_embarque="Rua Goiânia, 45", distancia_rota_m=30, desvio_min=1,
         respondida_em=as_(ontem, 12, 0), pin_embarque="8271",
         embarcou_em=as_(ontem, 18, 36), metodo_embarque="pin+gps",
+        embarque_gps_lat=-20.3490, embarque_gps_lng=-40.2960,          # entrou na Rua Goiania
+        desembarcou_em=as_(ontem, 18, 52), desembarque_lat=UVV[0], desembarque_lng=UVV[1],  # desceu na UVV
     )
     pedro_ontem = Solicitacao(
         carona=c_ontem, passageiro=pedro, status="aceita",
@@ -387,6 +389,7 @@ def _dados_de_exemplo() -> None:
         return Solicitacao(carona=carona, passageiro=passageiro, status="aceita",
                            respondida_em=as_(dia, 12, 0), pin_embarque="1111", faltou=faltou,
                            embarcou_em=None if faltou else as_(dia, 18, 35),
+                           desembarcou_em=None if faltou else as_(dia, 18, 49),
                            metodo_embarque=None if faltou else "pin")
 
     ana_3, marina_3, lucas_3 = viagem(c_3dias, ana, dia3), viagem(c_3dias, marina, dia3), viagem(c_3dias, lucas, dia3)

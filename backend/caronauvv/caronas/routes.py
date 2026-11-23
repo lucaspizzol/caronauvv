@@ -10,7 +10,8 @@ from caronauvv.limite import limitar
 from .fila import buscar_pedido, criar_pedido, demanda, pedido_to_dict, pedidos_do_aluno
 from .fila import cancelar_pedido as cancelar_pedido_da_fila
 from .schemas import (
-    CaronaEdicaoSchema, CaronaNovaSchema, PedidoCaronaSchema, PedidoVagaSchema, PinSchema, PosicaoSchema,
+    CaronaEdicaoSchema, CaronaNovaSchema, DesembarqueSchema, PedidoCaronaSchema, PedidoVagaSchema, PinSchema,
+    PosicaoSchema,
 )
 from .services import (
     aceitar_solicitacao,
@@ -129,6 +130,15 @@ def concluir(carona_id):
     return {"carona": carona.to_dict(g.usuario)}
 
 
+@bp.get("/<int:carona_id>/resumo")
+@login_required
+def resumo(carona_id):
+    """Entrada/saida de cada passageiro, tempo a bordo, distancia, atraso e trilha para o mapa."""
+    from .viagem import resumo_viagem
+
+    return {"resumo": resumo_viagem(buscar_carona(carona_id), g.usuario)}
+
+
 @bp.post("/<int:carona_id>/posicao")
 @login_required
 def posicao(carona_id):
@@ -191,8 +201,18 @@ def cancelar_pedido(solicitacao_id):
 @bp_solicitacoes.post("/<int:solicitacao_id>/embarque")
 @login_required
 def embarque(solicitacao_id):
-    pin = validar(PinSchema, _json()).pin
-    solicitacao = confirmar_embarque(buscar_solicitacao(solicitacao_id), g.usuario, pin)
+    dados = validar(PinSchema, _json())
+    solicitacao = confirmar_embarque(buscar_solicitacao(solicitacao_id), g.usuario, dados.pin, dados.lat, dados.lng)
+    return {"solicitacao": solicitacao.to_dict(g.usuario)}
+
+
+@bp_solicitacoes.post("/<int:solicitacao_id>/desembarque")
+@login_required
+def desembarque(solicitacao_id):
+    from .viagem import registrar_desembarque
+
+    dados = validar(DesembarqueSchema, _json())
+    solicitacao = registrar_desembarque(buscar_solicitacao(solicitacao_id), g.usuario, dados.lat, dados.lng)
     return {"solicitacao": solicitacao.to_dict(g.usuario)}
 
 

@@ -326,13 +326,17 @@ def _solicitacao_da_viagem(solicitacao: Solicitacao, usuario: Usuario) -> Carona
     return carona
 
 
-def confirmar_embarque(solicitacao: Solicitacao, usuario: Usuario, pin: str) -> Solicitacao:
+def confirmar_embarque(solicitacao: Solicitacao, usuario: Usuario, pin: str,
+                       lat: float | None = None, lng: float | None = None) -> Solicitacao:
     """O passageiro fala o PIN e o motorista digita: garante que entrou no carro certo."""
     carona = _solicitacao_da_viagem(solicitacao, usuario)
     if not secrets.compare_digest(pin, solicitacao.pin_embarque or ""):
         raise ApiError("PIN incorreto. Confira com o passageiro.")
     solicitacao.embarcou_em = datetime.now()
-    solicitacao.metodo_embarque = "pin"
+    tem_gps = lat is not None and lng is not None
+    solicitacao.metodo_embarque = "pin+gps" if tem_gps else "pin"
+    if tem_gps:
+        solicitacao.embarque_gps_lat, solicitacao.embarque_gps_lng = lat, lng
     solicitacao.faltou = False
     notificar(solicitacao.passageiro, "embarque_confirmado", "Embarque confirmado",
               f"Boa viagem! Você está no carro de {_primeiro_nome(carona.motorista)}.", carona)
@@ -369,6 +373,8 @@ def concluir_carona(carona: Carona, usuario: Usuario) -> Carona:
             solicitacao.status = "expirada"
         elif solicitacao.status == "aceita" and not solicitacao.faltou:
             viajaram += 1
+            if solicitacao.embarcou_em and not solicitacao.desembarcou_em:
+                solicitacao.desembarcou_em = carona.concluida_em  # ainda estava a bordo: desceu no fim
             notificar(solicitacao.passageiro, "avaliacao_pendente", "Como foi a viagem?",
                       f"Avalie {_primeiro_nome(usuario)} e ajude a comunidade a confiar no CaronaUVV.", carona)
     if viajaram:

@@ -211,6 +211,7 @@ export interface Solicitacao {
   expira_em: DataIso | null
   passageiro: Usuario & { reputacao: Reputacao }
   embarcou_em: DataIso | null
+  desembarcou_em: DataIso | null
   faltou: boolean
   pagamento: Pagamento | null
   ja_avaliei?: boolean
@@ -321,6 +322,7 @@ export interface ViagemAcompanhada {
   motorista: { nome: string; curso: string | null; verificado: boolean; foto_url: string | null }
   veiculo: Veiculo | null
   ultima_posicao: { lat: number; lng: number; em: DataIso } | null
+  trilha: [number, number][]
   expira_em: DataIso
 }
 
@@ -350,6 +352,7 @@ export interface ResumoAdmin {
     taxa_faltas: number
   }
   confianca: { nota_media: number | null; avaliacoes: number; denuncias_abertas: number; alertas_aguardando: number }
+  medias: MediasViagens
   demanda_sem_oferta: { bairro: string; buscas: number }[]
   bairros_com_mais_oferta: { bairro: string; caronas: number }[]
 }
@@ -451,4 +454,45 @@ export interface RecomendacaoOnibus {
   aviso: string
   fonte: string
   link_oficial: string
+}
+
+// Resumo da viagem (caronas/viagem.py)
+export interface PontoGps {
+  lat: number
+  lng: number
+}
+
+export interface PassageiroResumo {
+  solicitacao_id: number
+  nome: string
+  faltou: boolean
+  entrou_em: DataIso | null
+  saiu_em: DataIso | null
+  entrada: PontoGps | null
+  saida: PontoGps | null
+  minutos_a_bordo: number | null
+  km_a_bordo: number | null
+}
+
+export interface ResumoViagem {
+  carona_id: number
+  status: StatusCarona
+  saida_prevista: DataIso
+  iniciada_em: DataIso | null
+  concluida_em: DataIso | null
+  atraso_saida_min: number | null
+  duracao_min: number | null
+  distancia_km: number | null
+  distancia_pela_trilha: boolean
+  velocidade_media_kmh: number | null
+  trilha: [number, number][]
+  passageiros: PassageiroResumo[]
+}
+
+export interface MediasViagens {
+  viagens_medidas: number
+  tempo_medio_viagem_min: number | null
+  atraso_medio_saida_min: number | null
+  velocidade_media_kmh: number | null
+  tempo_medio_a_bordo_min: number | null
 }

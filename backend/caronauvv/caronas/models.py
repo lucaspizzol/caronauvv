@@ -198,6 +198,13 @@ class Solicitacao(db.Model):
     embarcou_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
     metodo_embarque: Mapped[Optional[str]] = mapped_column(db.String(20))  # "pin+gps", "gps", "manual"
     faltou: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA] "faltas" na tela 6
+    # Onde o passageiro entrou (GPS do celular do motorista na hora do PIN, se permitido)
+    embarque_gps_lat: Mapped[Optional[float]] = mapped_column(db.Float)
+    embarque_gps_lng: Mapped[Optional[float]] = mapped_column(db.Float)
+    # Quando e onde desceu (botao "Desembarcou" ou conclusao da viagem)
+    desembarcou_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    desembarque_lat: Mapped[Optional[float]] = mapped_column(db.Float)
+    desembarque_lng: Mapped[Optional[float]] = mapped_column(db.Float)
 
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now(), onupdate=datetime.now)
@@ -235,6 +242,7 @@ class Solicitacao(db.Model):
             "expira_em": iso(self.expira_em),
             "passageiro": self.passageiro.to_dict(privado=self.status == "aceita"),
             "embarcou_em": iso(self.embarcou_em),
+            "desembarcou_em": iso(self.desembarcou_em),
             "faltou": self.faltou,
             "pagamento": self.pagamento.to_dict() if self.pagamento else None,
         }

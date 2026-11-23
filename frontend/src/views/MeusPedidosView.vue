@@ -50,6 +50,15 @@
 
           <div v-if="p.endereco_embarque" class="small text-secondary"><i class="bi bi-geo-alt me-1"></i>{{ p.endereco_embarque }}</div>
 
+          <button v-if="p.status === 'aceita' && p.carona.status === 'em_andamento' && p.embarcou_em && !p.desembarcou_em"
+                  class="btn btn-sm btn-outline-secondary" :disabled="desembarcando === p.id" @click="desembarcar(p)">
+            <i class="bi bi-box-arrow-right me-1"></i>Desembarquei
+          </button>
+          <span v-else-if="p.desembarcou_em" class="small text-secondary"><i class="bi bi-box-arrow-right me-1"></i>Desceu às {{ hora(p.desembarcou_em) }}</span>
+          <button v-if="p.status === 'aceita' && p.carona.status === 'concluida'" class="btn btn-sm btn-outline-primary"
+                  :aria-expanded="resumos.has(p.id)" @click="alternarResumo(p.id)">
+            <i class="bi bi-graph-up me-1"></i>Resumo da viagem
+          </button>
           <RouterLink v-if="podeAvaliar(p)" to="/avaliacoes" class="btn btn-sm btn-warning">
             <i class="bi bi-star-fill me-1"></i>Avaliar {{ p.carona.motorista.nome.split(' ')[0] }}
           </RouterLink>
@@ -65,6 +74,8 @@
             />
           </div>
         </div>
+
+        <ResumoViagem v-if="resumos.has(p.id)" class="mt-3" :carona-id="p.carona.id" />
 
         <!-- Pagamento do rateio e seguranca (so com a vaga confirmada) -->
         <div v-if="p.status === 'aceita' && (emAberto(p) || p.carona.status === 'concluida')" class="border-top mt-3 pt-3 d-flex flex-column gap-2">
@@ -91,13 +102,15 @@ import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import ContagemRegressiva from '../components/ContagemRegressiva.vue'
 import PixPagamento from '../components/PixPagamento.vue'
+import ResumoViagem from '../components/ResumoViagem.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useAoVivo } from '../composables/useAoVivo'
 import api, { mensagemDeErro } from '../services/api'
 import type { TipoAviso } from '../stores/auth'
 import type { SolicitacaoComCarona } from '../types/api'
-import { linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { hora, linkWhatsApp, telefoneFormatado } from '../utils/formato'
+import { posicaoAtual } from '../utils/gps'
 
 const pedidos = ref<SolicitacaoComCarona[]>([])
 const carregando = ref(true)
@@ -137,6 +150,28 @@ async function atualizarSilencioso(): Promise<void> {
 }
 
 const { atualizadoEm } = useAoVivo(atualizarSilencioso)
+
+const resumos = reactive(new Set<number>())
+function alternarResumo(id: number): void {
+  if (resumos.has(id)) resumos.delete(id)
+  else resumos.add(id)
+}
+
+const desembarcando = ref<number | null>(null)
+async function desembarcar(p: SolicitacaoComCarona): Promise<void> {
+  desembarcando.value = p.id
+  try {
+    await api.post(`/solicitacoes/${p.id}/desembarque`, (await posicaoAtual()) || {})
+    aviso.texto = 'Desembarque registrado. Chegou bem!'
+    aviso.tipo = 'success'
+    await carregar()
+  } catch (e) {
+    aviso.texto = mensagemDeErro(e)
+    aviso.tipo = 'danger'
+  } finally {
+    desembarcando.value = null
+  }
+}
 
 async function cancelar(p: SolicitacaoComCarona): Promise<void> {
   try {

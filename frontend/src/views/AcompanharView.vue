@@ -55,7 +55,7 @@
           <!-- Ultima posicao enviada pelo GPS do motorista (mapa do OpenStreetMap) -->
           <div v-if="v.ultima_posicao" class="mt-3">
             <div class="small fw-semibold mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i>Última localização · {{ hora(v.ultima_posicao.em) }}</div>
-            <iframe class="mapa-viagem" :src="mapa" title="Mapa com a localização do carro" loading="lazy"></iframe>
+            <MapaTrilha :trilha="v.trilha" :marcas="[{ lat: v.ultima_posicao.lat, lng: v.ultima_posicao.lng, texto: `Carro às ${hora(v.ultima_posicao.em)}`, tipo: 'carro' }]" descricao="Mapa com o trajeto do carro até agora" />
             <a :href="`https://www.openstreetmap.org/?mlat=${v.ultima_posicao.lat}&mlon=${v.ultima_posicao.lng}#map=16/${v.ultima_posicao.lat}/${v.ultima_posicao.lng}`" target="_blank" rel="noopener" class="small">Abrir mapa maior</a>
           </div>
           <p v-else class="small text-secondary mt-3 mb-0"><i class="bi bi-geo me-1"></i>A localização aparece aqui quando o motorista ligar o GPS durante a viagem.</p>
@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, ref } from 'vue'
 
 import AoVivo from '../components/AoVivo.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
@@ -80,18 +80,13 @@ import api, { mensagemDeErro } from '../services/api'
 import type { ViagemAcompanhada } from '../types/api'
 import { dataHora, hora } from '../utils/formato'
 
+const MapaTrilha = defineAsyncComponent(() => import('../components/MapaTrilha.vue'))
+
 const props = defineProps<{ token: string }>()
 
 const v = ref<ViagemAcompanhada | null>(null)
 const erro = ref('')
 const carregando = ref(true)
-
-const mapa = computed(() => {
-  const p = v.value?.ultima_posicao
-  if (!p) return ''
-  const d = 0.006
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${p.lng - d},${p.lat - d},${p.lng + d},${p.lat + d}&layer=mapnik&marker=${p.lat},${p.lng}`
-})
 
 async function buscar(): Promise<void> {
   try {

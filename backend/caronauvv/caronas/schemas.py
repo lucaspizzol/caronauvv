@@ -82,6 +82,9 @@ class PedidoVagaSchema(Schema):
 
 class PinSchema(Schema):
     pin: str = Field(min_length=1, max_length=4)
+    # GPS opcional do celular do motorista na hora do embarque
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
     @field_validator("pin")
     @classmethod
@@ -111,3 +114,8 @@ class PedidoCaronaSchema(Schema):
 class PosicaoSchema(Schema):
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
+
+
+class DesembarqueSchema(Schema):
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)

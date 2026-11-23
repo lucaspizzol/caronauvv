@@ -77,8 +77,18 @@ def acompanhar(token: str) -> dict:
             {"lat": ultima.lat, "lng": ultima.lng, "em": ultima.registrada_em.isoformat(timespec="minutes")}
             if ultima else None
         ),
+        "trilha": _trilha_mapa(carona),
         "expira_em": link.expira_em.isoformat(timespec="minutes"),
     }
+
+
+def _trilha_mapa(carona: Carona) -> list[list[float]]:
+    """Trilha da viagem (no maximo ~500 pontos) para desenhar no mapa do link da familia."""
+    from caronauvv.caronas.viagem import MAX_PONTOS_MAPA, trilha
+
+    pontos = trilha(carona)
+    passo = max(1, len(pontos) // MAX_PONTOS_MAPA)
+    return [[p.lat, p.lng] for p in pontos[::passo]]
 
 
 # ==========================================================

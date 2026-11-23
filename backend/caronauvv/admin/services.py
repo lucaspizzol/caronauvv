@@ -28,6 +28,8 @@ def _contar(modelo, *condicoes) -> int:
 # INDICADORES (KPIs)
 # ==========================================================
 def resumo() -> dict:
+    from caronauvv.caronas.viagem import medias_das_viagens
+
     agora = datetime.now()
 
     por_status = dict(db.session.execute(
@@ -89,6 +91,7 @@ def resumo() -> dict:
             "denuncias_abertas": _contar(Denuncia, Denuncia.status != "encerrada"),
             "alertas_aguardando": _contar(Alerta, Alerta.status != "resolvido"),
         },
+        "medias": medias_das_viagens(),   # tempo de viagem, atraso na saida, velocidade, tempo a bordo
         "demanda_sem_oferta": [{"bairro": b, "buscas": n} for b, n in sem_resultado],
         "bairros_com_mais_oferta": [{"bairro": b, "caronas": n} for b, n in bairros_oferta],
     }

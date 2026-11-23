@@ -358,7 +358,8 @@ function avisar(texto: string, tipo: TipoAviso = 'success'): void {
 
 const kpis = computed<Kpi[]>(() => {
   if (!r.value) return []
-  const { usuarios: u, viagens: v, confianca: c } = r.value
+  const { usuarios: u, viagens: v, confianca: c, medias: m } = r.value
+  const min = (n: number | null) => (n === null ? '—' : `${decimal(n)} min`)
   return [
     { rotulo: 'Alunos cadastrados', valor: u.total, detalhe: `${u.ativos_30_dias} ativos nos últimos 30 dias` },
     { rotulo: 'Viagens concluídas', valor: v.concluidas, detalhe: `${v.passageiros_transportados} passageiros levados`, classe: 'verde' },
@@ -366,6 +367,9 @@ const kpis = computed<Kpi[]>(() => {
     { rotulo: 'CO₂ evitado', valor: `${decimal(v.co2_evitado_kg)} kg`, detalhe: `${decimal(v.km_compartilhados)} km compartilhados`, classe: 'verde' },
     { rotulo: 'Nota média', valor: nota(c.nota_media), detalhe: `${c.avaliacoes} avaliações` },
     { rotulo: 'Faltas', valor: porcentagem(v.taxa_faltas), detalhe: 'das vagas confirmadas' },
+    { rotulo: 'Tempo médio de viagem', valor: min(m.tempo_medio_viagem_min), detalhe: `${m.viagens_medidas} viagens medidas pelo app` },
+    { rotulo: 'Atraso médio na saída', valor: min(m.atraso_medio_saida_min), detalhe: 'início da viagem x horário marcado' },
+    { rotulo: 'Velocidade média', valor: m.velocidade_media_kmh === null ? '—' : `${decimal(m.velocidade_media_kmh)} km/h`, detalhe: `tempo médio a bordo: ${min(m.tempo_medio_a_bordo_min)}` },
     { rotulo: 'Denúncias abertas', valor: c.denuncias_abertas, detalhe: 'aguardando análise', classe: c.denuncias_abertas ? 'alerta' : '' },
     { rotulo: 'Alertas de segurança', valor: c.alertas_aguardando, detalhe: 'sem resolução', classe: c.alertas_aguardando ? 'alerta' : '' }
   ]

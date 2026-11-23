@@ -268,15 +268,15 @@ def _dados_de_exemplo() -> None:
         origem_lat=ITAPUA[0], origem_lng=ITAPUA[1], destino_lat=UVV[0], destino_lng=UVV[1],
         distancia_km=6.2, duracao_min=18,
         data_hora_saida=as_(ontem, 18, 30), vagas=3, valor_por_passageiro=1.00,
-        status="concluida", iniciada_em=as_(ontem, 18, 31), concluida_em=as_(ontem, 18, 52),
+        status="concluida", iniciada_em=as_(ontem, 18, 31), concluida_em=as_(ontem, 18, 41),
     )
     ana_ontem = Solicitacao(
         carona=c_ontem, passageiro=ana, status="aceita",
         endereco_embarque="Rua Goiânia, 45", distancia_rota_m=30, desvio_min=1,
         respondida_em=as_(ontem, 12, 0), pin_embarque="8271",
-        embarcou_em=as_(ontem, 18, 36), metodo_embarque="pin+gps",
+        embarcou_em=as_(ontem, 18, 33), metodo_embarque="pin+gps",
         embarque_gps_lat=-20.3490, embarque_gps_lng=-40.2960,          # entrou na Rua Goiania
-        desembarcou_em=as_(ontem, 18, 52), desembarque_lat=UVV[0], desembarque_lng=UVV[1],  # desceu na UVV
+        desembarcou_em=as_(ontem, 18, 41), desembarque_lat=UVV[0], desembarque_lng=UVV[1],  # desceu na UVV
     )
     pedro_ontem = Solicitacao(
         carona=c_ontem, passageiro=pedro, status="aceita",
@@ -296,13 +296,13 @@ def _dados_de_exemplo() -> None:
     trilha = [
         PosicaoGps(carona=c_ontem, lat=lat, lng=lng, registrada_em=as_(ontem, 18, minuto))
         for minuto, (lat, lng) in zip(
-            (31, 36, 42, 48, 52),
+            (31, 33, 36, 38, 41),
             (ITAPUA, (-20.3490, -40.2960), (-20.3530, -40.3000), (-20.3580, -40.3040), UVV),
         )
     ]
     link_familia = LinkCompartilhado(
         carona=c_ontem, usuario=ana, contato=mae_da_ana, token="exemplo-link-familia-ana",
-        expira_em=as_(ontem, 18, 52), acessos=3,
+        expira_em=as_(ontem, 18, 41), acessos=3,
     )
     alerta = Alerta(
         carona=c_ontem, usuario=ana, tipo="parada_longa",

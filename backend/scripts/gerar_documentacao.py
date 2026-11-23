@@ -376,13 +376,32 @@ def montar(app) -> str:
     </tbody>
   </table>
 
+  <h3>Última etapa: o que entrou em 23/11</h3>
+  <table>
+    <thead><tr><th>Recurso</th><th>Como funciona</th></tr></thead>
+    <tbody>
+      <tr><td>30 min para responder</td><td>O pedido de vaga expira se o motorista não responder em 30 min (ou 2 h antes da saída, o que vier antes). Motorista e passageiro veem a contagem regressiva; o passageiro é avisado quando expira.</td></tr>
+      <tr><td>Bairros enquanto digita</td><td>512 bairros de Vila Velha, Vitória, Cariacica e Serra, sem precisar de acento, num campo acessível (setas, Enter, Esc). CEP preenche rua e bairro; a rua também é sugerida pelo nome. O campo Bairro recusa "Rua..."/"Av...".</td></tr>
+      <tr><td>Distância real até a UVV</td><td>Pela rota de carro (OSRM) e, se o serviço cair, pela linha reta entre as coordenadas × 1,35.</td></tr>
+      <tr><td>Pedir carona (fila com prioridade)</td><td>Sem carona, o aluno entra na fila do bairro/dia/horário (até 3 pedidos). Carona compatível avisa a fila e, por 15 min, só quem estava na fila pede vaga; com reserva automática a vaga fica guardada para os primeiros. O motorista vê "N alunos esperando" ao oferecer. Falta recente tira a prioridade.</td></tr>
+      <tr><td>Que horas você vai sair?</td><td>Recomenda caronas 30 min antes/depois do horário e os ônibus que costumam servir o trajeto. Como o Transcol não publica horários em dados abertos, o ônibus aparece como <b>estimativa</b>, sem horário, com link para os horários oficiais.</td></tr>
+      <tr><td>Entrada e saída com GPS</td><td>Hora e local de entrada (PIN) e de saída ("Desembarquei"); resumo da viagem com tempo a bordo, distância pela trilha, velocidade, atraso na saída e mapa (Leaflet + OpenStreetMap). Médias no painel.</td></tr>
+      <tr><td>Trânsito no valor</td><td>Horário de pico (+25%) e trechos críticos da Grande Vitória (+10% cada: Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101), até +50%, mostrados na conta.</td></tr>
+      <tr><td>Meus pedidos, FAQ e visual</td><td>Abas Próximas/Aguardando/Histórico, PIN em destaque, página pública de perguntas frequentes, tela de entrada como vitrine, foco do teclado visível e contraste AA.</td></tr>
+    </tbody>
+  </table>
+
   <h3>Regras de negócio implementadas (e testadas)</h3>
   <ul>
     <li>Uma carona nunca tem mais passageiros aceitos do que vagas; quando lota, vira <i>lotada</i> e sai da busca. Se alguém desiste, volta a <i>ativa</i>.</li>
     <li>O motorista não pode pedir vaga na própria carona; o passageiro não pode pedir a mesma carona duas vezes.</li>
     <li>Não é possível criar carona no passado; o rateio não passa do teto configurado.</li>
     <li>Cancelar uma carona cancela os pedidos em aberto e avisa os passageiros.</li>
-    <li>Pedido sem resposta expira 2 h antes da saída (ou quando a viagem é iniciada).</li>
+    <li>Pedido sem resposta expira em 30 min ou 2 h antes da saída, o que vier antes (ou quando a viagem é iniciada); o passageiro é avisado.</li>
+    <li>Pedir carona: até 3 pedidos abertos, faixa de até 4 h; carona compatível dá 15 min de prioridade a quem já estava na fila; falta nos últimos 30 dias tira a prioridade.</li>
+    <li>O campo Bairro não aceita endereço; a busca de caronas ignora acento e maiúscula.</li>
+    <li>Desembarque registrado pelo motorista ou pelo próprio passageiro; o resumo da viagem só aparece para participantes e para a administração.</li>
+    <li>Trânsito: +25% no pico e +10% por trecho crítico, até +50%; fora do pico, sem acréscimo.</li>
     <li>A viagem pode ser iniciada a partir de 30 min antes da saída e precisa de ao menos um passageiro confirmado.</li>
     <li>Embarque só com o PIN certo; o passageiro não pode desistir depois que a viagem começou.</li>
     <li>Telefone e placa só aparecem entre motorista e passageiro depois do aceite.</li>
@@ -429,6 +448,26 @@ def montar(app) -> str:
 </section>
 <section class="quebra">
   {imagem("15_admin_documentos.jpg", "Painel da administração: fila de documentos para conferir. A imagem vem pela API com o login do administrador e é apagada ao aprovar ou recusar.")}
+</section>
+<section class="quebra">
+  {imagem("16_login_vitrine.jpg", "Tela de entrada como vitrine: o que o CaronaUVV oferece, ao lado do login (no celular, viram selos acima do formulário).")}
+  {imagem("18_bairro_sugestoes.jpg", "Campo Bairro com sugestões enquanto digita: todos os bairros da Grande Vitória, sem precisar de acento, com a distância aproximada até a UVV.")}
+</section>
+<section class="quebra">
+  {imagem("17_pedir_carona_onibus.jpg", "Pedir carona: a fila do bairro com a posição do aluno e o card \"Que horas você vai sair?\" com caronas no horário e ônibus (estimativa, com link para os horários oficiais).")}
+  {imagem("19_oferecer_transito.jpg", "Oferecer carona às 7h15 de um dia útil: a conta soma 25% de trânsito do horário de pico (os trechos críticos somam mais 10% cada).")}
+</section>
+<section class="quebra">
+  {imagem("20_meus_pedidos_abas.jpg", "Meus pedidos em abas: status claro no topo, PIN de embarque em destaque, contato do motorista e as ações agrupadas.")}
+  {imagem("21_resumo_viagem_mapa.jpg", "Resumo da viagem: duração, distância pela trilha GPS, velocidade, entrada e saída do passageiro e o mapa com o trajeto.")}
+</section>
+<section class="quebra">
+  <div class="lado-a-lado">
+    {imagem("23_celular_contagem.jpg", "No celular: pedido aguardando com a contagem regressiva dos 30 min.", "celular")}
+    <div>
+      {imagem("22_faq.jpg", "Perguntas frequentes (página pública): acordeão acessível com busca.")}
+    </div>
+  </div>
 </section>
 <section class="quebra">
   <div class="lado-a-lado">
@@ -658,7 +697,7 @@ Flask ── create_app()   (Application Factory)
 <section>
   <h3>5.11 Testes automatizados</h3>
   <p><b>{n_testes} testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
-  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos e cálculo do combustível. Cada teste roda num banco novo, criado
+  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos, cálculo do combustível com trânsito, fila do Pedir carona, bairros/APIs externas e resumo da viagem. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
   No front-end, <b>{n_front} testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
   {codigo(funcao("backend/tests/conftest.py", "viagem"), "backend/tests/conftest.py")}
@@ -676,10 +715,59 @@ Flask ── create_app()   (Application Factory)
       <tr><td><code>test_ciclo_viagem.py</code>, <code>test_conclusao_e_erros.py</code></td><td>Iniciar, PIN, falta, GPS, concluir, teto e valor sugerido, erros em JSON</td></tr>
       <tr><td><code>test_avaliacoes_pagamentos.py</code></td><td>Avaliação às cegas, reputação, perfil público, Pix e pagamento</td></tr>
       <tr><td><code>test_seguranca_notificacoes.py</code></td><td>Notificações, contatos, link da família, emergência, denúncias</td></tr>
+      <tr><td><code>test_pedir_carona.py</code></td><td>Fila: posição, limites, aviso ao publicar, prioridade de 15 min, reserva guardada para o primeiro, falta recente, pedido atendido e expirado</td></tr>
+      <tr><td><code>test_lugares.py</code></td><td>Bairros sem acento e ranking, CEP e ruas com a API simulada e fora do ar, distância (OSRM e estimativa), ônibus, limite de requisições e URL sem SSRF</td></tr>
+      <tr><td><code>test_resumo_viagem.py</code></td><td>Entrada com GPS, desembarque, resumo (tempo a bordo, distância pela trilha), privacidade e médias do painel</td></tr>
       <tr><td><code>test_admin.py</code>, <code>test_banco.py</code>, <code>test_models.py</code>, <code>test_veiculos.py</code></td><td>Painel, moderação, configurações, integridade do banco e seed</td></tr>
-      <tr><td><code>frontend/src/utils/*.test.ts</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
+      <tr><td><code>frontend/src/utils/*.test.ts</code></td><td>Validação dos formulários, formatação, recorte da foto, bairros e distância, contagem regressiva e GPS opcional (Vitest)</td></tr>
     </tbody>
   </table>
+</section>
+<section>
+  <h3>5.13 Fila do "Pedir carona" com prioridade</h3>
+  <p>A regra fica em <code>caronas/fila.py</code>. Ao publicar uma carona, os pedidos abertos compatíveis (mesmo bairro
+  sem acento, mesmo sentido, saída dentro da faixa) são avisados por ordem de chegada e a carona ganha
+  <code>prioridade_ate</code>. Na janela, <code>pedir_vaga</code> chama esta checagem:</p>
+  {codigo(funcao("backend/caronauvv/caronas/fila.py", "checar_prioridade"), "backend/caronauvv/caronas/fila.py")}
+  <p>O prazo de 30 minutos para o motorista responder é o menor entre os dois limites do painel:</p>
+  {codigo(funcao("backend/caronauvv/caronas/services.py", "_prazo_resposta"), "backend/caronauvv/caronas/services.py")}
+</section>
+<section>
+  <h3>5.14 Bairros, CEP, distância e APIs externas</h3>
+  <p>A busca de bairros não depende de serviço externo: a lista fica no servidor e a comparação ignora acento e
+  maiúscula, com "começa com" antes de "contém":</p>
+  {codigo(funcao("backend/caronauvv/lugares/services.py", "buscar_bairros"), "backend/caronauvv/lugares/services.py")}
+  <p>As APIs externas (ViaCEP e OSRM) são chamadas só pelo servidor, com URL fixa, timeout, cache e plano B: se
+  falharem, a função devolve <code>None</code> e a tela continua funcionando.</p>
+  {codigo(funcao("backend/caronauvv/lugares/externos.py", "_get_json"), "backend/caronauvv/lugares/externos.py")}
+  <table>
+    <thead><tr><th>Necessidade</th><th>Fontes estudadas</th><th>Decisão</th></tr></thead>
+    <tbody>
+      <tr><td>Bairros</td><td>Prefeitura de Vila Velha (lista em lei/PDF), IBGE (sem bairros por API), Nominatim/Overpass (OpenStreetMap)</td><td>Lista curada de 512 bairros extraída uma vez do OpenStreetMap (ODbL), com coordenada aproximada</td></tr>
+      <tr><td>CEP e rua</td><td>ViaCEP, Nominatim</td><td>ViaCEP pelo servidor. O Nominatim não é usado para sugestões: a política dele proíbe autocompletar</td></tr>
+      <tr><td>Distância</td><td>OSRM público, Haversine</td><td>OSRM com plano B (linha reta × 1,35)</td></tr>
+      <tr><td>Ônibus</td><td>Transcol/Ceturb-ES (app ÔnibusGV e gvbus.org.br, sem GTFS nem API aberta); lista colaborativa do OpenStreetMap</td><td>Nenhum horário inventado: só as linhas que passam pela Boa Vista (608, 606, 1721, 664 noturna) e o terminal de troca, marcado como estimativa, com link oficial</td></tr>
+      <tr><td>Trânsito</td><td>TomTom/HERE (exigem cadastro e chave)</td><td>Estimativa por horário de pico e trechos críticos, configurável no painel</td></tr>
+    </tbody>
+  </table>
+</section>
+<section>
+  <h3>5.15 Trânsito no cálculo e resumo da viagem</h3>
+  {codigo(funcao("backend/caronauvv/caronas/combustivel.py", "fator_transito"), "backend/caronauvv/caronas/combustivel.py")}
+  <p>A distância percorrida por cada passageiro é a soma dos trechos da trilha GPS entre a entrada e a saída
+  (fórmula de Haversine):</p>
+  {codigo(funcao("backend/caronauvv/caronas/viagem.py", "distancia_trilha_km"), "backend/caronauvv/caronas/viagem.py")}
+</section>
+<section>
+  <h3>5.16 Revisão de segurança</h3>
+  <ul>
+    <li><b>Autorização:</b> cada rota nova confere o dono (pedido de carona de outro aluno responde 404; o resumo só sai para participantes e admin, e o passageiro vê só a própria linha).</li>
+    <li><b>Limite de requisições</b> (HTTP 429) nas rotas de sugestão, CEP, ônibus e fila (<code>limite.py</code>).</li>
+    <li><b>Cabeçalhos de segurança</b> em toda resposta (<code>nosniff</code>, <code>X-Frame-Options: DENY</code>, <code>Referrer-Policy</code>; no JSON, <code>Cache-Control: no-store</code> e CSP <code>default-src 'none'</code>), também nas páginas da Vercel.</li>
+    <li><b>CORS</b> só para as origens configuradas; <b>SSRF</b> evitado com URLs fixas e texto codificado (a barra também).</li>
+    <li><b>Dependências:</b> <code>pip-audit</code> sem vulnerabilidades conhecidas; no <code>npm audit</code>, os avisos são de ferramentas de desenvolvimento (Vite, Vitest), que não vão para o site publicado.</li>
+  </ul>
+  {codigo(funcao("backend/caronauvv/limite.py", "limitar"), "backend/caronauvv/limite.py")}
 </section>
 <section>
   <h3>5.12 Front-end em Vue 3 + TypeScript</h3>
@@ -727,7 +815,8 @@ Flask ── create_app()   (Application Factory)
       <tr><td>Bootstrap 5 e Bootstrap Icons</td><td>Framework CSS: grid responsivo, formulários com estado de erro, componentes e ícones.</td></tr>
       <tr><td>Vitest</td><td>Testes do front-end (validação, formatação e recorte da foto), escritos em TypeScript.</td></tr>
       <tr><td>qrcode, Mermaid</td><td>QR Code do Pix e do autenticador gerados no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
-      <tr><td>OpenStreetMap</td><td>Mapa do link da família, sem chave de API.</td></tr>
+      <tr><td>Leaflet + OpenStreetMap</td><td>Mapa com a trilha da viagem no resumo e no link da família, sem chave de API (carregado só quando o mapa aparece).</td></tr>
+      <tr><td>ViaCEP e OSRM</td><td>APIs públicas e gratuitas, chamadas pelo servidor com timeout, cache e plano B: CEP/ruas e distância de carro até a UVV.</td></tr>
       <tr><td>Git e GitHub</td><td>Versionamento, com commits por etapa.</td></tr>
     </tbody>
   </table>
@@ -786,7 +875,9 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>Foto e autenticador:</b> no Perfil, trocar a foto (ela muda na barra na hora). Ativar a verificação em duas etapas lendo o QR Code com o Google Authenticator do celular, guardar os códigos de reserva, sair e entrar de novo: o login pede o código. No login, "Esqueci minha senha" mostra a recuperação por código.</li>
     <li><b>Combustível:</b> como Kauã, Oferecer carona: bairro, rua e distância já vêm preenchidos e a conta aparece sozinha; mudar o adicional ou o carro refaz a conta. No Perfil, trocar o consumo do carro. Na busca, cada cartão mostra combustível + adicional (a carona da Beatriz é de carro elétrico).</li>
     <li><b>Documentos:</b> como Marina, enviar a foto da CNH no Perfil. Como admin, aba Documentos: ver a imagem, aprovar uma e recusar outra com o motivo; o selo aparece no perfil e a imagem some.</li>
-    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
+    <li><b>Pedir carona:</b> como Marina, aba Pedir carona: ela é a 1ª da fila da Glória amanhã cedo (o João é o 2º) e o card "Que horas você vai sair?" mostra caronas e ônibus. Como Kauã, Oferecer carona com bairro "gloria" amanhã 07:15: aparece "2 alunos esperando" e, se for dia útil, +25% de trânsito na conta. Publicar; como Pedro (fora da fila), pedir vaga é bloqueado por 15 min.</li>
+    <li><b>30 min e resumo:</b> como Pedro, Meus pedidos → Aguardando: contagem regressiva. Como Ana, Histórico → Resumo da viagem de ontem: entrada 18:33, saída 18:41, mapa.</li>
+    <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem e atraso na saída), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
 </section>""")
@@ -857,6 +948,15 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   <p><b>Oferecer carona sem digitar tudo de novo.</b> O motorista quase sempre sai de casa. O formulário já vem com o
   bairro e a rua do perfil, estima a distância até a UVV pelo bairro e calcula o rateio sugerido com um clique;
   tudo continua editável para quem sai de outro lugar.</p>
+  <p><b>Horário de ônibus sem dados abertos.</b> O Transcol não publica GTFS nem API. Em vez de inventar horários,
+  o sistema mostra só as linhas que servem o trajeto (de uma lista pública do OpenStreetMap), marca como estimativa e
+  manda para o aplicativo oficial.</p>
+  <p><b>Autocompletar sem violar regras de uso.</b> O Nominatim proíbe autocompletar. A solução foi uma lista local
+  dos bairros (extraída uma vez do OpenStreetMap) e o ViaCEP para ruas, sempre pelo servidor, com cache e plano B.</p>
+  <p><b>Fila justa.</b> Avisar todos ao mesmo tempo daria vantagem a quem está com o celular na mão. A prioridade de
+  15 min, a ordem de chegada e a vaga guardada para os primeiros (com reserva automática) resolvem; quem falta perde a vez.</p>
+  <p><b>Testes que dependiam da hora.</b> Com o trânsito, a conta muda no horário de pico; os testes de valor passaram a
+  usar uma data fixa fora do pico, e os do pico usam datas conhecidas.</p>
 </section>""")
 
     # ---------------- 9. CRITERIOS ----------------
@@ -979,10 +1079,25 @@ def gerar(pdf: bool) -> Path:
         destino = DOCS / "CaronaUVV_Documentacao.pdf"
         # no Linux, o Chrome so roda como root (ex.: container) com --no-sandbox
         extra = ["--no-sandbox"] if hasattr(os, "geteuid") and os.geteuid() == 0 else []
-        subprocess.run([
-            navegador, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", "--allow-file-access-from-files", *extra,
-            "--virtual-time-budget=20000", f"--print-to-pdf={destino}", saida.as_uri(),
-        ], check=True, capture_output=True)
+        # Perfil temporario proprio: com o navegador do usuario aberto, o pedido de impressao
+        # iria para a janela que ja esta rodando e o PDF nao seria gerado
+        import tempfile
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as perfil:
+            antes = destino.stat().st_mtime if destino.exists() else 0
+            subprocess.run([
+                navegador, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", "--allow-file-access-from-files",
+                f"--user-data-dir={perfil}", *extra,
+                "--virtual-time-budget=20000", f"--print-to-pdf={destino}", saida.as_uri(),
+            ], check=True, capture_output=True)
+            # o Edge pode devolver o controle antes de terminar de gravar: espera ate 60 s
+            import time
+            for _ in range(120):
+                if destino.exists() and destino.stat().st_mtime != antes:
+                    break
+                time.sleep(0.5)
+            else:
+                raise SystemExit("O navegador nao gerou o PDF. Feche-o e rode de novo.")
+            time.sleep(1)  # termina de gravar
         print(f"PDF: {destino}")
     return saida
 

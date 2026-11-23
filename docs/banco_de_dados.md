@@ -69,6 +69,8 @@ erDiagram
     caronas ||--o{ solicitacoes : "carona_id"
     usuarios ||--o{ solicitacoes : "passageiro_id"
     caronas ||--o{ posicoes_gps : "carona_id"
+    usuarios ||--o{ pedidos_carona : "aluno_id"
+    caronas |o--o{ pedidos_carona : "carona_id"
     solicitacoes ||--o{ avaliacoes : "solicitacao_id"
     usuarios ||--o{ avaliacoes : "avaliador_id"
     usuarios ||--o{ avaliacoes : "avaliado_id"
@@ -197,7 +199,10 @@ erDiagram
         float consumo_km
         numeric combustivel_por_passageiro
         numeric adicional_por_passageiro
+        string trechos_transito
+        integer transito_percentual
         boolean reserva_automatica
+        datetime prioridade_ate
         string observacoes
         string status
         datetime iniciada_em
@@ -223,6 +228,11 @@ erDiagram
         datetime embarcou_em
         string metodo_embarque
         boolean faltou
+        float embarque_gps_lat
+        float embarque_gps_lng
+        datetime desembarcou_em
+        float desembarque_lat
+        float desembarque_lng
         datetime created_at
         datetime updated_at
     }
@@ -232,6 +242,20 @@ erDiagram
         float lat
         float lng
         datetime registrada_em
+    }
+    pedidos_carona {
+        integer id PK
+        integer aluno_id FK
+        string bairro
+        string bairro_chave
+        string sentido
+        date data
+        time hora_inicio
+        time hora_fim
+        string status
+        integer carona_id FK
+        datetime criado_em
+        datetime atendido_em
     }
     avaliacoes {
         integer id PK
@@ -475,7 +499,10 @@ erDiagram
 | `consumo_km` | FLOAT | sim |  |  |
 | `combustivel_por_passageiro` | NUMERIC(6,2) | sim |  |  |
 | `adicional_por_passageiro` | NUMERIC(6,2) | sim |  |  |
+| `trechos_transito` | STRING(120) | sim |  |  |
+| `transito_percentual` | INTEGER | sim |  |  |
 | `reserva_automatica` | BOOLEAN | não |  | `False` |
+| `prioridade_ate` | DATETIME | sim |  |  |
 | `observacoes` | STRING(300) | sim |  |  |
 | `status` | STRING(20) | não | índice | `"ativa"` |
 | `iniciada_em` | DATETIME | sim |  |  |
@@ -512,6 +539,11 @@ erDiagram
 | `embarcou_em` | DATETIME | sim |  |  |
 | `metodo_embarque` | STRING(20) | sim |  |  |
 | `faltou` | BOOLEAN | não |  | `False` |
+| `embarque_gps_lat` | FLOAT | sim |  |  |
+| `embarque_gps_lng` | FLOAT | sim |  |  |
+| `desembarcou_em` | DATETIME | sim |  |  |
+| `desembarque_lat` | FLOAT | sim |  |  |
+| `desembarque_lng` | FLOAT | sim |  |  |
 | `created_at` | DATETIME | não |  | agora |
 | `updated_at` | DATETIME | não |  | agora |
 
@@ -530,6 +562,29 @@ erDiagram
 | `lat` | FLOAT | não |  |  |
 | `lng` | FLOAT | não |  |  |
 | `registrada_em` | DATETIME | não | índice | agora |
+
+### `pedidos_carona` (módulo `caronas`)
+
+| Coluna | Tipo | Nulo | Chave | Padrão |
+|---|---|---|---|---|
+| `id` | INTEGER | não | PK |  |
+| `aluno_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; índice |  |
+| `bairro` | STRING(100) | não |  |  |
+| `bairro_chave` | STRING(100) | não | índice |  |
+| `sentido` | STRING(10) | não |  | `"ida"` |
+| `data` | DATE | não | índice |  |
+| `hora_inicio` | TIME | não |  |  |
+| `hora_fim` | TIME | não |  |  |
+| `status` | STRING(20) | não | índice | `"aberto"` |
+| `carona_id` | INTEGER | sim | FK → `caronas.id`, ON DELETE SET NULL |  |
+| `criado_em` | DATETIME | não |  | agora |
+| `atendido_em` | DATETIME | sim |  |  |
+
+**Restrições:**
+
+- CHECK `ck_pedidos_carona_faixa`: `hora_fim > hora_inicio`
+- CHECK `ck_pedidos_carona_sentido`: `sentido IN ('ida', 'volta')`
+- CHECK `ck_pedidos_carona_status`: `status IN ('aberto', 'atendido', 'expirado', 'cancelado')`
 
 ### `avaliacoes` (módulo `avaliacoes`)
 

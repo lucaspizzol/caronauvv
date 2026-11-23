@@ -124,7 +124,10 @@ Table caronas {
   consumo_km float
   combustivel_por_passageiro numeric(6,2)
   adicional_por_passageiro numeric(6,2)
+  trechos_transito varchar(120)
+  transito_percentual integer
   reserva_automatica boolean [not null, default: false]
+  prioridade_ate timestamp
   observacoes varchar(300)
   status varchar(20) [not null, default: 'ativa']
   iniciada_em timestamp
@@ -152,6 +155,11 @@ Table solicitacoes {
   embarcou_em timestamp
   metodo_embarque varchar(20)
   faltou boolean [not null, default: false]
+  embarque_gps_lat float
+  embarque_gps_lng float
+  desembarcou_em timestamp
+  desembarque_lat float
+  desembarque_lng float
   created_at timestamp [not null, default: `now()`]
   updated_at timestamp [not null, default: `now()`]
   indexes {
@@ -166,6 +174,22 @@ Table posicoes_gps {
   lat float [not null]
   lng float [not null]
   registrada_em timestamp [not null, default: `now()`]
+}
+
+Table pedidos_carona {
+  id integer [pk]
+  aluno_id integer [not null]
+  bairro varchar(100) [not null]
+  bairro_chave varchar(100) [not null]
+  sentido varchar(10) [not null, default: 'ida']
+  data date [not null]
+  hora_inicio time [not null]
+  hora_fim time [not null]
+  status varchar(20) [not null, default: 'aberto']
+  carona_id integer
+  criado_em timestamp [not null, default: `now()`]
+  atendido_em timestamp
+  Note: 'CHECK hora_fim > hora_inicio\nCHECK sentido IN (\'ida\', \'volta\')\nCHECK status IN (\'aberto\', \'atendido\', \'expirado\', \'cancelado\')'
 }
 
 Table avaliacoes {
@@ -293,6 +317,8 @@ Ref: caronas.veiculo_id > veiculos.id [delete: set null]
 Ref: solicitacoes.carona_id > caronas.id [delete: cascade]
 Ref: solicitacoes.passageiro_id > usuarios.id
 Ref: posicoes_gps.carona_id > caronas.id [delete: cascade]
+Ref: pedidos_carona.aluno_id > usuarios.id [delete: cascade]
+Ref: pedidos_carona.carona_id > caronas.id [delete: set null]
 Ref: avaliacoes.solicitacao_id > solicitacoes.id [delete: cascade]
 Ref: avaliacoes.avaliador_id > usuarios.id
 Ref: avaliacoes.avaliado_id > usuarios.id
@@ -324,6 +350,7 @@ TableGroup caronas {
   caronas
   solicitacoes
   posicoes_gps
+  pedidos_carona
 }
 
 TableGroup avaliacoes {

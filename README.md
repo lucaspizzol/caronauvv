@@ -37,20 +37,29 @@ transporte (BlaBlaCar, Uber, 99):
 | Rateio solidário | Teto por passageiro e valor sugerido (combustível ÷ ocupantes); Pix copia e cola com QR Code | BlaBlaCar (preço sugerido) |
 | Notificações | Sino com contador: pedido novo, vaga confirmada, viagem iniciada, avaliação etc. | Todos |
 | Denúncias e moderação | Só denuncia quem dividiu carona; admin analisa, encerra e pode suspender | Todos |
-| Painel admin | KPIs (ocupação, CO₂ evitado, faltas), demanda sem oferta por bairro, regras e **banco de dados ao vivo** | — |
+| Painel admin | KPIs (ocupação, CO₂ evitado, faltas, tempo médio de viagem, atraso médio na saída, velocidade média), demanda sem oferta por bairro, regras e **banco de dados ao vivo** | — |
+| 30 min para responder | Pedido de vaga sem resposta expira em 30 min (ou 2 h antes da saída, o que vier antes), com contagem regressiva para os dois lados e aviso ao passageiro | 99 / Uber (tempo para aceitar) |
+| Bairros da Grande Vitória | Sugestões enquanto digita (512 bairros de Vila Velha, Vitória, Cariacica e Serra, sem precisar de acento), CEP que preenche rua e bairro (ViaCEP), sugestão de rua e distância real até a UVV (OSRM) | Apps de mapa |
+| Pedir carona (fila) | Sem carona? O aluno entra na fila do bairro/horário; quando aparece carona compatível ele é avisado e, nos primeiros 15 min, só quem estava na fila pede vaga (com reserva automática a vaga fica guardada para o primeiro) | BlaBlaCar (alertas de viagem) |
+| Que horas você vai sair? | Para o horário do aluno: caronas 30 min antes/depois e ônibus que costumam servir o trajeto (estimativa, com link para os horários oficiais) | Moovit / Google Maps |
+| Entrada e saída com GPS | Hora e local de entrada (PIN) e de saída ("Desembarquei"); resumo com tempo a bordo, distância pela trilha, velocidade média e mapa (Leaflet + OpenStreetMap) | Uber (recibo da viagem) |
+| Trânsito no valor | No horário de pico (dia útil, 6h30–8h30 e 17h–19h30) o consumo sobe 25% e cada trecho crítico (Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101) soma 10%, até 50%; aparece na conta | 99 / Uber (tarifa por tempo) |
+| Perguntas frequentes | Página pública com busca: segurança, LGPD, PIN, valor, fila, ônibus | — |
 
 ## Tecnologias
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 297 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 297 testes, 96% de cobertura) e Vitest (front-end, 31 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 364 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 364 testes, 96% de cobertura) e Vitest (front-end, 38 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
   responsivo para celular; os tipos das respostas da API ficam em `src/types/api.ts` e o `vue-tsc` confere código e
   templates antes de cada build;
-  `qrcode` (QR do Pix) e `mermaid` (diagrama do banco no painel)
+  `qrcode` (QR do Pix), `mermaid` (diagrama do banco no painel) e `leaflet` (mapa da viagem com OpenStreetMap, sem chave)
+- **APIs públicas gratuitas (sem chave), chamadas pelo servidor com timeout, cache e plano B:** ViaCEP (CEP e ruas),
+  OSRM (distância de carro); os bairros vieram do OpenStreetMap (ver [Estudo das APIs](#estudo-das-apis-externas))
 
 ## Estrutura
 
@@ -68,15 +77,17 @@ backend/
                           #   foto.py (foto de perfil), documentos.py (identidade e CNH),
                           #   totp.py + dois_fatores.py (verificacao em duas etapas)
     caronas/              # caronas, pedidos de vaga, ciclo da viagem (iniciar, PIN, falta, GPS)
+                          #   fila.py (Pedir carona com prioridade), viagem.py (entrada/saida e resumo)
+    lugares/              # bairros da Grande Vitoria, CEP (ViaCEP), distancia (OSRM), onibus (estimativa)
                           #   combustivel.py (calculo do rateio pelo combustivel)
     avaliacoes/           # avaliacoes, reputacao e pagamento Pix
     notificacoes/         # notificacoes
     seguranca/            # link da familia, botao de emergencia, denuncias
     admin/                # painel: indicadores, moderacao, configuracoes, estrutura do banco
     (cada modulo: models.py, schemas.py, services.py, routes.py)
-  migrations/             # Flask-Migrate (Alembic): 4 versoes
+  migrations/             # Flask-Migrate (Alembic): 7 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 297 testes (pytest + pytest-flask)
+  tests/                  # 364 testes (pytest + pytest-flask)
 frontend/
   src/
     types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
@@ -117,7 +128,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 297 testes
+python -m pytest                           # 364 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
@@ -132,7 +143,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 31 testes do front (Vitest)
+npm test                         # 38 testes do front (Vitest)
 npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 
@@ -216,7 +227,16 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 7. **Documentos:** como Marina, Perfil → **Documentos verificados** → envie a foto da CNH com a validade. Como
    admin, aba **Documentos** → **Ver documento** → aprove um e recuse outro com o motivo: o selo aparece no
    perfil e a imagem é apagada.
-8. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
+8. **Pedir carona (fila):** como Marina, **Pedir carona** → ela já está na fila da Glória amanhã cedo (1ª; o João é
+   o 2º) e o card "Que horas você vai sair?" mostra caronas e ônibus (estimativa). Como Kauã, **Oferecer carona** →
+   bairro "gloria" (sem acento, escolha na lista), amanhã 07:15 → aparece "2 alunos esperando" → publique. Como
+   Pedro (fora da fila), tente pedir vaga: bloqueado por 15 min; a Marina consegue.
+9. **30 min e trânsito:** como Pedro, **Meus pedidos** → aba Aguardando → contagem "O motorista tem 29:xx". Em
+   Oferecer carona, escolha Jardim Camburi às 07:00 de um dia útil e toque em Calcular: a conta mostra "+25% pico
+   +10% Terceira Ponte".
+10. **Resumo da viagem:** como Ana, **Meus pedidos** → Histórico → **Resumo da viagem** da carona de ontem: entrou
+   18:33, saiu 18:41, 8 min a bordo, mapa com a trilha.
+11. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
    autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui), **Regras**
    (preço da gasolina, etanol, diesel e kWh; exigir CNH/identidade) e **Banco de dados** (diagrama ER ao vivo).
 
@@ -230,11 +250,14 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 | Documentos | `GET /api/auth/me/documentos`, `PUT /api/auth/me/documentos/<identidade\|cnh>` (`multipart/form-data`: `documento` e, na CNH, `validade`) |
 | Usuários | `GET /api/usuarios/<id>` (perfil público com reputação) |
 | Veículos e contatos | `GET/POST /api/veiculos`, `PUT/DELETE /api/veiculos/<id>`, `GET/POST /api/contatos`, `DELETE /api/contatos/<id>` |
-| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido` (com `energia`, `consumo_km` e `adicional` devolve a conta completa), `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
+| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido` (com `energia`, `consumo_km`, `adicional`, `data_hora` e `trechos` devolve a conta completa, com o trânsito), `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
 | Solicitações | `GET/POST /api/caronas/<id>/solicitacoes`, `GET /api/solicitacoes/minhas`, `POST /api/solicitacoes/<id>/aceitar`, `/recusar`, `/cancelar`, `/embarque`, `/falta` |
 | Avaliações e Pix | `GET /api/avaliacoes/pendentes`, `/tags`, `POST /api/solicitacoes/<id>/avaliacao`, `GET .../pix`, `POST .../pagamento` |
 | Segurança | `POST /api/caronas/<id>/compartilhar`, `GET /api/acompanhar/<token>` (público), `POST /api/caronas/<id>/sos`, `POST /api/denuncias` |
 | Notificações | `GET /api/notificacoes`, `GET /api/notificacoes/contagem`, `POST /api/notificacoes/lidas` |
+| Lugares | `GET /api/lugares/bairros?q=` (público), `/cep/<cep>`, `/ruas?q=&cidade=`, `/distancia?bairro=`, `/onibus?bairro=&sentido=&hora=` |
+| Pedir carona (fila) | `POST /api/pedidos-carona`, `GET /api/pedidos-carona/minhas`, `POST /api/pedidos-carona/<id>/cancelar`, `GET /api/pedidos-carona/demanda` |
+| Viagem | `POST /api/solicitacoes/<id>/desembarque`, `GET /api/caronas/<id>/resumo` (entrada/saída, tempo a bordo, trilha) |
 | Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
@@ -250,7 +273,15 @@ Cada requisição é registrada no log com método, rota, status e tempo (`LOG_L
 - O motorista não pode pedir vaga na própria carona, e o passageiro não pode pedir a mesma carona duas vezes.
 - Não é possível criar carona com data/hora no passado; o rateio tem teto (padrão R$ 5,00, configurável).
 - Cancelar uma carona cancela as solicitações em aberto e avisa os passageiros.
-- Pedido sem resposta expira 2 h antes da saída (ou ao iniciar a viagem).
+- Pedido sem resposta expira em 30 min (painel: `minutos_responder_pedido`) ou 2 h antes da saída, o que vier antes
+  (ou ao iniciar a viagem); o passageiro é avisado.
+- Pedir carona: até 3 pedidos abertos, faixa de até 4 h e até 30 dias à frente; carona compatível avisa a fila e
+  abre 15 min de prioridade (painel: `minutos_prioridade_fila`); falta nos últimos 30 dias tira a prioridade.
+- O campo Bairro não aceita endereço ("Rua...", "Av..."); a busca de caronas ignora acento e maiúscula.
+- Desembarque: registrado pelo motorista ou pelo próprio passageiro; ao concluir, quem estava a bordo desce na hora da
+  conclusão. O resumo da viagem só aparece para participantes e admin (o passageiro vê só a própria linha).
+- Trânsito: +25% no pico e +10% por trecho crítico, até +50% (tudo configurável no painel); fora do pico, nada.
+- Limite de requisições (429) nas rotas de sugestão, CEP, ônibus e fila; cabeçalhos de segurança em toda resposta.
 - A viagem pode ser iniciada a partir de 30 min antes da saída e precisa de ao menos um passageiro confirmado.
 - Embarque só com o PIN certo; passageiro confirmado que não aparece recebe falta.
 - Avaliação só depois da carona concluída, uma por pessoa, em até 14 dias; nota escondida até os dois avaliarem ou 7 dias.
@@ -268,8 +299,21 @@ Cada requisição é registrada no log com método, rota, status e tempo (`LOG_L
 - Rateio: com o cálculo ligado, o servidor refaz a conta ao salvar (não confia no valor do navegador); a conta usa
   `Decimal` e combustível + adicional nunca passa do teto do painel.
 
+## Estudo das APIs externas
+
+| Necessidade | Fontes estudadas | Decisão |
+|---|---|---|
+| Bairros | Prefeitura de Vila Velha (lista em lei/PDF, sem API), IBGE (não publica bairros por API), Nominatim/Overpass (OpenStreetMap) | Lista curada no servidor (`lugares/dados.py`, 512 bairros) extraída uma vez do OpenStreetMap (ODbL), com coordenada aproximada; busca sem acento e ranking "começa com" > "contém" |
+| CEP e rua | ViaCEP (gratuito, sem chave), Nominatim | ViaCEP pelo servidor (URL fixa, timeout 4 s, cache 24 h). O Nominatim **não** é usado para sugestões: a política de uso dele proíbe autocompletar |
+| Distância até a UVV | OSRM público, Haversine | OSRM (`router.project-osrm.org`) com plano B: linha reta × 1,35 |
+| Ônibus | Transcol/Ceturb-ES (app ÔnibusGV e gvbus.org.br, sem GTFS nem API aberta), lista colaborativa de linhas do OpenStreetMap | **Sem horário**: o sistema só sugere as linhas que passam pela Boa Vista (608, 606, 1721, 664 noturna) e o terminal de troca, marcado como estimativa, com link para os horários oficiais |
+| Trânsito | TomTom/HERE (exigem cadastro e chave) | Estimativa por horário de pico e trechos críticos, com percentuais no painel |
+
+Nenhuma chamada externa leva dado pessoal (só CEP, nome de rua ou o centro do bairro), e se a API cair o sistema
+continua funcionando com a lista local e a estimativa.
+
 ## Banco de dados
 
-18 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
+19 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
 Para ver o diagrama: no painel admin, aba **Banco de dados** (gerado ao vivo dos modelos), ou cole
 [`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).

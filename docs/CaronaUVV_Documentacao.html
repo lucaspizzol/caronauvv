@@ -66,10 +66,10 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h1>Plataforma de caronas entre alunos da Universidade Vila Velha</h1>
   <p class="sub">Documentação do projeto final · Entrega do 2º bimestre (auditoria técnica)</p>
   <div class="numeros">
-    <div><b>77</b><span>rotas da API REST</span></div>
-    <div><b>18</b><span>tabelas no banco</span></div>
-    <div><b>328</b><span>testes automatizados</span></div>
-    <div><b>15</b><span>telas em Vue 3</span></div>
+    <div><b>88</b><span>rotas da API REST</span></div>
+    <div><b>19</b><span>tabelas no banco</span></div>
+    <div><b>402</b><span>testes automatizados</span></div>
+    <div><b>17</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
     <tr><th>Disciplina</th><td>Desenvolvimento de Sistemas para Web (CC5N)</td></tr>
@@ -149,13 +149,32 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     </tbody>
   </table>
 
+  <h3>Última etapa: o que entrou em 23/11</h3>
+  <table>
+    <thead><tr><th>Recurso</th><th>Como funciona</th></tr></thead>
+    <tbody>
+      <tr><td>30 min para responder</td><td>O pedido de vaga expira se o motorista não responder em 30 min (ou 2 h antes da saída, o que vier antes). Motorista e passageiro veem a contagem regressiva; o passageiro é avisado quando expira.</td></tr>
+      <tr><td>Bairros enquanto digita</td><td>512 bairros de Vila Velha, Vitória, Cariacica e Serra, sem precisar de acento, num campo acessível (setas, Enter, Esc). CEP preenche rua e bairro; a rua também é sugerida pelo nome. O campo Bairro recusa "Rua..."/"Av...".</td></tr>
+      <tr><td>Distância real até a UVV</td><td>Pela rota de carro (OSRM) e, se o serviço cair, pela linha reta entre as coordenadas × 1,35.</td></tr>
+      <tr><td>Pedir carona (fila com prioridade)</td><td>Sem carona, o aluno entra na fila do bairro/dia/horário (até 3 pedidos). Carona compatível avisa a fila e, por 15 min, só quem estava na fila pede vaga; com reserva automática a vaga fica guardada para os primeiros. O motorista vê "N alunos esperando" ao oferecer. Falta recente tira a prioridade.</td></tr>
+      <tr><td>Que horas você vai sair?</td><td>Recomenda caronas 30 min antes/depois do horário e os ônibus que costumam servir o trajeto. Como o Transcol não publica horários em dados abertos, o ônibus aparece como <b>estimativa</b>, sem horário, com link para os horários oficiais.</td></tr>
+      <tr><td>Entrada e saída com GPS</td><td>Hora e local de entrada (PIN) e de saída ("Desembarquei"); resumo da viagem com tempo a bordo, distância pela trilha, velocidade, atraso na saída e mapa (Leaflet + OpenStreetMap). Médias no painel.</td></tr>
+      <tr><td>Trânsito no valor</td><td>Horário de pico (+25%) e trechos críticos da Grande Vitória (+10% cada: Terceira Ponte, Segunda Ponte, Rodovia do Sol, BR-101), até +50%, mostrados na conta.</td></tr>
+      <tr><td>Meus pedidos, FAQ e visual</td><td>Abas Próximas/Aguardando/Histórico, PIN em destaque, página pública de perguntas frequentes, tela de entrada como vitrine, foco do teclado visível e contraste AA.</td></tr>
+    </tbody>
+  </table>
+
   <h3>Regras de negócio implementadas (e testadas)</h3>
   <ul>
     <li>Uma carona nunca tem mais passageiros aceitos do que vagas; quando lota, vira <i>lotada</i> e sai da busca. Se alguém desiste, volta a <i>ativa</i>.</li>
     <li>O motorista não pode pedir vaga na própria carona; o passageiro não pode pedir a mesma carona duas vezes.</li>
     <li>Não é possível criar carona no passado; o rateio não passa do teto configurado.</li>
     <li>Cancelar uma carona cancela os pedidos em aberto e avisa os passageiros.</li>
-    <li>Pedido sem resposta expira 2 h antes da saída (ou quando a viagem é iniciada).</li>
+    <li>Pedido sem resposta expira em 30 min ou 2 h antes da saída, o que vier antes (ou quando a viagem é iniciada); o passageiro é avisado.</li>
+    <li>Pedir carona: até 3 pedidos abertos, faixa de até 4 h; carona compatível dá 15 min de prioridade a quem já estava na fila; falta nos últimos 30 dias tira a prioridade.</li>
+    <li>O campo Bairro não aceita endereço; a busca de caronas ignora acento e maiúscula.</li>
+    <li>Desembarque registrado pelo motorista ou pelo próprio passageiro; o resumo da viagem só aparece para participantes e para a administração.</li>
+    <li>Trânsito: +25% no pico e +10% por trecho crítico, até +50%; fora do pico, sem acréscimo.</li>
     <li>A viagem pode ser iniciada a partir de 30 min antes da saída e precisa de ao menos um passageiro confirmado.</li>
     <li>Embarque só com o PIN certo; o passageiro não pode desistir depois que a viagem começou.</li>
     <li>Telefone e placa só aparecem entre motorista e passageiro depois do aceite.</li>
@@ -174,7 +193,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 <section class="quebra">
   <h2>2. Telas do sistema</h2>
   <p>O front-end é uma SPA em Vue 3 com Bootstrap 5. No computador o menu fica no topo; no celular vira uma barra
-  fixa embaixo, como num aplicativo. São 15 telas.</p>
+  fixa embaixo, como num aplicativo. São 17 telas.</p>
   <figure class="media"><img src="img/01_busca.jpg" alt="Buscar caronas: cada cartão mostra a foto, a nota, o nível e o selo de verificado do motorista, além das observações da carona."><figcaption>Buscar caronas: cada cartão mostra a foto, a nota, o nível e o selo de verificado do motorista, além das observações da carona.</figcaption></figure>
   <figure class="media"><img src="img/09_cadastro_validacao.jpg" alt="Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic)."><figcaption>Cadastro: cada campo mostra o próprio erro. O domínio do e-mail é validado no navegador e de novo no servidor (Pydantic).</figcaption></figure>
 </section>
@@ -202,6 +221,26 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <figure class=""><img src="img/15_admin_documentos.jpg" alt="Painel da administração: fila de documentos para conferir. A imagem vem pela API com o login do administrador e é apagada ao aprovar ou recusar."><figcaption>Painel da administração: fila de documentos para conferir. A imagem vem pela API com o login do administrador e é apagada ao aprovar ou recusar.</figcaption></figure>
 </section>
 <section class="quebra">
+  <figure class=""><img src="img/16_login_vitrine.jpg" alt="Tela de entrada como vitrine: o que o CaronaUVV oferece, ao lado do login (no celular, viram selos acima do formulário)."><figcaption>Tela de entrada como vitrine: o que o CaronaUVV oferece, ao lado do login (no celular, viram selos acima do formulário).</figcaption></figure>
+  <figure class=""><img src="img/18_bairro_sugestoes.jpg" alt="Campo Bairro com sugestões enquanto digita: todos os bairros da Grande Vitória, sem precisar de acento, com a distância aproximada até a UVV."><figcaption>Campo Bairro com sugestões enquanto digita: todos os bairros da Grande Vitória, sem precisar de acento, com a distância aproximada até a UVV.</figcaption></figure>
+</section>
+<section class="quebra">
+  <figure class=""><img src="img/17_pedir_carona_onibus.jpg" alt="Pedir carona: a fila do bairro com a posição do aluno e o card &quot;Que horas você vai sair?&quot; com caronas no horário e ônibus (estimativa, com link para os horários oficiais)."><figcaption>Pedir carona: a fila do bairro com a posição do aluno e o card "Que horas você vai sair?" com caronas no horário e ônibus (estimativa, com link para os horários oficiais).</figcaption></figure>
+  <figure class=""><img src="img/19_oferecer_transito.jpg" alt="Oferecer carona às 7h15 de um dia útil: a conta soma 25% de trânsito do horário de pico (os trechos críticos somam mais 10% cada)."><figcaption>Oferecer carona às 7h15 de um dia útil: a conta soma 25% de trânsito do horário de pico (os trechos críticos somam mais 10% cada).</figcaption></figure>
+</section>
+<section class="quebra">
+  <figure class=""><img src="img/20_meus_pedidos_abas.jpg" alt="Meus pedidos em abas: status claro no topo, PIN de embarque em destaque, contato do motorista e as ações agrupadas."><figcaption>Meus pedidos em abas: status claro no topo, PIN de embarque em destaque, contato do motorista e as ações agrupadas.</figcaption></figure>
+  <figure class=""><img src="img/21_resumo_viagem_mapa.jpg" alt="Resumo da viagem: duração, distância pela trilha GPS, velocidade, entrada e saída do passageiro e o mapa com o trajeto."><figcaption>Resumo da viagem: duração, distância pela trilha GPS, velocidade, entrada e saída do passageiro e o mapa com o trajeto.</figcaption></figure>
+</section>
+<section class="quebra">
+  <div class="lado-a-lado">
+    <figure class="celular"><img src="img/23_celular_contagem.jpg" alt="No celular: pedido aguardando com a contagem regressiva dos 30 min."><figcaption>No celular: pedido aguardando com a contagem regressiva dos 30 min.</figcaption></figure>
+    <div>
+      <figure class=""><img src="img/22_faq.jpg" alt="Perguntas frequentes (página pública): acordeão acessível com busca."><figcaption>Perguntas frequentes (página pública): acordeão acessível com busca.</figcaption></figure>
+    </div>
+  </div>
+</section>
+<section class="quebra">
   <div class="lado-a-lado">
     <figure class="celular"><img src="img/10_celular.jpg" alt="No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo."><figcaption>No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo.</figcaption></figure>
     <div>
@@ -223,12 +262,12 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 
 <section class="quebra">
   <h2>3. Banco de dados</h2>
-  <p>O banco tem <b>18 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
-  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 4 migrações).</p>
+  <p>O banco tem <b>19 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
+  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 7 migrações).</p>
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
-  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 297 testes do back-end
+  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 364 testes do back-end
   e as migrações (upgrade, downgrade e upgrade de novo, com dados) foram executados nos dois bancos</b>.</p>
 
   <h3>Núcleo do modelo (principais colunas)</h3>
@@ -328,6 +367,13 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     numeric adicional_por_passageiro
     varchar status
   }
+  pedidos_carona {
+    integer id PK
+    integer aluno_id FK
+    varchar bairro
+    varchar status
+    integer carona_id FK
+  }
   posicoes_gps {
     integer id PK
     integer carona_id FK
@@ -363,6 +409,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   usuarios ||--o{ veiculos : &quot;usuario_id&quot;
   usuarios ||--o{ caronas : &quot;motorista_id&quot;
   veiculos |o--o{ caronas : &quot;veiculo_id&quot;
+  usuarios ||--o{ pedidos_carona : &quot;aluno_id&quot;
+  caronas |o--o{ pedidos_carona : &quot;carona_id&quot;
   caronas ||--o{ posicoes_gps : &quot;carona_id&quot;
   caronas ||--o{ solicitacoes : &quot;carona_id&quot;
   usuarios ||--o{ solicitacoes : &quot;passageiro_id&quot;
@@ -521,7 +569,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h3>Tabelas</h3>
   <p class="pequeno">O dicionário de dados completo (cada coluna, tipo e restrição) está em <code>docs/banco_de_dados.md</code>,
   e o esquema SQL do PostgreSQL em <code>docs/schema_postgresql.sql</code> (ambos gerados por <code>invoke docsdb</code>).</p>
-  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>documentos</code></td><td>Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)</td><td class='c'>12</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>8</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>29</td><td>usuarios, veiculos</td><td class='c'>5</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>18</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
+  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>documentos</code></td><td>Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)</td><td class='c'>12</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>8</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>32</td><td>usuarios, veiculos</td><td class='c'>5</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>pedidos_carona</code></td><td>Fila do Pedir carona: bairro, sentido, dia e faixa de horário (prioridade nas caronas novas)</td><td class='c'>12</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>23</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
   <h3>Integridade garantida pelo próprio banco</h3>
   <ul>
     <li><b>Chaves estrangeiras</b> com <code>ON DELETE CASCADE / SET NULL</code> conforme o caso (apagar uma carona apaga pedidos e GPS; apagar um carro deixa a carona antiga sem carro). No SQLite elas são ligadas com <code>PRAGMA foreign_keys=ON</code>.</li>
@@ -616,10 +664,12 @@ Flask ── create_app()   (Application Factory)
     from .auth import init_app as init_auth
     from .avaliacoes import init_app as init_avaliacoes
     from .caronas import init_app as init_caronas
+    from .lugares import init_app as init_lugares
     from .notificacoes import init_app as init_notificacoes
     from .seguranca import init_app as init_seguranca
     init_auth(app)            # /api/auth, /api/usuarios, /api/veiculos, /api/contatos
     init_caronas(app)         # /api/caronas, /api/solicitacoes
+    init_lugares(app)         # /api/lugares (bairros, CEP, ruas, distancia ate a UVV)
     init_avaliacoes(app)      # avaliacoes, reputacao e pagamento Pix
     init_notificacoes(app)    # /api/notificacoes
     init_seguranca(app)       # link da familia, botao de emergencia, denuncias
@@ -629,6 +679,23 @@ Flask ── create_app()   (Application Factory)
     # Erros -&gt; JSON ({&quot;error&quot;: &quot;...&quot;}), inclusive 404/405/500
     # ----------------------------------------------------------
     init_errors(app)
+
+    # ----------------------------------------------------------
+    # Cabecalhos de seguranca em toda resposta da API
+    # ----------------------------------------------------------
+    @app.after_request
+    def _cabecalhos_de_seguranca(resposta):
+        resposta.headers.setdefault(&quot;X-Content-Type-Options&quot;, &quot;nosniff&quot;)
+        resposta.headers.setdefault(&quot;X-Frame-Options&quot;, &quot;DENY&quot;)
+        resposta.headers.setdefault(&quot;Referrer-Policy&quot;, &quot;strict-origin-when-cross-origin&quot;)
+        if request.path.startswith(&quot;/api&quot;) and resposta.mimetype == &quot;application/json&quot;:
+            # JSON com dados pessoais: nao guarda em cache e nao roda como pagina
+            resposta.headers.setdefault(&quot;Cache-Control&quot;, &quot;no-store&quot;)
+            resposta.headers.setdefault(&quot;Content-Security-Policy&quot;, &quot;default-src &#x27;none&#x27;; frame-ancestors &#x27;none&#x27;&quot;)
+        return resposta
+
+    if app.config[&quot;SECRET_KEY&quot;] == DEV_SECRET_KEY and not app.config.get(&quot;DEBUG&quot;) and not app.config.get(&quot;TESTING&quot;):
+        app.logger.critical(&quot;SECRET_KEY de desenvolvimento em producao! Defina SECRET_KEY no ambiente.&quot;)
 
     @app.get(&quot;/api/health&quot;)
     def health():
@@ -646,7 +713,7 @@ Flask ── create_app()   (Application Factory)
     matricula: str = Field(min_length=1, max_length=20)
     email: str = Field(min_length=1, max_length=255)
     telefone: Digitos = Field(min_length=1)
-    bairro: str = Field(min_length=1, max_length=100)
+    bairro: Bairro = Field(min_length=1, max_length=100)
     senha: str = Field(min_length=1, max_length=128)
     curso: TextoOpcional = Field(default=None, max_length=120)
 
@@ -743,7 +810,7 @@ def cadastro():
     # ------------------------------------------------------
     status: Mapped[str] = mapped_column(db.String(20), nullable=False, default=&quot;pendente&quot;, index=True)
     respondida_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)   # [EXTRA] expira 2h antes da saida
+    expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)   # [EXTRA] 30 min para responder (ou 2 h antes da saida)
 
     # ------------------------------------------------------
     # EMBARQUE COM PIN  [EXTRA]
@@ -784,13 +851,17 @@ def cadastro():
                   f&quot;Esteja no ponto de embarque. Mostre seu PIN {solicitacao.pin_embarque} ao motorista.&quot;, carona)
     db.session.commit()
     return carona</code></pre></div>
-  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/services.py</div><pre><code class="language-python">def confirmar_embarque(solicitacao: Solicitacao, usuario: Usuario, pin: str) -&gt; Solicitacao:
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/services.py</div><pre><code class="language-python">def confirmar_embarque(solicitacao: Solicitacao, usuario: Usuario, pin: str,
+                       lat: float | None = None, lng: float | None = None) -&gt; Solicitacao:
     &quot;&quot;&quot;O passageiro fala o PIN e o motorista digita: garante que entrou no carro certo.&quot;&quot;&quot;
     carona = _solicitacao_da_viagem(solicitacao, usuario)
     if not secrets.compare_digest(pin, solicitacao.pin_embarque or &quot;&quot;):
         raise ApiError(&quot;PIN incorreto. Confira com o passageiro.&quot;)
     solicitacao.embarcou_em = datetime.now()
-    solicitacao.metodo_embarque = &quot;pin&quot;
+    tem_gps = lat is not None and lng is not None
+    solicitacao.metodo_embarque = &quot;pin+gps&quot; if tem_gps else &quot;pin&quot;
+    if tem_gps:
+        solicitacao.embarque_gps_lat, solicitacao.embarque_gps_lng = lat, lng
     solicitacao.faltou = False
     notificar(solicitacao.passageiro, &quot;embarque_confirmado&quot;, &quot;Embarque confirmado&quot;,
               f&quot;Boa viagem! Você está no carro de {_primeiro_nome(carona.motorista)}.&quot;, carona)
@@ -1018,7 +1089,8 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
   <p>A conta fica numa função pura (sem banco nem requisição), fácil de testar. A distância é convertida para metros
   inteiros, o consumo vem do carro (km por litro, ou por kWh no elétrico) e o preço vem do painel. Toda a conta usa
   <code>Decimal</code>, porque dinheiro em <code>float</code> acumula erro de arredondamento:</p>
-  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/combustivel.py</div><pre><code class="language-python">def calcular_rateio(distancia_km, vagas: int, energia: str = &quot;flex&quot;, consumo_km=None, adicional=0) -&gt; Rateio:
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/combustivel.py</div><pre><code class="language-python">def calcular_rateio(distancia_km, vagas: int, energia: str = &quot;flex&quot;, consumo_km=None, adicional=0,
+                    saida: datetime | None = None, trechos=()) -&gt; Rateio:
     &quot;&quot;&quot;Conta completa do rateio. Levanta ApiError com o campo errado quando um dado nao serve.&quot;&quot;&quot;
     if energia not in PRECO_POR_ENERGIA:
         raise ApiError(&quot;Tipo de energia inválido.&quot;, campos={&quot;energia&quot;: &quot;Escolha gasolina, etanol, flex, diesel, híbrido ou elétrico.&quot;})
@@ -1040,7 +1112,9 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
 
     preco = Configuracao.obter_decimal(PRECO_POR_ENERGIA[energia], &quot;0&quot;)
     km = Decimal(distancia_m) / 1000
-    quantidade = km / consumo
+    percentual, motivos = fator_transito(saida, trechos)
+    sem_transito = km / consumo
+    quantidade = sem_transito * (1 + Decimal(percentual) / 100)
     custo_total = quantidade * preco
     ocupantes = int(vagas) + 1
     por_pessoa = (custo_total / ocupantes).quantize(CENTAVO, rounding=ROUND_HALF_UP)
@@ -1060,6 +1134,9 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
         combustivel_por_pessoa=por_pessoa,
         adicional=extra,
         valor_por_passageiro=por_pessoa + extra,
+        transito_percentual=percentual,
+        transito_motivos=motivos,
+        quantidade_sem_transito=sem_transito.quantize(Decimal(&quot;0.001&quot;), rounding=ROUND_HALF_UP),
     )</code></pre></div>
   <p>Ao salvar a carona, o servidor não confia no valor que o navegador mandou: se o adicional veio, ele refaz a conta
   e guarda o detalhamento (combustível e adicional por passageiro) para o passageiro ver.</p>
@@ -1073,7 +1150,8 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
     if carona.consumo_km is None and veiculo is not None and veiculo.energia == carona.energia:
         carona.consumo_km = veiculo.consumo_km
     rateio = calcular_rateio(carona.distancia_km, carona.vagas, carona.energia, carona.consumo_km,
-                             carona.adicional_por_passageiro or 0)
+                             carona.adicional_por_passageiro or 0, carona.data_hora_saida, carona.lista_trechos)
+    carona.transito_percentual = rateio.transito_percentual
     carona.combustivel_por_passageiro = rateio.combustivel_por_pessoa
     carona.adicional_por_passageiro = rateio.adicional
     carona.valor_por_passageiro = rateio.valor_por_passageiro</code></pre></div>
@@ -1149,10 +1227,10 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
 </section>
 <section>
   <h3>5.11 Testes automatizados</h3>
-  <p><b>297 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
-  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos e cálculo do combustível. Cada teste roda num banco novo, criado
+  <p><b>364 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos, cálculo do combustível com trânsito, fila do Pedir carona, bairros/APIs externas e resumo da viagem. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
-  No front-end, <b>31 testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
+  No front-end, <b>38 testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
   <div class="codigo"><div class="arquivo">backend/tests/conftest.py</div><pre><code class="language-python">@pytest.fixture
 def viagem(client, novo_aluno, nova_carona):
     &quot;&quot;&quot;
@@ -1198,10 +1276,151 @@ def viagem(client, novo_aluno, nova_carona):
       <tr><td><code>test_ciclo_viagem.py</code>, <code>test_conclusao_e_erros.py</code></td><td>Iniciar, PIN, falta, GPS, concluir, teto e valor sugerido, erros em JSON</td></tr>
       <tr><td><code>test_avaliacoes_pagamentos.py</code></td><td>Avaliação às cegas, reputação, perfil público, Pix e pagamento</td></tr>
       <tr><td><code>test_seguranca_notificacoes.py</code></td><td>Notificações, contatos, link da família, emergência, denúncias</td></tr>
+      <tr><td><code>test_pedir_carona.py</code></td><td>Fila: posição, limites, aviso ao publicar, prioridade de 15 min, reserva guardada para o primeiro, falta recente, pedido atendido e expirado</td></tr>
+      <tr><td><code>test_lugares.py</code></td><td>Bairros sem acento e ranking, CEP e ruas com a API simulada e fora do ar, distância (OSRM e estimativa), ônibus, limite de requisições e URL sem SSRF</td></tr>
+      <tr><td><code>test_resumo_viagem.py</code></td><td>Entrada com GPS, desembarque, resumo (tempo a bordo, distância pela trilha), privacidade e médias do painel</td></tr>
       <tr><td><code>test_admin.py</code>, <code>test_banco.py</code>, <code>test_models.py</code>, <code>test_veiculos.py</code></td><td>Painel, moderação, configurações, integridade do banco e seed</td></tr>
-      <tr><td><code>frontend/src/utils/*.test.ts</code></td><td>Validação dos formulários, formatação e recorte da foto (Vitest)</td></tr>
+      <tr><td><code>frontend/src/utils/*.test.ts</code></td><td>Validação dos formulários, formatação, recorte da foto, bairros e distância, contagem regressiva e GPS opcional (Vitest)</td></tr>
     </tbody>
   </table>
+</section>
+<section>
+  <h3>5.13 Fila do "Pedir carona" com prioridade</h3>
+  <p>A regra fica em <code>caronas/fila.py</code>. Ao publicar uma carona, os pedidos abertos compatíveis (mesmo bairro
+  sem acento, mesmo sentido, saída dentro da faixa) são avisados por ordem de chegada e a carona ganha
+  <code>prioridade_ate</code>. Na janela, <code>pedir_vaga</code> chama esta checagem:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/fila.py</div><pre><code class="language-python">def checar_prioridade(carona: Carona, passageiro: Usuario) -&gt; None:
+    &quot;&quot;&quot;Na janela de prioridade, so quem estava na fila pede vaga (e, com reserva automatica, na sua vez).&quot;&quot;&quot;
+    if carona.prioridade_ate is None or carona.prioridade_ate &lt;= datetime.now():
+        return
+    fila = fila_da_carona(carona)
+    ate = f&quot;{carona.prioridade_ate:%H:%M}&quot;
+    ids = [p.aluno_id for p in fila]
+    if passageiro.id not in ids:
+        raise ApiError(f&quot;Esta carona está reservada para quem estava na fila do Pedir carona até as {ate}. &quot;
+                       &quot;Tente de novo depois desse horário.&quot;, 403)
+    if carona.reserva_automatica:
+        # As vagas ficam guardadas para os primeiros da fila que ainda nao pediram
+        ja_pediram = {s.passageiro_id for s in carona.solicitacoes if s.status in (&quot;pendente&quot;, &quot;aceita&quot;)}
+        na_frente = [a for a in ids[:ids.index(passageiro.id)] if a not in ja_pediram]
+        if len(na_frente) &gt;= carona.vagas_restantes:
+            raise ApiError(f&quot;As vagas estão guardadas para quem chegou antes na fila até as {ate}. &quot;
+                           &quot;Se não confirmarem, a carona abre para você depois desse horário.&quot;, 403)</code></pre></div>
+  <p>O prazo de 30 minutos para o motorista responder é o menor entre os dois limites do painel:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/services.py</div><pre><code class="language-python">def _prazo_resposta(carona: Carona, agora: datetime | None = None) -&gt; datetime:
+    &quot;&quot;&quot;
+    Prazo para o motorista responder: o MENOR entre
+    - criacao do pedido + &quot;minutos_responder_pedido&quot; (30 min) e
+    - &quot;horas_expirar_pedido&quot; (2 h) antes da saida (se a carona sai antes disso, a propria saida).
+    &quot;&quot;&quot;
+    agora = agora or datetime.now()
+    resposta = agora + timedelta(minutes=Configuracao.obter_int(&quot;minutos_responder_pedido&quot;, 30))
+    limite = carona.data_hora_saida - timedelta(hours=Configuracao.obter_int(&quot;horas_expirar_pedido&quot;, 2))
+    if limite &lt;= agora:
+        limite = carona.data_hora_saida
+    return min(resposta, limite)</code></pre></div>
+</section>
+<section>
+  <h3>5.14 Bairros, CEP, distância e APIs externas</h3>
+  <p>A busca de bairros não depende de serviço externo: a lista fica no servidor e a comparação ignora acento e
+  maiúscula, com "começa com" antes de "contém":</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/lugares/services.py</div><pre><code class="language-python">def buscar_bairros(termo: str | None, limite: int = 10) -&gt; list[dict]:
+    &quot;&quot;&quot;Sugestoes enquanto digita. Vazio -&gt; os bairros de Vila Velha mais proximos da UVV.&quot;&quot;&quot;
+    q = normalizar(termo)
+    if not q:
+        perto = sorted((b for b in BAIRROS if b[1] == &quot;Vila Velha&quot;),
+                       key=lambda b: haversine_km(b[2], b[3], *UVV))
+        return [_como_dict(*b) for b in perto[:limite]]
+
+    def nota(item) -&gt; int | None:
+        chave = normalizar(item[0])
+        if chave.startswith(q):
+            return 0
+        if any(p.startswith(q) for p in chave.split()):
+            return 1
+        return 2 if q in chave else None
+
+    achados = [(n, b) for b in BAIRROS if (n := nota(b)) is not None]
+    # Empate: Vila Velha primeiro (onde fica a UVV), depois ordem alfabetica
+    achados.sort(key=lambda x: (x[0], CIDADES.index(x[1][1]), normalizar(x[1][0])))
+    return [_como_dict(*b) for _, b in achados[:limite]]</code></pre></div>
+  <p>As APIs externas (ViaCEP e OSRM) são chamadas só pelo servidor, com URL fixa, timeout, cache e plano B: se
+  falharem, a função devolve <code>None</code> e a tela continua funcionando.</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/lugares/externos.py</div><pre><code class="language-python">def _get_json(url: str):
+    &quot;&quot;&quot;GET com timeout; qualquer falha (rede, HTTP, JSON) vira None.&quot;&quot;&quot;
+    if current_app.config.get(&quot;APIS_EXTERNAS_DESLIGADAS&quot;):
+        return None
+    try:
+        req = urllib.request.Request(url, headers={&quot;User-Agent&quot;: USER_AGENT, &quot;Accept&quot;: &quot;application/json&quot;})
+        with urllib.request.urlopen(req, timeout=TIMEOUT_SEG) as resp:  # noqa: S310 - URL fixa https
+            return json.loads(resp.read(300_000).decode(&quot;utf-8&quot;))
+    except Exception as exc:  # noqa: BLE001 - plano B: o sistema segue sem a API
+        current_app.logger.warning(&quot;API externa indisponivel (%s): %s&quot;, url.split(&quot;?&quot;)[0], exc)
+        return None</code></pre></div>
+  <table>
+    <thead><tr><th>Necessidade</th><th>Fontes estudadas</th><th>Decisão</th></tr></thead>
+    <tbody>
+      <tr><td>Bairros</td><td>Prefeitura de Vila Velha (lista em lei/PDF), IBGE (sem bairros por API), Nominatim/Overpass (OpenStreetMap)</td><td>Lista curada de 512 bairros extraída uma vez do OpenStreetMap (ODbL), com coordenada aproximada</td></tr>
+      <tr><td>CEP e rua</td><td>ViaCEP, Nominatim</td><td>ViaCEP pelo servidor. O Nominatim não é usado para sugestões: a política dele proíbe autocompletar</td></tr>
+      <tr><td>Distância</td><td>OSRM público, Haversine</td><td>OSRM com plano B (linha reta × 1,35)</td></tr>
+      <tr><td>Ônibus</td><td>Transcol/Ceturb-ES (app ÔnibusGV e gvbus.org.br, sem GTFS nem API aberta); lista colaborativa do OpenStreetMap</td><td>Nenhum horário inventado: só as linhas que passam pela Boa Vista (608, 606, 1721, 664 noturna) e o terminal de troca, marcado como estimativa, com link oficial</td></tr>
+      <tr><td>Trânsito</td><td>TomTom/HERE (exigem cadastro e chave)</td><td>Estimativa por horário de pico e trechos críticos, configurável no painel</td></tr>
+    </tbody>
+  </table>
+</section>
+<section>
+  <h3>5.15 Trânsito no cálculo e resumo da viagem</h3>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/combustivel.py</div><pre><code class="language-python">def fator_transito(saida: datetime | None, trechos=()) -&gt; tuple[int, list[str]]:
+    &quot;&quot;&quot;Acrescimo no consumo (%) e os motivos, para mostrar na conta.&quot;&quot;&quot;
+    trechos = [t for t in dict.fromkeys(trechos or ()) if t in TRECHOS]
+    if not horario_de_pico(saida):
+        return 0, []
+    pico = Configuracao.obter_int(&quot;transito_pico_percentual&quot;, 25)
+    por_trecho = Configuracao.obter_int(&quot;transito_trecho_percentual&quot;, 10)
+    maximo = Configuracao.obter_int(&quot;transito_maximo_percentual&quot;, 50)
+    motivos = [f&quot;+{pico}% por trânsito no horário de pico&quot;] if pico else []
+    motivos += [f&quot;+{por_trecho}% pela {TRECHOS[t]}&quot; for t in trechos if por_trecho]
+    total = pico + por_trecho * len(trechos)
+    if total &gt; maximo:
+        motivos.append(f&quot;limitado a +{maximo}%&quot;)
+        total = maximo
+    return total, motivos</code></pre></div>
+  <p>A distância percorrida por cada passageiro é a soma dos trechos da trilha GPS entre a entrada e a saída
+  (fórmula de Haversine):</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/viagem.py</div><pre><code class="language-python">def distancia_trilha_km(pontos: list[PosicaoGps], inicio: datetime | None = None, fim: datetime | None = None) -&gt; float:
+    &quot;&quot;&quot;Soma dos trechos da trilha entre `inicio` e `fim` (km, 1 casa).&quot;&quot;&quot;
+    escolhidos = [p for p in pontos if (inicio is None or p.registrada_em &gt;= inicio)
+                  and (fim is None or p.registrada_em &lt;= fim)]
+    total = sum(haversine_km(a.lat, a.lng, b.lat, b.lng) for a, b in zip(escolhidos, escolhidos[1:]))
+    return round(total, 1)</code></pre></div>
+</section>
+<section>
+  <h3>5.16 Revisão de segurança</h3>
+  <ul>
+    <li><b>Autorização:</b> cada rota nova confere o dono (pedido de carona de outro aluno responde 404; o resumo só sai para participantes e admin, e o passageiro vê só a própria linha).</li>
+    <li><b>Limite de requisições</b> (HTTP 429) nas rotas de sugestão, CEP, ônibus e fila (<code>limite.py</code>).</li>
+    <li><b>Cabeçalhos de segurança</b> em toda resposta (<code>nosniff</code>, <code>X-Frame-Options: DENY</code>, <code>Referrer-Policy</code>; no JSON, <code>Cache-Control: no-store</code> e CSP <code>default-src 'none'</code>), também nas páginas da Vercel.</li>
+    <li><b>CORS</b> só para as origens configuradas; <b>SSRF</b> evitado com URLs fixas e texto codificado (a barra também).</li>
+    <li><b>Dependências:</b> <code>pip-audit</code> sem vulnerabilidades conhecidas; no <code>npm audit</code>, os avisos são de ferramentas de desenvolvimento (Vite, Vitest), que não vão para o site publicado.</li>
+  </ul>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/limite.py</div><pre><code class="language-python">def limitar(maximo: int, janela_seg: int = 60):
+    &quot;&quot;&quot;Decorator: no maximo `maximo` chamadas por `janela_seg` segundos por usuario/IP.
+    Use DEPOIS do @login_required, para contar por usuario.&quot;&quot;&quot;
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not current_app.config.get(&quot;RATE_LIMIT_DESLIGADO&quot;):
+                agora = time.monotonic()
+                with _trava:
+                    fila = _chamadas[_chave(func.__name__)]
+                    while fila and fila[0] &lt;= agora - janela_seg:
+                        fila.popleft()
+                    if len(fila) &gt;= maximo:
+                        raise ApiError(&quot;Muitas requisições seguidas. Aguarde um pouco e tente de novo.&quot;, 429)
+                    fila.append(agora)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator</code></pre></div>
 </section>
 <section>
   <h3>5.12 Front-end em Vue 3 + TypeScript</h3>
@@ -1226,6 +1445,7 @@ def viagem(client, novo_aluno, nova_carona):
   vagas_restantes: number
   valor_por_passageiro: number
   reserva_automatica: boolean
+  prioridade_ate: DataIso | null // fila do Pedir carona: ate esta hora so quem estava na fila pede vaga
   observacoes: string | null
   status: StatusCarona
   iniciada_em: DataIso | null
@@ -1333,7 +1553,8 @@ const emit = defineEmits&lt;{ pago: [pagamento: Pagamento] }&gt;()</code></pre><
       <tr><td>Bootstrap 5 e Bootstrap Icons</td><td>Framework CSS: grid responsivo, formulários com estado de erro, componentes e ícones.</td></tr>
       <tr><td>Vitest</td><td>Testes do front-end (validação, formatação e recorte da foto), escritos em TypeScript.</td></tr>
       <tr><td>qrcode, Mermaid</td><td>QR Code do Pix e do autenticador gerados no navegador; diagrama ER desenhado ao vivo no painel. Ambos carregados só na tela que usa.</td></tr>
-      <tr><td>OpenStreetMap</td><td>Mapa do link da família, sem chave de API.</td></tr>
+      <tr><td>Leaflet + OpenStreetMap</td><td>Mapa com a trilha da viagem no resumo e no link da família, sem chave de API (carregado só quando o mapa aparece).</td></tr>
+      <tr><td>ViaCEP e OSRM</td><td>APIs públicas e gratuitas, chamadas pelo servidor com timeout, cache e plano B: CEP/ruas e distância de carro até a UVV.</td></tr>
       <tr><td>Git e GitHub</td><td>Versionamento, com commits por etapa.</td></tr>
     </tbody>
   </table>
@@ -1390,7 +1611,9 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>Foto e autenticador:</b> no Perfil, trocar a foto (ela muda na barra na hora). Ativar a verificação em duas etapas lendo o QR Code com o Google Authenticator do celular, guardar os códigos de reserva, sair e entrar de novo: o login pede o código. No login, "Esqueci minha senha" mostra a recuperação por código.</li>
     <li><b>Combustível:</b> como Kauã, Oferecer carona: bairro, rua e distância já vêm preenchidos e a conta aparece sozinha; mudar o adicional ou o carro refaz a conta. No Perfil, trocar o consumo do carro. Na busca, cada cartão mostra combustível + adicional (a carona da Beatriz é de carro elétrico).</li>
     <li><b>Documentos:</b> como Marina, enviar a foto da CNH no Perfil. Como admin, aba Documentos: ver a imagem, aprovar uma e recusar outra com o motivo; o selo aparece no perfil e a imagem some.</li>
-    <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
+    <li><b>Pedir carona:</b> como Marina, aba Pedir carona: ela é a 1ª da fila da Glória amanhã cedo (o João é o 2º) e o card "Que horas você vai sair?" mostra caronas e ônibus. Como Kauã, Oferecer carona com bairro "gloria" amanhã 07:15: aparece "2 alunos esperando" e, se for dia útil, +25% de trânsito na conta. Publicar; como Pedro (fora da fila), pedir vaga é bloqueado por 15 min.</li>
+    <li><b>30 min e resumo:</b> como Pedro, Meus pedidos → Aguardando: contagem regressiva. Como Ana, Histórico → Resumo da viagem de ontem: entrada 18:33, saída 18:41, mapa.</li>
+    <li><b>Admin:</b> indicadores (incluindo tempo médio de viagem e atraso na saída), aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
 </section>
@@ -1459,6 +1682,15 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   <p><b>Oferecer carona sem digitar tudo de novo.</b> O motorista quase sempre sai de casa. O formulário já vem com o
   bairro e a rua do perfil, estima a distância até a UVV pelo bairro e calcula o rateio sugerido com um clique;
   tudo continua editável para quem sai de outro lugar.</p>
+  <p><b>Horário de ônibus sem dados abertos.</b> O Transcol não publica GTFS nem API. Em vez de inventar horários,
+  o sistema mostra só as linhas que servem o trajeto (de uma lista pública do OpenStreetMap), marca como estimativa e
+  manda para o aplicativo oficial.</p>
+  <p><b>Autocompletar sem violar regras de uso.</b> O Nominatim proíbe autocompletar. A solução foi uma lista local
+  dos bairros (extraída uma vez do OpenStreetMap) e o ViaCEP para ruas, sempre pelo servidor, com cache e plano B.</p>
+  <p><b>Fila justa.</b> Avisar todos ao mesmo tempo daria vantagem a quem está com o celular na mão. A prioridade de
+  15 min, a ordem de chegada e a vaga guardada para os primeiros (com reserva automática) resolvem; quem falta perde a vez.</p>
+  <p><b>Testes que dependiam da hora.</b> Com o trânsito, a conta muda no horário de pico; os testes de valor passaram a
+  usar uma data fixa fora do pico, e os do pico usam datas conhecidas.</p>
 </section>
 
 <section class="quebra">
@@ -1467,11 +1699,11 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <thead><tr><th>Critério</th><th>Onde conferir</th></tr></thead>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
-      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 77 rotas (seção 4).</td></tr>
+      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 88 rotas (seção 4).</td></tr>
       <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulários com envio de arquivo (foto de perfil e documentos, seções 5.7 e 5.9).</td></tr>
-      <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 15 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>297 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 31 testes Vitest (seção 5.11).</td></tr>
-      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 18 tabelas com FK, CHECK, UNIQUE e índices; 4 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
+      <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 17 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>364 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 38 testes Vitest (seção 5.11).</td></tr>
+      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 19 tabelas com FK, CHECK, UNIQUE e índices; 7 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>
   </table>

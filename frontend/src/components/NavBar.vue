@@ -36,7 +36,7 @@
           <span :class="`d-none d-${largo}-inline small text-truncate`" style="max-width: 7rem">{{ primeiroNome }}</span>
         </RouterLink>
         <button class="btn btn-sm btn-outline-light" title="Sair" aria-label="Sair" @click="fazerLogout">
-          <i class="bi bi-box-arrow-right"></i><span class="d-none d-xl-inline ms-1">Sair</span>
+          <i class="bi bi-box-arrow-right"></i><span class="d-none d-xxl-inline ms-1">Sair</span>
         </button>
       </div>
     </div>
@@ -80,8 +80,8 @@ const itens: ItemMenu[] = [
 const itensCelular: ItemMenu[] = itens.slice(0, 5)
 
 const primeiroNome = computed(() => (auth.usuario?.nome || '').split(' ')[0])
-// O admin tem um item a mais no menu: os nomes completos so cabem em telas bem largas (>= 1400 px)
-const largo = computed(() => (auth.usuario?.is_admin ? 'xxl' : 'xl'))
+// Com 6 itens (e o do admin), os nomes completos so cabem em telas bem largas (>= 1400 px)
+const largo = 'xxl'
 
 // Sino: numero de notificacoes nao lidas, atualizado a cada 10 s
 const naoLidas = ref(0)

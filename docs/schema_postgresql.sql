@@ -181,7 +181,10 @@ CREATE TABLE caronas (
 	consumo_km FLOAT, 
 	combustivel_por_passageiro NUMERIC(6, 2), 
 	adicional_por_passageiro NUMERIC(6, 2), 
+	trechos_transito VARCHAR(120), 
+	transito_percentual INTEGER, 
 	reserva_automatica BOOLEAN NOT NULL, 
+	prioridade_ate TIMESTAMP WITHOUT TIME ZONE, 
 	observacoes VARCHAR(300), 
 	status VARCHAR(20) NOT NULL, 
 	iniciada_em TIMESTAMP WITHOUT TIME ZONE, 
@@ -292,6 +295,32 @@ CREATE INDEX ix_notificacoes_created_at ON notificacoes (created_at);
 CREATE INDEX ix_notificacoes_usuario_id ON notificacoes (usuario_id);
 CREATE INDEX ix_notificacoes_usuario_lida ON notificacoes (usuario_id, lida);
 
+CREATE TABLE pedidos_carona (
+	id SERIAL NOT NULL, 
+	aluno_id INTEGER NOT NULL, 
+	bairro VARCHAR(100) NOT NULL, 
+	bairro_chave VARCHAR(100) NOT NULL, 
+	sentido VARCHAR(10) NOT NULL, 
+	data DATE NOT NULL, 
+	hora_inicio TIME WITHOUT TIME ZONE NOT NULL, 
+	hora_fim TIME WITHOUT TIME ZONE NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	carona_id INTEGER, 
+	criado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
+	atendido_em TIMESTAMP WITHOUT TIME ZONE, 
+	CONSTRAINT pk_pedidos_carona PRIMARY KEY (id), 
+	CONSTRAINT ck_pedidos_carona_sentido CHECK (sentido IN ('ida', 'volta')), 
+	CONSTRAINT ck_pedidos_carona_status CHECK (status IN ('aberto', 'atendido', 'expirado', 'cancelado')), 
+	CONSTRAINT ck_pedidos_carona_faixa CHECK (hora_fim > hora_inicio), 
+	CONSTRAINT fk_pedidos_carona_aluno_id_usuarios FOREIGN KEY(aluno_id) REFERENCES usuarios (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_pedidos_carona_carona_id_caronas FOREIGN KEY(carona_id) REFERENCES caronas (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_pedidos_carona_aluno_id ON pedidos_carona (aluno_id);
+CREATE INDEX ix_pedidos_carona_bairro_chave ON pedidos_carona (bairro_chave);
+CREATE INDEX ix_pedidos_carona_data ON pedidos_carona (data);
+CREATE INDEX ix_pedidos_carona_status ON pedidos_carona (status);
+
 CREATE TABLE posicoes_gps (
 	id SERIAL NOT NULL, 
 	carona_id INTEGER NOT NULL, 
@@ -322,6 +351,11 @@ CREATE TABLE solicitacoes (
 	embarcou_em TIMESTAMP WITHOUT TIME ZONE, 
 	metodo_embarque VARCHAR(20), 
 	faltou BOOLEAN NOT NULL, 
+	embarque_gps_lat FLOAT, 
+	embarque_gps_lng FLOAT, 
+	desembarcou_em TIMESTAMP WITHOUT TIME ZONE, 
+	desembarque_lat FLOAT, 
+	desembarque_lng FLOAT, 
 	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
 	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
 	CONSTRAINT pk_solicitacoes PRIMARY KEY (id), 

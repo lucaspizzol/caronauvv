@@ -45,6 +45,7 @@ class Configuracao(db.Model):
         "valor_maximo_passageiro": ("5.00", "Teto do valor por passageiro (R$): nunca mais que o custo"),
         "raio_busca_km": ("2", "Distância máxima da rota até o passageiro na busca (km)"),
         "horas_expirar_pedido": ("2", "Pedido sem resposta expira X horas antes da saída"),
+        "minutos_responder_pedido": ("30", "O motorista tem X minutos para responder um pedido de vaga"),
         "minutos_alerta_parada": ("6", "Carro parado fora da rota por X min dispara 'Está tudo bem?'"),
         "minutos_sem_resposta_alerta": ("3", "Sem resposta ao alerta em X min, avisa os contatos de confiança"),
         "dias_revelar_avaliacao": ("7", "Notas aparecem quando os dois avaliam ou após X dias"),
@@ -76,7 +77,7 @@ class Configuracao(db.Model):
 
     @classmethod
     def obter_int(cls, chave: str, padrao: int) -> int:
-        return int(cls.obter(chave, str(padrao)))
+        return int(float(cls.obter(chave, str(padrao))))  # "2.5" no painel vira 2, sem erro 500
 
     @classmethod
     def obter_decimal(cls, chave: str, padrao: str) -> Decimal:

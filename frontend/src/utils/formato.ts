@@ -227,3 +227,18 @@ export function distanciaTexto(metros: Talvez<number>): string {
   if (m < 1000) return `${m.toLocaleString('pt-BR')} m`
   return `${numeroBr(m / 1000, 3)} km (${m.toLocaleString('pt-BR')} m)`
 }
+
+/**
+ * Contagem regressiva ate um horario: "24:05" (menos de 1 h), "1 h 05 min" ou "" se ja passou.
+ * `agora` e parametro para facilitar o teste.
+ */
+export function tempoRestante(iso: Talvez<DataIso>, agora: Date = new Date()): string {
+  const fim = paraData(iso)
+  if (!fim) return ''
+  const segundos = Math.floor((fim.getTime() - agora.getTime()) / 1000)
+  if (segundos <= 0) return ''
+  const h = Math.floor(segundos / 3600)
+  const min = Math.floor((segundos % 3600) / 60)
+  if (h > 0) return `${h} h ${doisDigitos(min)} min`
+  return `${doisDigitos(min)}:${doisDigitos(segundos % 60)}`
+}

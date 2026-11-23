@@ -48,15 +48,48 @@ def test_pedir_vaga(client, carona, ana):
     assert s["status"] == "pendente"
     assert s["endereco_embarque"] == "Rua Goiania, 45"
     assert s["pin_embarque"] is None
-    # Sem resposta ate 2 h antes da saida, o pedido expira
-    saida = datetime.fromisoformat(carona["data_hora_saida"])
+    # Sem resposta em 30 min, o pedido expira (a carona sai daqui a dias)
+    expira = datetime.fromisoformat(s["expira_em"])
+    assert timedelta(minutes=28) <= expira - datetime.now() <= timedelta(minutes=31)
+
+
+def test_prazo_e_o_menor_entre_30_min_e_2h_antes_da_saida(client, motorista, ana, nova_carona):
+    # Sai daqui a 2h10: 2 h antes da saida (daqui a 10 min) vence antes dos 30 min
+    saida = (datetime.now() + timedelta(hours=2, minutes=10)).replace(second=0, microsecond=0)
+    carona = nova_carona(motorista[1], data_hora_saida=saida.isoformat(timespec="minutes"))
+    s = pedir(client, carona["id"], ana[1]).get_json()["solicitacao"]
     assert datetime.fromisoformat(s["expira_em"]) == saida - timedelta(hours=2)
 
 
-def test_carona_saindo_em_menos_de_2h_expira_na_saida(client, motorista, ana, nova_carona):
-    carona = nova_carona(motorista[1], data_hora_saida=(datetime.now() + timedelta(hours=1)).isoformat(timespec="minutes"))
+def test_carona_saindo_em_menos_de_30_min_expira_na_saida(client, motorista, ana, nova_carona):
+    carona = nova_carona(motorista[1], data_hora_saida=(datetime.now() + timedelta(minutes=20)).isoformat(timespec="minutes"))
     s = pedir(client, carona["id"], ana[1]).get_json()["solicitacao"]
     assert s["expira_em"] == carona["data_hora_saida"]
+
+
+def test_minutos_para_responder_configuravel(client, motorista, ana, nova_carona, admin):
+    resp = client.put("/api/admin/configuracoes", json={"minutos_responder_pedido": "10"}, headers=admin[1])
+    assert resp.status_code == 200
+    carona = nova_carona(motorista[1])
+    s = pedir(client, carona["id"], ana[1]).get_json()["solicitacao"]
+    expira = datetime.fromisoformat(s["expira_em"])
+    assert timedelta(minutes=8) <= expira - datetime.now() <= timedelta(minutes=11)
+
+
+def test_pedido_expirado_avisa_o_passageiro_pelo_sino(client, carona, motorista, ana):
+    sid = pedir(client, carona["id"], ana[1]).get_json()["solicitacao"]["id"]
+    db.session.get(Solicitacao, sid).expira_em = datetime.now() - timedelta(minutes=1)
+    db.session.commit()
+
+    # O sino (contagem) ja expira o pedido e cria a notificacao
+    assert client.get("/api/notificacoes/contagem", headers=ana[1]).get_json()["nao_lidas"] >= 1
+    assert db.session.get(Solicitacao, sid).status == "expirada"
+    notificacoes = client.get("/api/notificacoes", headers=ana[1]).get_json()["notificacoes"]
+    assert notificacoes[0]["tipo"] == "pedido_expirado"
+    # Nao avisa duas vezes
+    client.get("/api/notificacoes/contagem", headers=motorista[1])
+    tipos = [n["tipo"] for n in client.get("/api/notificacoes", headers=ana[1]).get_json()["notificacoes"]]
+    assert tipos.count("pedido_expirado") == 1
 
 
 def test_motorista_nao_pede_vaga_na_propria_carona(client, carona, motorista):

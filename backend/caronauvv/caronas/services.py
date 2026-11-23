@@ -18,7 +18,6 @@ from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema
 STATUS_EDITAVEIS = ("ativa", "lotada")
 STATUS_EM_ABERTO = ("ativa", "lotada", "em_andamento")
 STATUS_SOLICITACAO_ATIVOS = ("pendente", "aceita")
-PRAZO_RESPOSTA = timedelta(hours=2)          # pedido sem resposta expira 2 h antes da saida
 JANELA_INICIO = timedelta(minutes=30)        # o motorista pode iniciar a viagem 30 min antes
 
 
@@ -387,18 +386,49 @@ def registrar_posicao(carona: Carona, usuario: Usuario, lat: float, lng: float) 
 # ==========================================================
 # SOLICITACOES (pedido de vaga)
 # ==========================================================
-def _prazo_resposta(carona: Carona) -> datetime:
-    # Se a carona sai em menos de 2 h, o motorista pode responder ate a saida
-    limite = carona.data_hora_saida - PRAZO_RESPOSTA
-    return limite if limite > datetime.now() else carona.data_hora_saida
+def _prazo_resposta(carona: Carona, agora: datetime | None = None) -> datetime:
+    """
+    Prazo para o motorista responder: o MENOR entre
+    - criacao do pedido + "minutos_responder_pedido" (30 min) e
+    - "horas_expirar_pedido" (2 h) antes da saida (se a carona sai antes disso, a propria saida).
+    """
+    agora = agora or datetime.now()
+    resposta = agora + timedelta(minutes=Configuracao.obter_int("minutos_responder_pedido", 30))
+    limite = carona.data_hora_saida - timedelta(hours=Configuracao.obter_int("horas_expirar_pedido", 2))
+    if limite <= agora:
+        limite = carona.data_hora_saida
+    return min(resposta, limite)
+
+
+def _expirar(solicitacao: Solicitacao) -> None:
+    solicitacao.status = "expirada"
+    carona = solicitacao.carona
+    notificar(solicitacao.passageiro, "pedido_expirado", "Pedido expirou",
+              f"{_primeiro_nome(carona.motorista)} não respondeu a tempo ao seu pedido para {_quando(carona)}. "
+              "Busque outra carona ou entre na fila em Pedir carona.", carona)
 
 
 def expirar_vencidas(solicitacoes) -> None:
-    """Marca como "expirada" os pedidos pendentes que passaram do prazo (o chamador faz o commit)."""
+    """Marca como "expirada" os pedidos pendentes que passaram do prazo e avisa o passageiro
+    (o chamador faz o commit)."""
     agora = datetime.now()
     for s in solicitacoes:
         if s.status == "pendente" and s.expira_em is not None and s.expira_em <= agora:
-            s.status = "expirada"
+            _expirar(s)
+
+
+def expirar_pedidos_do_usuario(usuario: Usuario) -> int:
+    """Expira os pedidos vencidos em que o usuario e passageiro ou motorista.
+    Chamado pelo sino de notificacoes, entao o aviso chega mesmo sem abrir as listas."""
+    vencidos = list(db.session.scalars(
+        db.select(Solicitacao).join(Solicitacao.carona)
+        .where(Solicitacao.status == "pendente", Solicitacao.expira_em <= datetime.now(),
+               db.or_(Solicitacao.passageiro_id == usuario.id, Carona.motorista_id == usuario.id))
+    ))
+    expirar_vencidas(vencidos)
+    if vencidos:
+        db.session.commit()
+    return len(vencidos)
 
 
 def _aceitar(solicitacao: Solicitacao) -> None:

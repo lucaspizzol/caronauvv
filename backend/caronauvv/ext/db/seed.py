@@ -243,7 +243,7 @@ def _dados_de_exemplo() -> None:
     pedro_amanha = Solicitacao(
         carona=c_amanha, passageiro=pedro, status="pendente",
         endereco_embarque="Rua Itaúnas, 300", distancia_rota_m=120, desvio_min=2,
-        expira_em=as_(amanha, 16, 30),
+        expira_em=datetime.now() + timedelta(minutes=30),  # o motorista tem 30 min para responder
     )
 
     # ------------------------------------------------------

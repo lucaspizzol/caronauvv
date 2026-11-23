@@ -43,8 +43,9 @@
               <span class="badge text-bg-dark fs-6 ms-1 font-monospace">{{ p.pin_embarque }}</span>
             </div>
           </template>
-          <div v-else-if="p.status === 'pendente'" class="small text-secondary">
-            <i class="bi bi-hourglass-split me-1"></i>Aguardando o motorista. O pedido expira se não for respondido até 2 h antes da saída.
+          <div v-else-if="p.status === 'pendente'" class="small text-secondary d-flex flex-column gap-1">
+            <span>Aguardando o motorista responder. Se ele não responder a tempo, o pedido expira e você é avisado.</span>
+            <ContagemRegressiva :ate="p.expira_em" prefixo="O motorista tem" texto-vencido="Prazo encerrado, atualizando..." @venceu="atualizarSilencioso" />
           </div>
 
           <div v-if="p.endereco_embarque" class="small text-secondary"><i class="bi bi-geo-alt me-1"></i>{{ p.endereco_embarque }}</div>
@@ -88,6 +89,7 @@ import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
+import ContagemRegressiva from '../components/ContagemRegressiva.vue'
 import PixPagamento from '../components/PixPagamento.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'
 import StatusBadge from '../components/StatusBadge.vue'

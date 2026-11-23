@@ -185,7 +185,7 @@ class Solicitacao(db.Model):
     # ------------------------------------------------------
     status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="pendente", index=True)
     respondida_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)   # [EXTRA] expira 2h antes da saida
+    expira_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)   # [EXTRA] 30 min para responder (ou 2 h antes da saida)
 
     # ------------------------------------------------------
     # EMBARQUE COM PIN  [EXTRA]

@@ -147,7 +147,8 @@
               <BotaoConfirmar texto="Não apareceu" pergunta="Marcar falta?" classe="btn-outline-warning" :acao="() => marcarFalta(carona, s)" />
             </form>
 
-            <div v-if="s.status === 'pendente'" class="d-flex gap-2">
+            <div v-if="s.status === 'pendente'" class="d-flex flex-wrap align-items-center gap-2">
+              <ContagemRegressiva :ate="s.expira_em" prefixo="Responda em" texto-vencido="Prazo encerrado" @venceu="atualizarSilencioso" />
               <button class="btn btn-sm btn-success" :disabled="respondendo === s.id" @click="responder(carona, s, 'aceitar')">
                 <i class="bi bi-check-lg"></i> Aceitar
               </button>
@@ -170,6 +171,7 @@ import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AoVivo from '../components/AoVivo.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
+import ContagemRegressiva from '../components/ContagemRegressiva.vue'
 import CaronaInfo from '../components/CaronaInfo.vue'
 import ReputacaoResumo from '../components/ReputacaoResumo.vue'
 import SegurancaViagem from '../components/SegurancaViagem.vue'

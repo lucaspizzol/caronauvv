@@ -298,7 +298,7 @@ def montar(app) -> str:
     <tr><th>Curso</th><td>Ciência da Computação · Noturno · UVV</td></tr>
     <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol (matrícula 202415451)</td></tr>
     <tr><th>Versão online</th><td><b>https://caronauvv.vercel.app</b></td></tr>
-    <tr><th>Repositório</th><td>github.com/Kauazxz/caronauvv</td></tr>
+    <tr><th>Repositório</th><td><a href="https://github.com/lucaspizzol/caronauvv">github.com/lucaspizzol/caronauvv</a></td></tr>
     <tr><th>Data</th><td>Novembro de 2026</td></tr>
   </table>
 </section>""")

@@ -11,6 +11,8 @@ pedem vaga e o motorista aceita ou recusa. O telefone de cada um só aparece dep
 1. **Online, sem instalar nada:** https://caronauvv.vercel.app
 2. **Localhost, na própria máquina:** passo a passo em [Como rodar](#como-rodar).
 
+Código-fonte: **https://github.com/lucaspizzol/caronauvv**
+
 As duas usam as mesmas [contas de exemplo](#usuários-de-exemplo-senha-123456) (senha `123456`).
 
 Por cima do MVP, o CaronaUVV tem um **sistema de confiança** inspirado nos apps de carona e de

@@ -1,5 +1,5 @@
 <template>
-  <div class="container py-4" style="max-width: 760px">
+  <div class="container py-4" style="max-width: 640px">
     <h1 class="titulo-pagina h3 mb-1">Avaliações</h1>
     <p class="text-secondary">
       Depois de cada viagem, motorista e passageiro se avaliam. A nota fica escondida até os dois avaliarem

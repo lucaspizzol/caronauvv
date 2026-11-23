@@ -68,14 +68,14 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <div class="numeros">
     <div><b>72</b><span>rotas da API REST</span></div>
     <div><b>17</b><span>tabelas no banco</span></div>
-    <div><b>275</b><span>testes automatizados</span></div>
+    <div><b>279</b><span>testes automatizados</span></div>
     <div><b>15</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
     <tr><th>Disciplina</th><td>Desenvolvimento de Sistemas para Web (CC5N)</td></tr>
     <tr><th>Professor</th><td>Wanderson Muniz de Santana</td></tr>
     <tr><th>Curso</th><td>Ciência da Computação · Noturno · UVV</td></tr>
-    <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol</td></tr>
+    <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol (matrícula 202415451)</td></tr>
     <tr><th>Versão online</th><td><b>https://caronauvv.vercel.app</b></td></tr>
     <tr><th>Repositório</th><td>github.com/Kauazxz/caronauvv</td></tr>
     <tr><th>Data</th><td>Novembro de 2026</td></tr>
@@ -1017,7 +1017,7 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
   <p><b>255 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
   regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil e verificação em duas etapas. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
-  No front-end, <b>20 testes com Vitest</b> cobrem as regras de validação, a formatação e o recorte da foto.</p>
+  No front-end, <b>24 testes com Vitest</b> cobrem as regras de validação, a formatação e o recorte da foto.</p>
   <div class="codigo"><div class="arquivo">backend/tests/conftest.py</div><pre><code class="language-python">@pytest.fixture
 def viagem(client, novo_aluno, nova_carona):
     &quot;&quot;&quot;
@@ -1299,6 +1299,14 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   <p><b>Uso no celular.</b> A maioria dos alunos usa o celular: grid do Bootstrap, barra de navegação embaixo e cada
   tela conferida de 360 a 1280 px de largura, sem rolagem horizontal. A conferência automática achou o menu do topo
   estourando em tablets (768 px) e para o administrador, que tem um item a mais; o menu de baixo passou a valer até 991 px.</p>
+  <p><b>Front-end e back-end falando a mesma língua.</b> Em JavaScript, ler um campo que a API não manda (ou que pode
+  vir <code>null</code>) só aparece como erro na tela, na hora da apresentação. Passamos o front-end para TypeScript
+  em modo estrito e descrevemos cada resposta da API em <code>types/api.ts</code>, copiando os <code>to_dict()</code>
+  do back-end. Na migração, o compilador apontou três telas que liam dados ainda não carregados ou sem conferir o
+  formato; foram corrigidas, e o build agora não sai se os tipos não baterem.</p>
+  <p><b>Oferecer carona sem digitar tudo de novo.</b> O motorista quase sempre sai de casa. O formulário já vem com o
+  bairro e a rua do perfil, estima a distância até a UVV pelo bairro e calcula o rateio sugerido com um clique;
+  tudo continua editável para quem sai de outro lugar.</p>
 </section>
 
 <section class="quebra">
@@ -1310,7 +1318,7 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
       <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 72 rotas (seção 4).</td></tr>
       <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
       <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 15 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>255 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 20 testes Vitest (seção 5.9).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>255 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 24 testes Vitest (seção 5.9).</td></tr>
       <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 17 tabelas com FK, CHECK, UNIQUE e índices; 3 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>

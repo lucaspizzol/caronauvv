@@ -33,7 +33,7 @@ transporte (BlaBlaCar, Uber, 99):
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
 - **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 255 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 255 testes, 96% de cobertura) e Vitest (front-end, 20 testes)
+- **Testes:** pytest + pytest-flask (back-end, 255 testes, 96% de cobertura) e Vitest (front-end, 24 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -112,7 +112,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 20 testes do front (Vitest)
+npm test                         # 24 testes do front (Vitest)
 npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 

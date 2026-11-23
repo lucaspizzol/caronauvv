@@ -294,7 +294,7 @@ def montar(app) -> str:
     <tr><th>Disciplina</th><td>Desenvolvimento de Sistemas para Web (CC5N)</td></tr>
     <tr><th>Professor</th><td>Wanderson Muniz de Santana</td></tr>
     <tr><th>Curso</th><td>Ciência da Computação · Noturno · UVV</td></tr>
-    <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol</td></tr>
+    <tr><th>Integrantes</th><td>Kauã Araujo de Souza (matrícula 202416377)<br>Lucas Pizzol (matrícula 202415451)</td></tr>
     <tr><th>Versão online</th><td><b>https://caronauvv.vercel.app</b></td></tr>
     <tr><th>Repositório</th><td>github.com/Kauazxz/caronauvv</td></tr>
     <tr><th>Data</th><td>Novembro de 2026</td></tr>
@@ -798,6 +798,14 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   <p><b>Uso no celular.</b> A maioria dos alunos usa o celular: grid do Bootstrap, barra de navegação embaixo e cada
   tela conferida de 360 a 1280 px de largura, sem rolagem horizontal. A conferência automática achou o menu do topo
   estourando em tablets (768 px) e para o administrador, que tem um item a mais; o menu de baixo passou a valer até 991 px.</p>
+  <p><b>Front-end e back-end falando a mesma língua.</b> Em JavaScript, ler um campo que a API não manda (ou que pode
+  vir <code>null</code>) só aparece como erro na tela, na hora da apresentação. Passamos o front-end para TypeScript
+  em modo estrito e descrevemos cada resposta da API em <code>types/api.ts</code>, copiando os <code>to_dict()</code>
+  do back-end. Na migração, o compilador apontou três telas que liam dados ainda não carregados ou sem conferir o
+  formato; foram corrigidas, e o build agora não sai se os tipos não baterem.</p>
+  <p><b>Oferecer carona sem digitar tudo de novo.</b> O motorista quase sempre sai de casa. O formulário já vem com o
+  bairro e a rua do perfil, estima a distância até a UVV pelo bairro e calcula o rateio sugerido com um clique;
+  tudo continua editável para quem sai de outro lugar.</p>
 </section>""")
 
     # ---------------- 9. CRITERIOS ----------------

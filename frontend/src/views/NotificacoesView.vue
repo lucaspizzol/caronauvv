@@ -1,5 +1,5 @@
 <template>
-  <div class="container py-4" style="max-width: 760px">
+  <div class="container py-4" style="max-width: 640px">
     <h1 class="titulo-pagina h3 mb-1">Notificações</h1>
     <p class="text-secondary mb-1">Pedidos, confirmações, cancelamentos e avaliações das suas caronas.</p>
     <p class="mb-3"><AoVivo :atualizado-em="atualizadoEm" /></p>

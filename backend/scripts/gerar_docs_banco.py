@@ -24,7 +24,7 @@ DOCS = Path(__file__).resolve().parents[2] / "docs"
 MARCADOR = "## Diagrama físico"
 
 MODULOS = {
-    "auth": ["usuarios", "veiculos", "contatos_confianca", "fotos_perfil", "codigos_reserva"],
+    "auth": ["usuarios", "veiculos", "contatos_confianca", "fotos_perfil", "documentos", "codigos_reserva"],
     "caronas": ["caronas", "solicitacoes", "posicoes_gps"],
     "avaliacoes": ["avaliacoes", "avaliacao_tags", "pagamentos"],
     "notificacoes": ["notificacoes"],

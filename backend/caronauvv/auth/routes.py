@@ -4,6 +4,7 @@ from caronauvv.validacao import validar
 
 from . import dois_fatores
 from .decorators import login_required
+from .documentos import documentos_do_usuario, enviar_documento
 from .foto import buscar_foto, remover_foto, salvar_foto
 from .schemas import (
     CadastroSchema,
@@ -219,6 +220,24 @@ def enviar_foto():
 @login_required
 def apagar_foto():
     return {"usuario": remover_foto(g.usuario).to_dict(privado=True)}
+
+
+# ==========================================================
+# DOCUMENTOS (identidade e CNH) para os selos de confianca
+# ==========================================================
+@bp.get("/me/documentos")
+@login_required
+def meus_documentos():
+    return {"documentos": documentos_do_usuario(g.usuario)}
+
+
+@bp.put("/me/documentos/<tipo>")
+@login_required
+def enviar_meu_documento(tipo):
+    # multipart/form-data: campo "documento" (imagem) e, na CNH, "validade" (AAAA-MM-DD)
+    arquivo = request.files.get("documento")
+    enviar_documento(g.usuario, tipo, arquivo.read() if arquivo else b"", request.form.get("validade"))
+    return {"documentos": documentos_do_usuario(g.usuario), "usuario": g.usuario.to_dict(privado=True)}
 
 
 @bp_fotos.get("/<token>")

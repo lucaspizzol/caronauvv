@@ -100,6 +100,9 @@ class Config:
     # ------------------------------------------------------
     FOTO_MAX_KB = int(os.getenv("FOTO_MAX_KB", 512))
     FOTO_MAX_LADO_PX = int(os.getenv("FOTO_MAX_LADO_PX", 1024))
+    # Documento (identidade/CNH): o navegador reduz para 1600 px; a imagem e apagada depois da analise
+    DOCUMENTO_MAX_KB = int(os.getenv("DOCUMENTO_MAX_KB", 1536))
+    DOCUMENTO_MAX_LADO_PX = int(os.getenv("DOCUMENTO_MAX_LADO_PX", 2400))
     # Tamanho maximo de qualquer requisicao: acima disso o Flask responde 413 sem ler o corpo
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_UPLOAD_MB", 2)) * 1024 * 1024
 

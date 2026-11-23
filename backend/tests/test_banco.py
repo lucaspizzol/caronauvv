@@ -72,7 +72,7 @@ def test_seed_preenche_todas_as_tabelas(populado):
         nome for nome, tabela in db.metadata.tables.items()
         if db.session.scalar(db.select(db.func.count()).select_from(tabela)) == 0
     ]
-    assert len(db.metadata.tables) == 17
+    assert len(db.metadata.tables) == 18
     assert vazias == []
 
 

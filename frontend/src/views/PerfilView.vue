@@ -27,6 +27,8 @@
       <AlertaMensagem class="mt-2 mb-0" :texto="msgSelo.texto" :tipo="msgSelo.tipo" @fechar="msgSelo.texto = ''" />
     </div>
 
+    <DocumentosVerificacao id="documentos" class="mb-4" />
+
     <div class="row g-4">
       <!-- DADOS PESSOAIS -->
       <div class="col-lg-7">
@@ -156,34 +158,63 @@
       <div id="veiculos" class="col-12">
         <div class="card p-4">
           <h2 class="h5 fw-bold mb-1"><i class="bi bi-car-front me-1"></i>Meus carros</h2>
-          <p class="small text-secondary">A placa só aparece para o passageiro depois que a vaga é confirmada.</p>
+          <p class="small text-secondary">
+            A placa só aparece para o passageiro depois que a vaga é confirmada. O tipo de combustível e o consumo
+            entram no cálculo do rateio ao oferecer carona.
+          </p>
           <AlertaMensagem :texto="msgVeiculo.texto" :tipo="msgVeiculo.tipo" @fechar="msgVeiculo.texto = ''" />
 
-          <div v-for="v in veiculos" :key="v.id" class="d-flex align-items-center gap-3 border rounded-3 p-2 mb-2">
-            <i class="bi bi-car-front-fill fs-4 text-primary"></i>
-            <div class="flex-grow-1">
+          <div v-for="v in veiculos" :key="v.id" :class="['d-flex flex-wrap align-items-center gap-2 gap-sm-3 border rounded-3 p-2 mb-2', { 'border-primary': editandoId === v.id }]">
+            <i :class="['bi fs-4 text-primary', ENERGIAS[v.energia].icone]"></i>
+            <div class="flex-grow-1 min-w-0">
               <span class="fw-semibold">{{ v.modelo }}</span> <span class="text-secondary">{{ v.cor }}</span>
               <span class="badge text-bg-light border ms-2">{{ v.placa }}</span>
+              <div class="small text-secondary">
+                {{ ENERGIAS[v.energia].texto }} ·
+                <span v-if="v.consumo_km">{{ numeroBr(v.consumo_km, 1) }} {{ unidadeConsumo(v.energia) }}</span>
+                <span v-else class="text-warning-emphasis">consumo não informado (usa a média de {{ numeroBr(ENERGIAS[v.energia].consumoMedio, 1) }} {{ unidadeConsumo(v.energia) }})</span>
+              </div>
             </div>
+            <button type="button" class="btn btn-sm btn-light" @click="editarVeiculo(v)"><i class="bi bi-pencil me-1"></i>Editar</button>
             <BotaoConfirmar texto="Remover" pergunta="Remover este carro?" icone="bi-trash" :acao="() => removerVeiculo(v)" />
           </div>
           <p v-if="!veiculos.length" class="small text-secondary">Nenhum carro cadastrado.</p>
 
-          <form class="row g-2 align-items-start mt-1" novalidate @submit.prevent="adicionarVeiculo">
+          <form class="row g-2 align-items-start mt-1" novalidate @submit.prevent="salvarVeiculo">
+            <div v-if="editandoId" class="col-12 small fw-semibold text-primary"><i class="bi bi-pencil me-1"></i>Editando o carro {{ veiculo.placa }}</div>
             <div class="col-sm-4">
               <input v-model.trim="veiculo.modelo" placeholder="Modelo (ex.: HB20)" aria-label="Modelo" :class="['form-control', { 'is-invalid': errosVeiculo.modelo }]" />
               <div class="invalid-feedback">{{ errosVeiculo.modelo }}</div>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <input v-model.trim="veiculo.cor" placeholder="Cor" aria-label="Cor" :class="['form-control', { 'is-invalid': errosVeiculo.cor }]" />
               <div class="invalid-feedback">{{ errosVeiculo.cor }}</div>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <input v-model.trim="veiculo.placa" placeholder="Placa" aria-label="Placa" maxlength="8" style="text-transform: uppercase" :class="['form-control', { 'is-invalid': errosVeiculo.placa }]" />
               <div class="invalid-feedback">{{ errosVeiculo.placa }}</div>
             </div>
-            <div class="col-sm-2 d-grid">
-              <button class="btn btn-primary"><i class="bi bi-plus-lg"></i> Adicionar</button>
+            <div class="col-sm-5">
+              <select v-model="veiculo.energia" class="form-select" aria-label="Tipo de combustível">
+                <option v-for="(info, chave) in ENERGIAS" :key="chave" :value="chave">{{ info.texto }}</option>
+              </select>
+            </div>
+            <div class="col-sm-4">
+              <div class="input-group has-validation">
+                <input
+                  v-model.number="veiculo.consumo_km" type="number" min="0.1" max="60" step="0.1" aria-label="Consumo"
+                  :placeholder="`Consumo (média ${numeroBr(ENERGIAS[veiculo.energia].consumoMedio, 1)})`"
+                  :class="['form-control', { 'is-invalid': errosVeiculo.consumo_km }]"
+                />
+                <span class="input-group-text">{{ unidadeConsumo(veiculo.energia) }}</span>
+                <div class="invalid-feedback">{{ errosVeiculo.consumo_km }}</div>
+              </div>
+            </div>
+            <div class="col-sm-3 d-flex gap-2">
+              <button class="btn btn-primary flex-grow-1">
+                <i :class="['bi', editandoId ? 'bi-check-lg' : 'bi-plus-lg']"></i> {{ editandoId ? 'Salvar' : 'Adicionar' }}
+              </button>
+              <button v-if="editandoId" type="button" class="btn btn-light" aria-label="Cancelar edição" @click="limparVeiculo"><i class="bi bi-x-lg"></i></button>
             </div>
           </form>
         </div>
@@ -197,13 +228,14 @@ import { onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import BotaoConfirmar from '../components/BotaoConfirmar.vue'
+import DocumentosVerificacao from '../components/DocumentosVerificacao.vue'
 import DoisFatores from '../components/DoisFatores.vue'
 import FotoPerfilEditor from '../components/FotoPerfilEditor.vue'
 import api, { mensagemDeErro } from '../services/api'
 import { atualizarUsuario, auth, entrar, type TipoAviso } from '../stores/auth'
-import type { ContatoConfianca, ErrosCampos, NivelConversa, UsuarioLogado, Veiculo } from '../types/api'
+import type { ContatoConfianca, Energia, ErrosCampos, NivelConversa, UsuarioLogado, Veiculo } from '../types/api'
 import { BAIRROS } from '../utils/bairros'
-import { PREF_CONVERSA, telefoneFormatado } from '../utils/formato'
+import { ENERGIAS, numeroBr, PREF_CONVERSA, telefoneFormatado, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 /** Mensagem curta mostrada embaixo de cada cartao da tela. */
@@ -243,7 +275,16 @@ const msgSenha = novoAviso()
 const salvandoSenha = ref(false)
 
 const veiculos = ref<Veiculo[]>([])
-const veiculo = reactive({ modelo: '', cor: '', placa: '' })
+interface FormVeiculo {
+  modelo: string
+  cor: string
+  placa: string
+  energia: Energia
+  consumo_km: number | '' // vazio = nao informado (o calculo usa a media)
+}
+const VEICULO_VAZIO: FormVeiculo = { modelo: '', cor: '', placa: '', energia: 'flex', consumo_km: '' }
+const veiculo = reactive<FormVeiculo>({ ...VEICULO_VAZIO })
+const editandoId = ref<number | null>(null)
 const errosVeiculo = ref<ErrosCampos>({})
 const msgVeiculo = novoAviso()
 
@@ -350,18 +391,43 @@ async function trocarSenha(): Promise<void> {
   }
 }
 
-async function adicionarVeiculo(): Promise<void> {
+function limparVeiculo(): void {
+  Object.assign(veiculo, VEICULO_VAZIO)
+  editandoId.value = null
+  errosVeiculo.value = {}
+}
+
+function editarVeiculo(v: Veiculo): void {
+  Object.assign(veiculo, { modelo: v.modelo, cor: v.cor, placa: v.placa || '', energia: v.energia, consumo_km: v.consumo_km ?? '' })
+  editandoId.value = v.id
+  errosVeiculo.value = {}
   msgVeiculo.texto = ''
-  errosVeiculo.value = validar(veiculo, { modelo: [regras.obrigatorio], cor: [regras.obrigatorio], placa: [regras.obrigatorio, regras.placa] })
+}
+
+async function salvarVeiculo(): Promise<void> {
+  msgVeiculo.texto = ''
+  errosVeiculo.value = validar(veiculo, {
+    modelo: [regras.obrigatorio],
+    cor: [regras.obrigatorio],
+    placa: [regras.obrigatorio, regras.placa],
+    consumo_km: [(v) => (v === '' || v === null || (Number(v) > 0 && Number(v) <= 60) ? null : 'Entre 0,1 e 60.')]
+  })
   if (Object.keys(errosVeiculo.value).length) return
+  const corpo = { ...veiculo, consumo_km: veiculo.consumo_km === '' ? null : Number(veiculo.consumo_km) }
   try {
-    const { data } = await api.post<{ veiculo: Veiculo }>('/veiculos', veiculo)
-    veiculos.value.push(data.veiculo)
-    Object.assign(veiculo, { modelo: '', cor: '', placa: '' })
-    avisar(msgVeiculo, 'Carro cadastrado.')
+    if (editandoId.value) {
+      const { data } = await api.put<{ veiculo: Veiculo }>(`/veiculos/${editandoId.value}`, corpo)
+      veiculos.value = veiculos.value.map((v) => (v.id === data.veiculo.id ? data.veiculo : v))
+      avisar(msgVeiculo, 'Carro atualizado.')
+    } else {
+      const { data } = await api.post<{ veiculo: Veiculo }>('/veiculos', corpo)
+      veiculos.value.push(data.veiculo)
+      avisar(msgVeiculo, 'Carro cadastrado.')
+    }
+    limparVeiculo()
   } catch (e) {
     avisar(msgVeiculo, mensagemDeErro(e), 'danger')
-    errosVeiculo.value = errosDoServidor(e, ['modelo', 'cor', 'placa'])
+    errosVeiculo.value = errosDoServidor(e, ['modelo', 'cor', 'placa', 'energia', 'consumo_km'])
   }
 }
 

@@ -24,7 +24,14 @@ export interface Preferencias {
 }
 
 export interface Selo {
-  codigo: 'email_uvv' | 'perfil_verificado' | 'pontual' | 'bem_avaliado' | 'sem_faltas'
+  codigo:
+    | 'email_uvv'
+    | 'perfil_verificado'
+    | 'identidade_verificada'
+    | 'cnh_verificada'
+    | 'pontual'
+    | 'bem_avaliado'
+    | 'sem_faltas'
   texto: string
 }
 
@@ -51,6 +58,8 @@ export interface Usuario {
   foto_url: string | null
   verificado: boolean
   email_verificado: boolean
+  identidade_verificada: boolean // documento conferido pela administracao
+  cnh_verificada: boolean
   bio: string | null
   preferencias: Preferencias
   membro_desde: string | null
@@ -78,11 +87,16 @@ export interface UsuarioLogado extends Usuario {
 /** Avatar so precisa do nome e da foto: serve para qualquer forma reduzida de usuario. */
 export type PessoaComFoto = Pick<Usuario, 'nome'> & Partial<Pick<Usuario, 'foto_url'>>
 
+/** Energia do carro: define o preco usado no calculo do combustivel. */
+export type Energia = 'gasolina' | 'etanol' | 'flex' | 'diesel' | 'hibrido' | 'eletrico'
+
 export interface Veiculo {
   id: number
   modelo: string
   cor: string
   placa?: string
+  energia: Energia
+  consumo_km: number | null // km por litro (eletrico: km por kWh)
 }
 
 export interface ContatoConfianca {
@@ -117,6 +131,62 @@ export interface Carona {
   concluida_em: DataIso | null
   motorista: Usuario & { reputacao: Reputacao }
   veiculo: Veiculo | null
+  rateio: RateioCarona | null // como o valor foi composto (nulo se o motorista digitou o valor)
+}
+
+/** Detalhamento do valor guardado na carona: combustivel + adicional = valor por passageiro. */
+export interface RateioCarona {
+  energia: Energia
+  consumo_km: number | null
+  combustivel: number
+  adicional: number
+}
+
+/** GET /api/caronas/valor-sugerido com energia: a conta completa (caronas/combustivel.py). */
+export interface CalculoRateio {
+  energia: Energia
+  energia_nome: string
+  unidade: 'L' | 'kWh'
+  distancia_m: number
+  distancia_km: number
+  consumo_km: number
+  consumo_estimado: boolean
+  quantidade: number
+  preco_unidade: number
+  custo_total: number
+  ocupantes: number
+  combustivel_por_pessoa: number
+  adicional: number
+  valor_por_passageiro: number
+}
+
+export interface RespostaValorSugerido {
+  valor_sugerido: number
+  teto: number
+  acima_do_teto?: boolean
+  calculo?: CalculoRateio
+}
+
+// ---------------- documentos (identidade e CNH) ----------------
+export type TipoDocumento = 'identidade' | 'cnh'
+export type StatusDocumento = 'nao_enviado' | 'pendente' | 'aprovado' | 'recusado'
+
+export interface Documento {
+  id?: number
+  tipo: TipoDocumento
+  status: StatusDocumento
+  validade?: string | null // AAAA-MM-DD (CNH)
+  vencido?: boolean
+  tem_imagem?: boolean // false depois da analise: a imagem e apagada (LGPD)
+  motivo_recusa?: string | null
+  enviado_em?: DataIso | null
+  analisado_em?: DataIso | null
+}
+
+/** Documento na fila do painel, com quem enviou. */
+export interface DocumentoAdmin extends Documento {
+  id: number
+  usuario: { id: number; nome: string; matricula: string; email: string; foto_url: string | null }
 }
 
 export interface Pagamento {
@@ -261,7 +331,14 @@ export interface UsuarioAdmin extends UsuarioLogado {
 
 /** GET /api/admin/resumo */
 export interface ResumoAdmin {
-  usuarios: { total: number; ativos_30_dias: number; verificados: number; suspensos: number; verificacoes_pendentes: number }
+  usuarios: {
+    total: number
+    ativos_30_dias: number
+    verificados: number
+    suspensos: number
+    verificacoes_pendentes: number
+    documentos_pendentes: number
+  }
   caronas: { total: number; por_status: Partial<Record<StatusCarona, number>> }
   viagens: {
     concluidas: number

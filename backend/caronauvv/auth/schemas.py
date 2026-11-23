@@ -11,7 +11,7 @@ from pydantic import Field, field_validator
 
 from caronauvv.validacao import Digitos, Schema, TextoOpcional
 
-from .models import NIVEIS_CONVERSA
+from .models import ENERGIAS, NIVEIS_CONVERSA
 
 SENHA_MINIMA = 6
 PLACA_REGEX = re.compile(r"^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$")  # ABC1234 ou Mercosul ABC1D23
@@ -182,6 +182,8 @@ class VeiculoSchema(Schema):
     modelo: str = Field(min_length=1, max_length=80)
     cor: str = Field(min_length=1, max_length=30)
     placa: str = Field(min_length=1, max_length=10)
+    energia: Literal[ENERGIAS] = "flex"  # type: ignore[valid-type]
+    consumo_km: float | None = Field(default=None, gt=0, le=60)   # km/l (eletrico: km/kWh)
 
     @field_validator("placa")
     @classmethod
@@ -193,13 +195,15 @@ class VeiculoEdicaoSchema(Schema):
     modelo: str | None = Field(default=None, min_length=1, max_length=80)
     cor: str | None = Field(default=None, min_length=1, max_length=30)
     placa: str | None = Field(default=None, min_length=1, max_length=10)
+    energia: Literal[ENERGIAS] | None = None  # type: ignore[valid-type]
+    consumo_km: float | None = Field(default=None, gt=0, le=60)
 
     @field_validator("placa")
     @classmethod
     def _p(cls, v: str | None) -> str | None:
         return None if v is None else _placa(v)
 
-    @field_validator("modelo", "cor", "placa", mode="before")
+    @field_validator("modelo", "cor", "placa", "energia", mode="before")
     @classmethod
     def _nao_vazio(cls, v):
         if v is None or (isinstance(v, str) and not v.strip()):

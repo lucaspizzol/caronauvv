@@ -7,6 +7,8 @@
     </span>
     <span v-if="rep?.nivel" class="badge rounded-pill text-bg-light border">{{ rep.nivel }}</span>
     <i v-if="usuario?.verificado" class="bi bi-patch-check-fill text-primary" title="Perfil verificado pela UVV"></i>
+    <i v-if="usuario?.identidade_verificada" class="bi bi-person-vcard-fill text-success" title="Identidade verificada"></i>
+    <i v-if="usuario?.cnh_verificada" class="bi bi-car-front-fill text-success" title="CNH verificada"></i>
     <span v-if="mostrarFaltas && rep?.faltas" class="badge rounded-pill text-bg-warning" title="Vezes que confirmou a vaga e não apareceu">
       {{ rep.faltas }} {{ rep.faltas === 1 ? 'falta' : 'faltas' }}
     </span>
@@ -21,7 +23,8 @@ import { nota } from '../utils/formato'
 
 const props = withDefaults(
   defineProps<{
-    usuario?: { reputacao?: Reputacao; verificado?: boolean } | null // usuario da API com .reputacao
+    // usuario da API com .reputacao (e os selos de documento, quando vierem)
+    usuario?: { reputacao?: Reputacao; verificado?: boolean; identidade_verificada?: boolean; cnh_verificada?: boolean } | null
     mostrarFaltas?: boolean
   }>(),
   { usuario: null, mostrarFaltas: false }

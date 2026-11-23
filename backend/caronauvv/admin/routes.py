@@ -1,6 +1,7 @@
-from flask import Blueprint, g, request
+from flask import Blueprint, Response, g, request
 
 from caronauvv.auth.decorators import admin_required
+from caronauvv.auth.documentos import analisar_documento, buscar_documento, imagem_do_documento, listar_documentos
 
 from .services import (
     analisar_denuncia,
@@ -102,6 +103,39 @@ def alertas():
 @admin_required
 def resolver(alerta_id):
     return {"alerta": resolver_alerta(alerta_id).to_dict()}
+
+
+# ---------------- documentos (identidade e CNH) ----------------
+def _documento_admin(doc) -> dict:
+    u = doc.usuario
+    return {**doc.to_dict(), "usuario": {"id": u.id, "nome": u.nome, "matricula": u.matricula,
+                                          "email": u.email, "foto_url": u.foto_url}}
+
+
+@bp.get("/documentos")
+@admin_required
+def documentos():
+    status = request.args.get("status", "pendente")
+    return {"documentos": [_documento_admin(d) for d in listar_documentos(status if status != "todos" else "")]}
+
+
+@bp.get("/documentos/<int:documento_id>/imagem")
+@admin_required
+def imagem_documento(documento_id):
+    dados, mime = imagem_do_documento(buscar_documento(documento_id))
+    # Dado pessoal sensivel: nada de cache no navegador nem em proxies
+    return Response(dados, mimetype=mime, headers={
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Disposition": "inline",
+    })
+
+
+@bp.post("/documentos/<int:documento_id>/analisar")
+@admin_required
+def analisar_doc(documento_id):
+    corpo = _json()
+    doc = analisar_documento(buscar_documento(documento_id), g.usuario,
+                             bool(corpo.get("aprovado")), corpo.get("motivo"))
+    return {"documento": _documento_admin(doc)}
 
 
 # ---------------- configuracoes ----------------

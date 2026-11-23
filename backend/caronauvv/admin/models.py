@@ -49,6 +49,12 @@ class Configuracao(db.Model):
         "minutos_sem_resposta_alerta": ("3", "Sem resposta ao alerta em X min, avisa os contatos de confiança"),
         "dias_revelar_avaliacao": ("7", "Notas aparecem quando os dois avaliam ou após X dias"),
         "dias_guardar_gps": ("30", "Trilhas GPS são apagadas após X dias"),
+        "preco_gasolina": ("6.29", "Preço do litro da gasolina (R$), usado também por carros flex e híbridos"),
+        "preco_etanol": ("4.39", "Preço do litro do etanol (R$)"),
+        "preco_diesel": ("6.19", "Preço do litro do diesel (R$)"),
+        "preco_kwh": ("0.89", "Preço do kWh para carro elétrico (R$)"),
+        "exigir_cnh_motorista": ("0", "1 = só oferece carona quem tem a CNH verificada; 0 = não exige"),
+        "exigir_identidade_passageiro": ("0", "1 = só pede vaga quem tem a identidade verificada; 0 = não exige"),
     }
 
     chave: Mapped[str] = mapped_column(db.String(60), primary_key=True)

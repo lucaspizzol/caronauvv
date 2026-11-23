@@ -102,6 +102,30 @@ CREATE TABLE contatos_confianca (
 
 CREATE INDEX ix_contatos_confianca_usuario_id ON contatos_confianca (usuario_id);
 
+CREATE TABLE documentos (
+	id SERIAL NOT NULL, 
+	usuario_id INTEGER NOT NULL, 
+	tipo VARCHAR(20) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	validade DATE, 
+	mime VARCHAR(20), 
+	tamanho INTEGER, 
+	dados BYTEA, 
+	motivo_recusa VARCHAR(255), 
+	enviado_em TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
+	analisado_em TIMESTAMP WITHOUT TIME ZONE, 
+	analisado_por_id INTEGER, 
+	CONSTRAINT pk_documentos PRIMARY KEY (id), 
+	CONSTRAINT uq_documentos_usuario_tipo UNIQUE (usuario_id, tipo), 
+	CONSTRAINT ck_documentos_tipo CHECK (tipo IN ('identidade', 'cnh')), 
+	CONSTRAINT ck_documentos_status CHECK (status IN ('pendente', 'aprovado', 'recusado')), 
+	CONSTRAINT fk_documentos_usuario_id_usuarios FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_documentos_analisado_por_id_usuarios FOREIGN KEY(analisado_por_id) REFERENCES usuarios (id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_documentos_status ON documentos (status);
+CREATE INDEX ix_documentos_usuario_id ON documentos (usuario_id);
+
 CREATE TABLE fotos_perfil (
 	id SERIAL NOT NULL, 
 	usuario_id INTEGER NOT NULL, 
@@ -121,10 +145,14 @@ CREATE TABLE veiculos (
 	id SERIAL NOT NULL, 
 	usuario_id INTEGER NOT NULL, 
 	modelo VARCHAR(80) NOT NULL, 
+	energia VARCHAR(15) DEFAULT 'flex' NOT NULL, 
+	consumo_km FLOAT, 
 	cor VARCHAR(30) NOT NULL, 
 	placa VARCHAR(10) NOT NULL, 
 	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL, 
 	CONSTRAINT pk_veiculos PRIMARY KEY (id), 
+	CONSTRAINT ck_veiculos_energia CHECK (energia IN ('gasolina', 'etanol', 'flex', 'diesel', 'hibrido', 'eletrico')), 
+	CONSTRAINT ck_veiculos_consumo CHECK (consumo_km IS NULL OR (consumo_km > 0 AND consumo_km <= 60)), 
 	CONSTRAINT fk_veiculos_usuario_id_usuarios FOREIGN KEY(usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE, 
 	CONSTRAINT uq_veiculos_placa UNIQUE (placa)
 );
@@ -149,6 +177,10 @@ CREATE TABLE caronas (
 	data_hora_saida TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
 	vagas INTEGER NOT NULL, 
 	valor_por_passageiro NUMERIC(6, 2) NOT NULL, 
+	energia VARCHAR(15), 
+	consumo_km FLOAT, 
+	combustivel_por_passageiro NUMERIC(6, 2), 
+	adicional_por_passageiro NUMERIC(6, 2), 
 	reserva_automatica BOOLEAN NOT NULL, 
 	observacoes VARCHAR(300), 
 	status VARCHAR(20) NOT NULL, 
@@ -160,6 +192,7 @@ CREATE TABLE caronas (
 	CONSTRAINT pk_caronas PRIMARY KEY (id), 
 	CONSTRAINT ck_caronas_vagas CHECK (vagas BETWEEN 1 AND 6), 
 	CONSTRAINT ck_caronas_valor CHECK (valor_por_passageiro >= 0), 
+	CONSTRAINT ck_caronas_adicional CHECK (adicional_por_passageiro IS NULL OR adicional_por_passageiro >= 0), 
 	CONSTRAINT ck_caronas_sentido CHECK (sentido IN ('ida', 'volta')), 
 	CONSTRAINT ck_caronas_status CHECK (status IN ('ativa', 'lotada', 'em_andamento', 'concluida', 'cancelada')), 
 	CONSTRAINT fk_caronas_motorista_id_usuarios FOREIGN KEY(motorista_id) REFERENCES usuarios (id), 

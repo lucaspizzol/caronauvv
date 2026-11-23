@@ -3,11 +3,12 @@
     <h1 class="titulo-pagina h3 mb-1">Painel da administração</h1>
     <p class="text-secondary">Indicadores, moderação, segurança e regras do CaronaUVV.</p>
 
-    <ul class="nav nav-pills mb-3 flex-nowrap overflow-auto">
+    <ul class="nav nav-pills mb-3 flex-nowrap flex-md-wrap gap-1 overflow-auto">
       <li v-for="a in ABAS" :key="a.id" class="nav-item">
         <button :class="['nav-link text-nowrap', { active: aba === a.id }]" @click="trocarAba(a.id)">
           <i :class="['bi me-1', a.icone]"></i>{{ a.texto }}
           <span v-if="a.id === 'usuarios' && r?.usuarios.verificacoes_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.verificacoes_pendentes }}</span>
+          <span v-if="a.id === 'documentos' && r?.usuarios.documentos_pendentes" class="badge text-bg-warning ms-1">{{ r.usuarios.documentos_pendentes }}</span>
           <span v-if="a.id === 'denuncias' && r?.confianca.denuncias_abertas" class="badge text-bg-danger ms-1">{{ r.confianca.denuncias_abertas }}</span>
           <span v-if="a.id === 'alertas' && r?.confianca.alertas_aguardando" class="badge text-bg-danger ms-1">{{ r.confianca.alertas_aguardando }}</span>
         </button>
@@ -110,6 +111,53 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </template>
+
+    <!-- ===================== DOCUMENTOS (identidade e CNH) ===================== -->
+    <template v-else-if="aba === 'documentos'">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Filtrar documentos">
+          <button v-for="f in FILTROS_DOC" :key="f.id" :class="['btn', filtroDoc === f.id ? 'btn-primary' : 'btn-outline-primary']" @click="trocarFiltroDoc(f.id)">
+            {{ f.texto }}
+          </button>
+        </div>
+        <span class="small text-secondary"><i class="bi bi-shield-lock me-1"></i>A imagem é apagada assim que você aprova ou recusa (LGPD).</span>
+      </div>
+      <div v-if="!documentos.length" class="card vazio"><i class="bi bi-person-vcard"></i><p class="mb-0">Nenhum documento {{ filtroDoc === 'pendente' ? 'esperando conferência' : 'nesta lista' }}.</p></div>
+      <div v-for="d in documentos" :key="d.id" class="card p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <AvatarUsuario :usuario="d.usuario" :tamanho="2.6" />
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold">{{ d.usuario.nome }} <span class="text-secondary fw-normal small">· matrícula {{ d.usuario.matricula }}</span></div>
+            <div class="small text-secondary">
+              <i :class="['bi me-1', d.tipo === 'cnh' ? 'bi-car-front' : 'bi-person-vcard']"></i>{{ d.tipo === 'cnh' ? 'CNH' : 'Identidade' }}
+              <span v-if="d.validade"> · validade {{ dataCurtaNumerica(d.validade) }}</span>
+              · enviado {{ dataHora(d.enviado_em) }}
+            </div>
+          </div>
+          <span :class="['badge rounded-pill', COR_DOC[d.status]]">{{ TEXTO_DOC[d.status] }}</span>
+        </div>
+
+        <template v-if="d.status === 'pendente'">
+          <div class="mt-3">
+            <img v-if="imagens[d.id]" :src="imagens[d.id]" class="doc-imagem" :alt="`Documento de ${d.usuario.nome}`" />
+            <button v-else type="button" class="btn btn-sm btn-outline-primary" :disabled="abrindoImagem === d.id" @click="verImagem(d)">
+              <span v-if="abrindoImagem === d.id" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-eye me-1"></i>Ver documento
+            </button>
+          </div>
+          <div class="row g-2 mt-1 align-items-start">
+            <div class="col-md">
+              <input v-model.trim="motivos[d.id]" class="form-control form-control-sm" placeholder="Motivo, se for recusar (o aluno vê este texto)" aria-label="Motivo da recusa" />
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+              <button class="btn btn-sm btn-success" :disabled="analisando === d.id" @click="analisarDoc(d, true)"><i class="bi bi-check-lg me-1"></i>Aprovar</button>
+              <button class="btn btn-sm btn-outline-danger" :disabled="analisando === d.id || !motivos[d.id]" @click="analisarDoc(d, false)"><i class="bi bi-x-lg me-1"></i>Recusar</button>
+            </div>
+          </div>
+        </template>
+        <div v-else-if="d.status === 'recusado'" class="small text-danger mt-2"><i class="bi bi-info-circle me-1"></i>{{ d.motivo_recusa }}</div>
       </div>
     </template>
 
@@ -232,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
 import AvatarUsuario from '../components/AvatarUsuario.vue'
@@ -240,14 +288,15 @@ import BotaoConfirmar from '../components/BotaoConfirmar.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import api, { mensagemDeErro } from '../services/api'
 import { auth, type TipoAviso } from '../stores/auth'
-import type { Alerta, Configuracao, Denuncia, EstruturaBanco, ResumoAdmin, UsuarioAdmin } from '../types/api'
-import { dataHora, nota, porcentagem, textoMotivo } from '../utils/formato'
+import type { Alerta, Configuracao, Denuncia, DocumentoAdmin, EstruturaBanco, ResumoAdmin, StatusDocumento, UsuarioAdmin } from '../types/api'
+import { dataCurtaNumerica, dataHora, nota, porcentagem, textoMotivo } from '../utils/formato'
 
-type IdAba = 'resumo' | 'usuarios' | 'denuncias' | 'alertas' | 'regras' | 'banco'
+type IdAba = 'resumo' | 'usuarios' | 'documentos' | 'denuncias' | 'alertas' | 'regras' | 'banco'
 
 const ABAS: { id: IdAba; texto: string; icone: string }[] = [
   { id: 'resumo', texto: 'Visão geral', icone: 'bi-speedometer2' },
   { id: 'usuarios', texto: 'Usuários', icone: 'bi-people' },
+  { id: 'documentos', texto: 'Documentos', icone: 'bi-person-vcard' },
   { id: 'denuncias', texto: 'Denúncias', icone: 'bi-flag' },
   { id: 'alertas', texto: 'Alertas', icone: 'bi-shield-exclamation' },
   { id: 'regras', texto: 'Regras', icone: 'bi-sliders' },
@@ -276,6 +325,25 @@ const suspensoes = reactive<Record<number, boolean>>({})
 const alertas = ref<Alerta[]>([])
 const configuracoes = ref<Configuracao[]>([])
 const banco = ref<EstruturaBanco | null>(null)
+
+// Documentos: a imagem chega pela API com o token (nao ha link publico) e vira um endereco blob: local
+type FiltroDoc = 'pendente' | 'aprovado' | 'recusado' | 'todos'
+const FILTROS_DOC: { id: FiltroDoc; texto: string }[] = [
+  { id: 'pendente', texto: 'Para conferir' },
+  { id: 'aprovado', texto: 'Aprovados' },
+  { id: 'recusado', texto: 'Recusados' },
+  { id: 'todos', texto: 'Todos' }
+]
+const TEXTO_DOC: Record<StatusDocumento, string> = { nao_enviado: 'Não enviado', pendente: 'Para conferir', aprovado: 'Aprovado', recusado: 'Recusado' }
+const COR_DOC: Record<StatusDocumento, string> = {
+  nao_enviado: 'text-bg-light border', pendente: 'text-bg-warning', aprovado: 'text-bg-success', recusado: 'text-bg-danger'
+}
+const documentos = ref<DocumentoAdmin[]>([])
+const filtroDoc = ref<FiltroDoc>('pendente')
+const imagens = reactive<Record<number, string>>({})
+const motivos = reactive<Record<number, string>>({})
+const abrindoImagem = ref<number | null>(null)
+const analisando = ref<number | null>(null)
 const diagrama = ref<HTMLElement | null>(null)
 const diagramaCompleto = ref(false)
 const desenhando = ref(false)
@@ -322,6 +390,8 @@ async function carregarUsuarios(): Promise<void> {
 const CARREGADORES: Record<IdAba, () => Promise<unknown>> = {
   resumo: carregarResumo,
   usuarios: carregarUsuarios,
+  documentos: async () =>
+    (documentos.value = (await api.get<{ documentos: DocumentoAdmin[] }>('/admin/documentos', { params: { status: filtroDoc.value } })).data.documentos),
   denuncias: async () => (denuncias.value = (await api.get<{ denuncias: Denuncia[] }>('/admin/denuncias')).data.denuncias),
   alertas: async () => (alertas.value = (await api.get<{ alertas: Alerta[] }>('/admin/alertas')).data.alertas),
   regras: async () =>
@@ -379,6 +449,50 @@ async function resetar2fa(u: UsuarioAdmin): Promise<void> {
     avisar(mensagemDeErro(e), 'danger')
   }
 }
+
+// ---------------- documentos ----------------
+async function trocarFiltroDoc(filtro: FiltroDoc): Promise<void> {
+  filtroDoc.value = filtro
+  try {
+    await CARREGADORES.documentos()
+  } catch (e) {
+    avisar(mensagemDeErro(e), 'danger')
+  }
+}
+
+async function verImagem(d: DocumentoAdmin): Promise<void> {
+  abrindoImagem.value = d.id
+  try {
+    const { data } = await api.get<Blob>(`/admin/documentos/${d.id}/imagem`, { responseType: 'blob' })
+    imagens[d.id] = URL.createObjectURL(data)
+  } catch (e) {
+    avisar(mensagemDeErro(e, 'Não deu para abrir a imagem.'), 'danger')
+  } finally {
+    abrindoImagem.value = null
+  }
+}
+
+function esquecerImagem(id: number): void {
+  if (imagens[id]) URL.revokeObjectURL(imagens[id])
+  delete imagens[id]
+}
+
+async function analisarDoc(d: DocumentoAdmin, aprovado: boolean): Promise<void> {
+  analisando.value = d.id
+  try {
+    await api.post(`/admin/documentos/${d.id}/analisar`, { aprovado, motivo: motivos[d.id] || '' })
+    esquecerImagem(d.id)
+    const nome = d.tipo === 'cnh' ? 'CNH' : 'identidade'
+    avisar(aprovado ? `A ${nome} de ${d.usuario.nome} foi aprovada.` : `A ${nome} de ${d.usuario.nome} foi recusada.`, aprovado ? 'success' : 'warning')
+    await Promise.all([CARREGADORES.documentos(), carregarResumo()])
+  } catch (e) {
+    avisar(mensagemDeErro(e), 'danger')
+  } finally {
+    analisando.value = null
+  }
+}
+
+onBeforeUnmount(() => Object.keys(imagens).forEach((id) => esquecerImagem(Number(id))))
 
 async function suspender(u: UsuarioAdmin, ativo: boolean): Promise<void> {
   try {
@@ -464,3 +578,14 @@ async function desenhar(completo: boolean): Promise<void> {
 
 onMounted(() => trocarAba('resumo'))
 </script>
+
+<style scoped>
+/* Documento enviado para conferencia (ocupa a largura do cartao, sem passar da tela) */
+.doc-imagem {
+  display: block;
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--bs-border-color);
+}
+</style>

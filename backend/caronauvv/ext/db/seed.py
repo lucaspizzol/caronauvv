@@ -6,6 +6,8 @@ Dados iniciais do CaronaUVV (uso: flask --app app.py seed-db).
   Todos os usuarios de exemplo tem a senha 123456.
 """
 import hashlib
+import struct
+import zlib
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -13,9 +15,10 @@ from flask import current_app
 
 from caronauvv.admin.models import Busca, Configuracao
 from caronauvv.auth.dois_fatores import _hash_reserva
-from caronauvv.auth.models import CodigoReserva, ContatoConfianca, FotoPerfil, Usuario, Veiculo
+from caronauvv.auth.models import CodigoReserva, ContatoConfianca, Documento, FotoPerfil, Usuario, Veiculo
 from caronauvv.avaliacoes.models import Avaliacao, AvaliacaoTag, Pagamento
 from caronauvv.avaliacoes.services import gerar_pix_copia_cola
+from caronauvv.caronas.combustivel import calcular_rateio
 from caronauvv.caronas.models import Carona, PosicaoGps, Solicitacao
 from caronauvv.notificacoes.models import Notificacao
 from caronauvv.seguranca.models import Alerta, Denuncia, LinkCompartilhado
@@ -37,6 +40,65 @@ PASTA_FOTOS = Path(__file__).parent / "fotos_exemplo"
 UVV = (-20.3617, -40.3075)
 ITAPUA = (-20.3477, -40.2949)
 PRAIA_DA_COSTA = (-20.3330, -40.2840)
+
+
+def _imagem_documento_exemplo(cor: tuple[int, int, int]) -> bytes:
+    """
+    PNG desenhado na hora (640 x 400): um cartao com faixa colorida, area da foto e
+    linhas cinza. So para a administracao ter o que conferir na demonstracao; nao e
+    um documento de verdade nem imita um.
+    """
+    largura, altura = 640, 400
+    linhas = []
+    for y in range(altura):
+        linha = bytearray([0])  # filtro "nenhum" do PNG
+        for x in range(largura):
+            if y < 70:
+                pixel = cor                                     # faixa do topo
+            elif 110 <= y <= 330 and 40 <= x <= 210:
+                pixel = (200, 205, 215)                         # area da foto
+            elif x >= 250 and any(a <= y <= a + 14 for a in (120, 170, 220, 270)) and x <= 250 + 300 - (y % 7) * 20:
+                pixel = (175, 180, 190)                         # "linhas de texto"
+            else:
+                pixel = (244, 246, 250)
+            linha += bytes(pixel)
+        linhas.append(bytes(linha))
+
+    def bloco(tipo: bytes, dados: bytes) -> bytes:
+        return struct.pack(">I", len(dados)) + tipo + dados + struct.pack(">I", zlib.crc32(tipo + dados))
+
+    cabecalho = struct.pack(">IIBBBBB", largura, altura, 8, 2, 0, 0, 0)  # 8 bits, RGB
+    return (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", cabecalho)
+            + bloco(b"IDAT", zlib.compress(b"".join(linhas), 9)) + bloco(b"IEND", b""))
+
+
+def _documento(usuario: Usuario, tipo: str, status: str, admin: Usuario | None = None, **extra) -> Documento:
+    agora = datetime.now()
+    doc = Documento(usuario=usuario, tipo=tipo, status=status,
+                    enviado_em=agora - timedelta(days=2 if status != "pendente" else 0, hours=3), **extra)
+    if tipo == "cnh" and doc.validade is None:
+        doc.validade = date.today() + timedelta(days=3 * 365)
+    if status == "pendente":
+        # so os pendentes guardam a imagem (os analisados ja tiveram a imagem apagada)
+        dados = _imagem_documento_exemplo((11, 42, 91) if tipo == "identidade" else (22, 120, 70))
+        doc.mime, doc.tamanho, doc.dados = "image/png", len(dados), dados
+    else:
+        doc.analisado_em = agora - timedelta(days=1)
+        doc.analisado_por = admin
+    return doc
+
+
+def _rateio(carona: Carona, adicional: str) -> Carona:
+    """Preenche o detalhamento do valor (combustivel + adicional) como o servidor faz ao salvar."""
+    # no_autoflush: o calculo le o preco no banco enquanto os objetos ainda estao sendo montados
+    with db.session.no_autoflush:
+        rateio = calcular_rateio(carona.distancia_km, carona.vagas, carona.veiculo.energia,
+                                 carona.veiculo.consumo_km, adicional)
+    carona.energia, carona.consumo_km = carona.veiculo.energia, carona.veiculo.consumo_km
+    carona.combustivel_por_passageiro = rateio.combustivel_por_pessoa
+    carona.adicional_por_passageiro = rateio.adicional
+    carona.valor_por_passageiro = rateio.valor_por_passageiro
+    return carona
 
 
 def popular_banco() -> str:
@@ -94,8 +156,8 @@ def _dados_de_exemplo() -> None:
     # ------------------------------------------------------
     # USUARIOS, VEICULOS E CONTATOS DE CONFIANCA
     # ------------------------------------------------------
-    _usuario("admin", "admin@uvv.br", "Administrador CaronaUVV", "Boa Vista",
-             is_admin=True, verificado=True)
+    admin = _usuario("admin", "admin@uvv.br", "Administrador CaronaUVV", "Boa Vista",
+                     is_admin=True, verificado=True)
     kaua = _usuario("202416377", "kaua@uvv.br", "Kauã Araujo", "Itapuã",
                     curso="Ciência da Computação", telefone="27999991111",
                     endereco="Rua Itaúnas, 120", casa_lat=ITAPUA[0], casa_lng=ITAPUA[1],
@@ -138,10 +200,23 @@ def _dados_de_exemplo() -> None:
         beatriz.codigos_reserva.append(
             CodigoReserva(codigo_hash=_hash_reserva(beatriz, codigo.replace("-", ""))))
 
-    hb20 = Veiculo(dono=kaua, modelo="HB20", cor="Branco", placa="KAU2B34")
-    onix = Veiculo(dono=lucas, modelo="Onix", cor="Prata", placa="LUC4E56")
-    gol = Veiculo(dono=joao, modelo="Gol", cor="Vermelho", placa="JOA1B23")
-    kwid = Veiculo(dono=beatriz, modelo="Kwid", cor="Azul", placa="BEA9C87")
+    # Energia e consumo de cada carro: base do calculo do combustivel
+    hb20 = Veiculo(dono=kaua, modelo="HB20", cor="Branco", placa="KAU2B34", energia="flex", consumo_km=12.5)
+    onix = Veiculo(dono=lucas, modelo="Onix", cor="Prata", placa="LUC4E56", energia="flex", consumo_km=13.0)
+    gol = Veiculo(dono=joao, modelo="Gol", cor="Vermelho", placa="JOA1B23", energia="gasolina", consumo_km=11.0)
+    kwid = Veiculo(dono=beatriz, modelo="Kwid E-Tech", cor="Azul", placa="BEA9C87", energia="eletrico", consumo_km=7.0)
+
+    # Documentos: verificados, um recusado e dois na fila da administracao (Marina e a CNH da Beatriz)
+    db.session.add_all([
+        _documento(kaua, "identidade", "aprovado", admin), _documento(kaua, "cnh", "aprovado", admin),
+        _documento(lucas, "identidade", "aprovado", admin), _documento(lucas, "cnh", "aprovado", admin),
+        _documento(joao, "identidade", "aprovado", admin), _documento(joao, "cnh", "aprovado", admin),
+        _documento(ana, "identidade", "aprovado", admin),
+        _documento(beatriz, "identidade", "aprovado", admin), _documento(beatriz, "cnh", "pendente"),
+        _documento(marina, "identidade", "pendente"),
+        _documento(pedro, "identidade", "recusado", admin,
+                   motivo_recusa="A foto ficou desfocada e não dá para ler o nome. Envie outra com boa luz."),
+    ])
     mae_da_ana = ContatoConfianca(usuario=ana, nome="Mãe", telefone="27988887777")
     julia = ContatoConfianca(usuario=ana, nome="Júlia", telefone="27988886666")
     db.session.add_all([hb20, onix, gol, kwid, mae_da_ana, julia,
@@ -155,8 +230,9 @@ def _dados_de_exemplo() -> None:
         bairro_origem="Itapuã", endereco_origem="Rua Itaúnas, 120",
         origem_lat=ITAPUA[0], origem_lng=ITAPUA[1], destino_lat=UVV[0], destino_lng=UVV[1],
         distancia_km=6.2, duracao_min=18,
-        data_hora_saida=as_(amanha, 18, 30), vagas=3, valor_por_passageiro=1.00,
+        data_hora_saida=as_(amanha, 18, 30), vagas=3,
     )
+    _rateio(c_amanha, "0.22")   # combustivel R$ 0,78 + adicional R$ 0,22 = R$ 1,00
     ana_amanha = Solicitacao(
         carona=c_amanha, passageiro=ana, status="aceita",
         endereco_embarque="Rua Goiânia, 45", embarque_lat=-20.3490, embarque_lng=-40.2960,
@@ -178,9 +254,10 @@ def _dados_de_exemplo() -> None:
         bairro_origem="Praia da Costa", endereco_origem="Av. Antônio Gil Veloso, 900",
         origem_lat=PRAIA_DA_COSTA[0], origem_lng=PRAIA_DA_COSTA[1],
         destino_lat=UVV[0], destino_lng=UVV[1], distancia_km=7.5, duracao_min=22,
-        data_hora_saida=as_(amanha, 18, 10), vagas=2, valor_por_passageiro=1.50,
+        data_hora_saida=as_(amanha, 18, 10), vagas=2,
         reserva_automatica=True,
     )
+    _rateio(c_lucas, "0.29")    # combustivel R$ 1,21 + adicional R$ 0,29 = R$ 1,50
 
     # ------------------------------------------------------
     # CARONA 3 - ontem, concluida (embarque com PIN, Pix, avaliacoes, GPS)
@@ -274,15 +351,17 @@ def _dados_de_exemplo() -> None:
     c_camburi = Carona(
         motorista=joao, veiculo=gol, sentido="ida", bairro_origem="Jardim Camburi",
         endereco_origem="Av. Dante Michelini, 2000", distancia_km=17.0, duracao_min=35,
-        data_hora_saida=as_(amanha, 7, 0), vagas=3, valor_por_passageiro=3.00,
+        data_hora_saida=as_(amanha, 7, 0), vagas=3,
         observacoes="Passo pela Terceira Ponte. Sem paradas no caminho.",
     )
+    _rateio(c_camburi, "0.57")  # combustivel R$ 2,43 + adicional R$ 0,57 = R$ 3,00
     c_volta_bia = Carona(
         motorista=beatriz, veiculo=kwid, sentido="volta", bairro_origem="Praia de Itaparica",
         endereco_origem="Rua Itapemirim, 500", destino="UVV - Entrada principal",
         distancia_km=5.0, duracao_min=14, data_hora_saida=as_(amanha, 22, 10), vagas=2,
-        valor_por_passageiro=2.00, reserva_automatica=True,
+        reserva_automatica=True,
     )
+    _rateio(c_volta_bia, "0.79")  # eletrico: R$ 0,21 de energia + adicional R$ 0,79 = R$ 1,00
     db.session.add_all([c_agora, ana_agora, c_camburi, c_volta_bia])
 
     # ------------------------------------------------------

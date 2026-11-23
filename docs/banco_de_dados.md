@@ -1,6 +1,6 @@
 # CaronaUVV — Banco de dados
 
-Modelo físico do banco do CaronaUVV: 17 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
+Modelo físico do banco do CaronaUVV: 18 tabelas, definidas em SQLAlchemy 2.0 (`backend/caronauvv/*/models.py`)
 e versionadas com Flask-Migrate (`backend/migrations/`).
 
 > O diagrama e o dicionário abaixo são gerados a partir do código (`db.metadata`), então refletem exatamente
@@ -61,6 +61,8 @@ erDiagram
     usuarios ||--o{ veiculos : "usuario_id"
     usuarios ||--o{ contatos_confianca : "usuario_id"
     usuarios ||--o| fotos_perfil : "usuario_id"
+    usuarios ||--o{ documentos : "usuario_id"
+    usuarios |o--o{ documentos : "analisado_por_id"
     usuarios ||--o{ codigos_reserva : "usuario_id"
     usuarios ||--o{ caronas : "motorista_id"
     veiculos |o--o{ caronas : "veiculo_id"
@@ -130,6 +132,8 @@ erDiagram
         integer id PK
         integer usuario_id FK
         string modelo
+        string energia
+        float consumo_km
         string cor
         string placa UK
         datetime created_at
@@ -149,6 +153,20 @@ erDiagram
         integer tamanho
         largebinary dados
         datetime created_at
+    }
+    documentos {
+        integer id PK
+        integer usuario_id FK
+        string tipo
+        string status
+        date validade
+        string mime
+        integer tamanho
+        largebinary dados
+        string motivo_recusa
+        datetime enviado_em
+        datetime analisado_em
+        integer analisado_por_id FK
     }
     codigos_reserva {
         integer id PK
@@ -175,6 +193,10 @@ erDiagram
         datetime data_hora_saida
         integer vagas
         numeric valor_por_passageiro
+        string energia
+        float consumo_km
+        numeric combustivel_por_passageiro
+        numeric adicional_por_passageiro
         boolean reserva_automatica
         string observacoes
         string status
@@ -362,9 +384,16 @@ erDiagram
 | `id` | INTEGER | não | PK |  |
 | `usuario_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; índice |  |
 | `modelo` | STRING(80) | não |  |  |
+| `energia` | STRING(15) | não |  | `"flex"` |
+| `consumo_km` | FLOAT | sim |  |  |
 | `cor` | STRING(30) | não |  |  |
 | `placa` | STRING(10) | não | UNIQUE |  |
 | `created_at` | DATETIME | não |  | agora |
+
+**Restrições:**
+
+- CHECK `ck_veiculos_consumo`: `consumo_km IS NULL OR (consumo_km > 0 AND consumo_km <= 60)`
+- CHECK `ck_veiculos_energia`: `energia IN ('gasolina', 'etanol', 'flex', 'diesel', 'hibrido', 'eletrico')`
 
 ### `contatos_confianca` (módulo `auth`)
 
@@ -387,6 +416,29 @@ erDiagram
 | `tamanho` | INTEGER | não |  |  |
 | `dados` | LARGEBINARY | não |  |  |
 | `created_at` | DATETIME | não |  | agora |
+
+### `documentos` (módulo `auth`)
+
+| Coluna | Tipo | Nulo | Chave | Padrão |
+|---|---|---|---|---|
+| `id` | INTEGER | não | PK |  |
+| `usuario_id` | INTEGER | não | FK → `usuarios.id`, ON DELETE CASCADE; índice |  |
+| `tipo` | STRING(20) | não |  |  |
+| `status` | STRING(20) | não | índice | `"pendente"` |
+| `validade` | DATE | sim |  |  |
+| `mime` | STRING(20) | sim |  |  |
+| `tamanho` | INTEGER | sim |  |  |
+| `dados` | LARGEBINARY | sim |  |  |
+| `motivo_recusa` | STRING(255) | sim |  |  |
+| `enviado_em` | DATETIME | não |  | agora |
+| `analisado_em` | DATETIME | sim |  |  |
+| `analisado_por_id` | INTEGER | sim | FK → `usuarios.id`, ON DELETE SET NULL |  |
+
+**Restrições:**
+
+- CHECK `ck_documentos_status`: `status IN ('pendente', 'aprovado', 'recusado')`
+- CHECK `ck_documentos_tipo`: `tipo IN ('identidade', 'cnh')`
+- UNIQUE `uq_documentos_usuario_tipo`: `usuario_id, tipo`
 
 ### `codigos_reserva` (módulo `auth`)
 
@@ -419,6 +471,10 @@ erDiagram
 | `data_hora_saida` | DATETIME | não | índice |  |
 | `vagas` | INTEGER | não |  |  |
 | `valor_por_passageiro` | NUMERIC(6,2) | não |  | `0` |
+| `energia` | STRING(15) | sim |  |  |
+| `consumo_km` | FLOAT | sim |  |  |
+| `combustivel_por_passageiro` | NUMERIC(6,2) | sim |  |  |
+| `adicional_por_passageiro` | NUMERIC(6,2) | sim |  |  |
 | `reserva_automatica` | BOOLEAN | não |  | `False` |
 | `observacoes` | STRING(300) | sim |  |  |
 | `status` | STRING(20) | não | índice | `"ativa"` |
@@ -430,6 +486,7 @@ erDiagram
 
 **Restrições:**
 
+- CHECK `ck_caronas_adicional`: `adicional_por_passageiro IS NULL OR adicional_por_passageiro >= 0`
 - CHECK `ck_caronas_sentido`: `sentido IN ('ida', 'volta')`
 - CHECK `ck_caronas_status`: `status IN ('ativa', 'lotada', 'em_andamento', 'concluida', 'cancelada')`
 - CHECK `ck_caronas_vagas`: `vagas BETWEEN 1 AND 6`

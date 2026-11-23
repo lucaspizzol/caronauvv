@@ -6,6 +6,13 @@ Plataforma web de caronas entre alunos da UVV (Universidade Vila Velha). Trabalh
 O motorista publica uma carona (bairro de saída, horário, vagas e valor do rateio), os passageiros
 pedem vaga e o motorista aceita ou recusa. O telefone de cada um só aparece depois do aceite.
 
+**Duas formas de abrir o sistema:**
+
+1. **Online, sem instalar nada:** https://caronauvv.vercel.app
+2. **Localhost, na própria máquina:** passo a passo em [Como rodar](#como-rodar).
+
+As duas usam as mesmas [contas de exemplo](#usuários-de-exemplo-senha-123456) (senha `123456`).
+
 Por cima do MVP, o CaronaUVV tem um **sistema de confiança** inspirado nos apps de carona e de
 transporte (BlaBlaCar, Uber, 99):
 
@@ -15,6 +22,8 @@ transporte (BlaBlaCar, Uber, 99):
 | Perfil verificado | O aluno pede o selo e a administração confere a matrícula | BlaBlaCar (perfil verificado) |
 | Foto de perfil | O aluno envia a foto pelo perfil; ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família. O admin pode remover foto inadequada | Uber / BlaBlaCar |
 | Verificação em duas etapas | Com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy), o login pede a senha e um código de 6 números; 8 códigos de reserva de uso único | Uber, bancos, GitHub (2FA) |
+| Documentos verificados | Passageiro e motorista enviam a identidade; quem oferece carona envia também a CNH (com a validade). A administração confere e o perfil ganha os selos "Identidade verificada" e "CNH verificada". A imagem é apagada depois da análise (LGPD). O painel pode exigir CNH para oferecer e identidade para pedir vaga | Uber e 99 (documentos do motorista), BlaBlaCar (ID verificado) |
+| Cálculo do combustível | O carro tem tipo (gasolina, etanol, flex, diesel, híbrido ou elétrico) e consumo (km/l ou km/kWh). Ao oferecer carona aparece a conta inteira: distância em km e metros, litros ou kWh, custo da viagem pelo preço do painel, parte de cada ocupante e o adicional do motorista separado. O passageiro vê o mesmo detalhamento | BlaBlaCar (divisão de custos) |
 | Esqueci minha senha | Código de 6 números enviado ao e-mail da conta; a senha nova desconecta os outros aparelhos | Todos |
 | Reputação | Nota média, nível (Calouro → Veterano → Embaixador), viagens, faltas, taxa de cancelamento e selos | BlaBlaCar |
 | Avaliação "às cegas" | Motorista e passageiro se avaliam (1 a 5 + elogios); a nota só aparece quando os dois avaliam ou após 7 dias | BlaBlaCar |
@@ -32,8 +41,8 @@ transporte (BlaBlaCar, Uber, 99):
 
 - **Back-end:** Python, Flask (API REST em JSON), Flask-SQLAlchemy 2.0, Flask-Migrate, Flask-CORS
 - **Validação no servidor:** Pydantic 2 (schemas de cada formulário, erros por campo em português)
-- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 255 testes passam nos dois
-- **Testes:** pytest + pytest-flask (back-end, 255 testes, 96% de cobertura) e Vitest (front-end, 24 testes)
+- **Banco:** SQLite no desenvolvimento, PostgreSQL em produção (`DATABASE_URL`) — os 297 testes passam nos dois
+- **Testes:** pytest + pytest-flask (back-end, 297 testes, 96% de cobertura) e Vitest (front-end, 31 testes)
 - **Segurança da conta:** TOTP (RFC 6238) feito com a biblioteca padrão do Python (`hmac`, `hashlib`, `struct`),
   tokens e desafios assinados com itsdangerous, senhas com hash scrypt (Werkzeug)
 - **Front-end:** Vue 3 + **TypeScript (modo estrito)** + Vite + vue-router + axios, Bootstrap 5 e Bootstrap Icons,
@@ -54,16 +63,18 @@ backend/
     errors.py, logs.py    # erros em JSON e log de cada requisicao
     ext/db/               # SQLAlchemy, comandos init-db / seed-db / limpar-gps, seed
     auth/                 # usuarios, login, verificacao de e-mail, perfil publico, veiculos, contatos
-                          #   foto.py (foto de perfil), totp.py + dois_fatores.py (verificacao em duas etapas)
+                          #   foto.py (foto de perfil), documentos.py (identidade e CNH),
+                          #   totp.py + dois_fatores.py (verificacao em duas etapas)
     caronas/              # caronas, pedidos de vaga, ciclo da viagem (iniciar, PIN, falta, GPS)
+                          #   combustivel.py (calculo do rateio pelo combustivel)
     avaliacoes/           # avaliacoes, reputacao e pagamento Pix
     notificacoes/         # notificacoes
     seguranca/            # link da familia, botao de emergencia, denuncias
     admin/                # painel: indicadores, moderacao, configuracoes, estrutura do banco
     (cada modulo: models.py, schemas.py, services.py, routes.py)
-  migrations/             # Flask-Migrate (Alembic): 3 versoes
+  migrations/             # Flask-Migrate (Alembic): 4 versoes
   scripts/                # geracao da documentacao do banco
-  tests/                  # 255 testes (pytest + pytest-flask)
+  tests/                  # 297 testes (pytest + pytest-flask)
 frontend/
   src/
     types/api.ts          # formato de cada resposta da API (espelha os to_dict() do back-end)
@@ -79,6 +90,13 @@ docs/                     # documentacao do banco (gerada a partir dos modelos)
 ```
 
 ## Como rodar
+
+### Opção 1 — Online (sem instalar nada)
+
+Abra **https://caronauvv.vercel.app** e entre com uma das [contas de exemplo](#usuários-de-exemplo-senha-123456).
+Detalhes da publicação em [Versão online](#versão-online-vercel).
+
+### Opção 2 — Localhost (na própria máquina)
 
 Precisa de **Python 3.10+** e **Node.js 18+**. São dois terminais: um para a API Flask e outro para o Vue.
 
@@ -97,7 +115,7 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m flask --app app.py db upgrade    # cria instance/caronauvv.db
 python -m flask --app app.py seed-db       # dados de exemplo (senha de todos: 123456)
 python -m flask --app app.py run           # API em http://localhost:5000/api/health
-python -m pytest                           # 255 testes
+python -m pytest                           # 297 testes
 ```
 
 Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke docsdb`, `invoke test`, `invoke run`, `invoke docs`.
@@ -112,7 +130,7 @@ Tarefas com invoke: `invoke createdb`, `invoke seed`, `invoke resetdb`, `invoke 
 cd frontend
 npm install
 npm run dev                      # abre em http://localhost:5173
-npm test                         # 24 testes do front (Vitest)
+npm test                         # 31 testes do front (Vitest)
 npm run type-check               # checagem do TypeScript (vue-tsc)
 ```
 
@@ -141,13 +159,14 @@ O sistema está publicado em **https://caronauvv.vercel.app**:
 Publicar de novo: `vercel deploy --prod` na pasta raiz. **Zerar o banco online** com os dados de exemplo
 (faça antes de apresentar): `invoke resetvercel` dentro de `backend/`, com a CLI da Vercel logada.
 
-> **Atenção ao publicar uma versão com migração nova** (como a da foto de perfil e do autenticador): o banco
+> **Atenção ao publicar uma versão com migração nova** (como a dos documentos e do combustível): o banco
 > online precisa ser atualizado junto, senão a API responde erro 500. Rode `invoke resetvercel` logo depois do
 > `vercel deploy --prod` (ele aplica as migrações e recria os dados de exemplo). Para manter os dados que já
 > estão lá, rode só `flask --app app.py db upgrade` com a `DATABASE_URL` do Neon.
 
-As fotos de perfil ficam no próprio banco (tabela `fotos_perfil`), porque a função serverless não guarda
-arquivos em disco.
+As fotos de perfil e as imagens dos documentos ficam no próprio banco (tabelas `fotos_perfil` e
+`documentos`), porque a função serverless não guarda arquivos em disco. A imagem do documento é apagada
+assim que a administração aprova ou recusa.
 
 > A versão online usa as mesmas contas de exemplo (senha `123456`): qualquer pessoa com o link
 > consegue entrar. É uma demonstração; para uso real, troque as senhas e configure um servidor de e-mail.
@@ -162,10 +181,10 @@ arquivos em disco.
 | `lucas@uvv.br` | Passageiro; tem uma avaliação pendente do Kauã |
 | `ana@uvv.br` | Passageira com contatos de confiança (Mãe, Júlia) |
 | `pedro@uvv.br` | Passageiro com 2 faltas (aparece para o motorista antes de aceitar) |
-| `marina@uvv.br` | Pediu o selo de verificado (aprovar no painel) |
+| `marina@uvv.br` | Pediu o selo de verificado e enviou a identidade (aprovar no painel); ainda não mandou a CNH |
 | `joao@uvv.br` | Outro motorista (Jardim Camburi) |
 | `beatriz@uvv.br` | Motorista (Praia de Itaparica) que **já usa a verificação em duas etapas**: o login pede o código. Use um código de reserva de exemplo (`UVVA-2026`, `UVVB-2026`, `UVVC-2026`, `UVVD-2026`; cada um vale uma vez) ou cadastre a chave `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` num aplicativo autenticador |
-| `admin@uvv.br` | Painel da administração (`/admin`) |
+| `admin@uvv.br` | Painel da administração (`/admin`); na aba Documentos estão a identidade da Marina e a CNH da Beatriz |
 
 Kauã, Lucas, Ana e João já vêm com foto de perfil (avatares desenhados, não são fotos de pessoas reais); os
 outros aparecem com as iniciais. Também dá para entrar com a matrícula no lugar do e-mail. Sem servidor de e-mail configurado, o
@@ -188,9 +207,16 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
    **Ativar com aplicativo autenticador** → leia o QR Code com o Google Authenticator do celular → digite o
    código → guarde os códigos de reserva. Saia e entre de novo: depois da senha, o login pede o código.
    No login, **Esqueci minha senha** mostra a recuperação por código.
-6. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
-   autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui) e
-   **Banco de dados** (diagrama ER gerado ao vivo).
+6. **Combustível (Kauã):** Oferecer carona → bairro, rua e distância já vêm preenchidos e a conta aparece
+   sozinha (6,2 km ÷ 12,5 km/l = 0,496 L × R$ 6,29 = R$ 3,12 ÷ 4 = R$ 0,78 por pessoa) → mude o adicional ou o
+   carro e a conta se refaz. Na busca, cada cartão mostra combustível + adicional (a carona da Beatriz é de
+   carro elétrico, em kWh).
+7. **Documentos:** como Marina, Perfil → **Documentos verificados** → envie a foto da CNH com a validade. Como
+   admin, aba **Documentos** → **Ver documento** → aprove um e recuse outro com o motivo: o selo aparece no
+   perfil e a imagem é apagada.
+8. **Admin:** `admin@uvv.br` → Visão geral (KPIs), Usuários (aprovar selo da Marina, remover foto, desligar o
+   autenticador de quem perdeu o celular), Denúncias, Alertas (a emergência do passo 4 aparece aqui), **Regras**
+   (preço da gasolina, etanol, diesel e kWh; exigir CNH/identidade) e **Banco de dados** (diagrama ER ao vivo).
 
 ## API
 
@@ -199,14 +225,15 @@ As telas **Buscar**, **Minhas caronas**, **Meus pedidos** e **Notificações** s
 | Autenticação | `POST /api/auth/cadastro`, `/login`, `/login/2fa`, `/logout`, `/verificar-email`, `/reenviar-codigo`, `/solicitar-verificacao`, `/esqueci-senha`, `/redefinir-senha`, `GET/PUT /api/auth/me` |
 | Foto de perfil | `PUT/DELETE /api/auth/me/foto` (envio em `multipart/form-data`, campo `foto`), `GET /api/fotos/<token>` |
 | Duas etapas | `GET /api/auth/2fa`, `POST /api/auth/2fa/iniciar`, `/ativar`, `/desativar`, `/codigos-reserva` |
+| Documentos | `GET /api/auth/me/documentos`, `PUT /api/auth/me/documentos/<identidade\|cnh>` (`multipart/form-data`: `documento` e, na CNH, `validade`) |
 | Usuários | `GET /api/usuarios/<id>` (perfil público com reputação) |
 | Veículos e contatos | `GET/POST /api/veiculos`, `PUT/DELETE /api/veiculos/<id>`, `GET/POST /api/contatos`, `DELETE /api/contatos/<id>` |
-| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido`, `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
+| Caronas | `GET/POST /api/caronas`, `GET /api/caronas/minhas`, `GET /api/caronas/valor-sugerido` (com `energia`, `consumo_km` e `adicional` devolve a conta completa), `GET/PUT /api/caronas/<id>`, `POST .../cancelar`, `.../iniciar`, `.../concluir`, `.../posicao` |
 | Solicitações | `GET/POST /api/caronas/<id>/solicitacoes`, `GET /api/solicitacoes/minhas`, `POST /api/solicitacoes/<id>/aceitar`, `/recusar`, `/cancelar`, `/embarque`, `/falta` |
 | Avaliações e Pix | `GET /api/avaliacoes/pendentes`, `/tags`, `POST /api/solicitacoes/<id>/avaliacao`, `GET .../pix`, `POST .../pagamento` |
 | Segurança | `POST /api/caronas/<id>/compartilhar`, `GET /api/acompanhar/<token>` (público), `POST /api/caronas/<id>/sos`, `POST /api/denuncias` |
 | Notificações | `GET /api/notificacoes`, `GET /api/notificacoes/contagem`, `POST /api/notificacoes/lidas` |
-| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`) |
+| Admin | `GET /api/admin/resumo`, `/usuarios`, `/denuncias`, `/alertas`, `/configuracoes`, `/banco` e ações de moderação (verificar, suspender, `DELETE .../foto`, `POST .../resetar-2fa`); documentos: `GET /api/admin/documentos`, `GET .../<id>/imagem`, `POST .../<id>/analisar` |
 
 Rotas protegidas usam o cabeçalho `Authorization: Bearer <token>`. Lista completa: `flask --app app.py routes`.
 
@@ -234,9 +261,13 @@ Cada requisição é registrada no log com método, rota, status e tempo (`LOG_L
   gerar novos códigos de reserva exige a senha e um código; os códigos de reserva ficam só como HMAC.
 - Esqueci minha senha: código de 6 números, vale 30 min, 5 tentativas, um pedido por minuto; a resposta é a
   mesma exista a conta ou não. Trocar ou redefinir a senha encerra os logins dos outros aparelhos.
+- Documentos: a imagem só é entregue ao próprio aluno e ao administrador, sem cache, e é apagada depois da
+  análise; CNH vencida não é aceita e perde o selo quando vence.
+- Rateio: com o cálculo ligado, o servidor refaz a conta ao salvar (não confia no valor do navegador); a conta usa
+  `Decimal` e combustível + adicional nunca passa do teto do painel.
 
 ## Banco de dados
 
-17 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
+18 tabelas, documentadas em [`docs/banco_de_dados.md`](docs/banco_de_dados.md) (gerado com `invoke docsdb`).
 Para ver o diagrama: no painel admin, aba **Banco de dados** (gerado ao vivo dos modelos), ou cole
 [`docs/banco.dbml`](docs/banco.dbml) em [dbdiagram.io](https://dbdiagram.io).

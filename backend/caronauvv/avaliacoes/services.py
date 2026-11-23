@@ -140,6 +140,10 @@ def _calcular_reputacao(usuario) -> dict:
         selos.append({"codigo": "email_uvv", "texto": "E-mail UVV confirmado"})
     if usuario.verificado:
         selos.append({"codigo": "perfil_verificado", "texto": "Perfil verificado pela UVV"})
+    if usuario.identidade_verificada:
+        selos.append({"codigo": "identidade_verificada", "texto": "Identidade verificada"})
+    if usuario.cnh_verificada:
+        selos.append({"codigo": "cnh_verificada", "texto": "CNH verificada"})
     if contagem_tags.get("Pontual", 0) >= 3:
         selos.append({"codigo": "pontual", "texto": "Super pontual"})
     if nota_media is not None and nota_media >= 4.8 and len(notas) >= 3:

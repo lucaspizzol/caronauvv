@@ -11,6 +11,7 @@ from caronauvv.errors import ApiError
 from caronauvv.ext.db import db
 from caronauvv.notificacoes.services import notificar
 
+from .combustivel import calcular_rateio
 from .models import SENTIDOS, Carona, PosicaoGps, Solicitacao
 from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema
 
@@ -78,23 +79,64 @@ def _aplicar_dados(carona: Carona, campos: dict, motorista: Usuario) -> None:
         if campos["vagas"] < aceitas:
             raise ApiError(f"Já há {aceitas} passageiro(s) aceito(s); não dá para ter só {campos['vagas']} vaga(s).")
 
-    if "valor_por_passageiro" in campos:
-        valor = campos["valor_por_passageiro"].quantize(Decimal("0.01"))
-        teto = teto_rateio()
-        if valor > teto:
-            teto_br = f"{teto:.2f}".replace(".", ",")
-            raise ApiError(
-                f"Carona solidária: o rateio máximo é R$ {teto_br} por pessoa (só para dividir o combustível)."
-            )
-        campos["valor_por_passageiro"] = valor
-
+    veiculo = None
     if campos.get("veiculo_id") is not None:
         veiculo = db.session.get(Veiculo, campos["veiculo_id"])
         if veiculo is None or veiculo.usuario_id != motorista.id:
             raise ApiError("Veículo não encontrado entre os seus veículos.")
 
+    # Tres jeitos de chegar ao valor:
+    # 1) veio o adicional -> calculo pelo combustivel (o servidor calcula, nao confia no navegador)
+    # 2) veio so o valor   -> valor digitado pelo motorista (sem detalhamento)
+    # 3) mudou distancia/vagas/carro de uma carona calculada -> recalcula com o mesmo adicional
+    calculado = "adicional_por_passageiro" in campos
+    manual = "valor_por_passageiro" in campos and not calculado
+    if calculado:
+        campos.pop("valor_por_passageiro", None)
+    if manual:
+        campos["valor_por_passageiro"] = campos["valor_por_passageiro"].quantize(Decimal("0.01"))
+    recalcular = calculado or (
+        not manual and carona.combustivel_por_passageiro is not None
+        and any(c in campos for c in ("distancia_km", "vagas", "veiculo_id", "energia", "consumo_km"))
+    )
+
     for campo, valor in campos.items():
         setattr(carona, campo, valor)
+
+    if manual:
+        carona.combustivel_por_passageiro = None
+        carona.adicional_por_passageiro = None
+    if recalcular:
+        _calcular_valor(carona, veiculo or (db.session.get(Veiculo, carona.veiculo_id) if carona.veiculo_id else None))
+
+    # Regra: carona solidaria, ninguem cobra acima do teto do painel
+    teto = teto_rateio()
+    if Decimal(carona.valor_por_passageiro or 0) > teto:
+        teto_br = f"{teto:.2f}".replace(".", ",")
+        if carona.combustivel_por_passageiro is not None:
+            raise ApiError(
+                f"O combustível mais o adicional passam do máximo de R$ {teto_br} por pessoa. Diminua o adicional.",
+                campos={"adicional_por_passageiro": f"O total passa de R$ {teto_br}."},
+            )
+        raise ApiError(
+            f"Carona solidária: o rateio máximo é R$ {teto_br} por pessoa (só para dividir o combustível)."
+        )
+
+
+def _calcular_valor(carona: Carona, veiculo: Veiculo | None) -> None:
+    """Valor por passageiro = combustivel da viagem dividido pelos ocupantes + adicional."""
+    if not carona.distancia_km:
+        raise ApiError("Informe a distância para calcular o combustível.",
+                       campos={"distancia_km": "Informe a distância até a UVV."})
+    if carona.energia is None:
+        carona.energia = veiculo.energia if veiculo else "flex"
+    if carona.consumo_km is None and veiculo is not None and veiculo.energia == carona.energia:
+        carona.consumo_km = veiculo.consumo_km
+    rateio = calcular_rateio(carona.distancia_km, carona.vagas, carona.energia, carona.consumo_km,
+                             carona.adicional_por_passageiro or 0)
+    carona.combustivel_por_passageiro = rateio.combustivel_por_pessoa
+    carona.adicional_por_passageiro = rateio.adicional
+    carona.valor_por_passageiro = rateio.valor_por_passageiro
 
 
 # ==========================================================
@@ -200,7 +242,10 @@ def caronas_do_motorista(usuario: Usuario, status: str | None = None) -> list[Ca
 # CRIAR / EDITAR / CANCELAR
 # ==========================================================
 def criar_carona(motorista: Usuario, dados: CaronaNovaSchema) -> Carona:
+    from caronauvv.auth.documentos import exigir_documento
+
     exigir_email_verificado(motorista, "oferecer carona")
+    exigir_documento(motorista, "cnh", "exigir_cnh_motorista", "oferecer carona")
     carona = Carona(motorista_id=motorista.id, status="ativa")
     _aplicar_dados(carona, dados.preenchidos(), motorista)
     db.session.add(carona)
@@ -379,6 +424,9 @@ def pedir_vaga(carona: Carona, passageiro: Usuario, dados: PedidoVagaSchema) -> 
     if carona.motorista_id == passageiro.id:
         raise ApiError("O motorista não pode pedir vaga na própria carona.")
     exigir_email_verificado(passageiro, "pedir vaga")
+    from caronauvv.auth.documentos import exigir_documento
+
+    exigir_documento(passageiro, "identidade", "exigir_identidade_passageiro", "pedir vaga")
     if carona.status == "lotada":
         raise ApiError("Esta carona está lotada.")
     if carona.status != "ativa" or carona.data_hora_saida <= datetime.now():

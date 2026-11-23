@@ -70,6 +70,7 @@ const ICONES: Record<string, IconeNotificacao> = {
   pagamento_informado: { icone: 'bi-cash-coin', cor: 'text-success' },
   perfil_verificado: { icone: 'bi-patch-check-fill', cor: 'text-primary' },
   seguranca_conta: { icone: 'bi-shield-lock-fill', cor: 'text-primary' },
+  documento: { icone: 'bi-person-vcard-fill', cor: 'text-success' },
   alerta_seguranca: { icone: 'bi-exclamation-octagon-fill', cor: 'text-danger' }
 }
 const icone = (tipo: string): IconeNotificacao => ICONES[tipo] || { icone: 'bi-bell-fill', cor: 'text-secondary' }
@@ -81,6 +82,7 @@ function destino(n: Notificacao): string | null {
   if (['vaga_confirmada', 'vaga_recusada', 'carona_cancelada', 'viagem_iniciada', 'embarque_confirmado'].includes(n.tipo)) return '/meus-pedidos'
   if (n.tipo === 'alerta_seguranca' && auth.usuario?.is_admin) return '/admin'
   if (n.tipo === 'perfil_verificado') return '/perfil'
+  if (n.tipo === 'documento') return auth.usuario?.is_admin ? '/admin' : '/perfil#documentos'
   return null
 }
 

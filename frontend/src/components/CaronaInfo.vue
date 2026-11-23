@@ -38,6 +38,11 @@
           <span v-if="carona.veiculo.placa" class="badge text-bg-light border ms-1">{{ carona.veiculo.placa }}</span>
         </span>
       </div>
+      <div v-if="carona.rateio" class="small text-secondary mt-2" :title="`${ENERGIAS[carona.rateio.energia].texto}: combustível dividido entre todos no carro, mais o adicional do motorista`">
+        <i :class="['bi me-1', ENERGIAS[carona.rateio.energia].icone]"></i>{{ carona.rateio.energia === 'eletrico' ? 'Energia' : 'Combustível' }}
+        {{ reais(carona.rateio.combustivel) }} + adicional {{ reais(carona.rateio.adicional) }}
+        <span class="text-nowrap">· {{ ENERGIAS[carona.rateio.energia].texto }}</span>
+      </div>
       <div v-if="carona.observacoes" class="small text-secondary mt-2"><i class="bi bi-chat-left-text me-1"></i>{{ carona.observacoes }}</div>
     </div>
 
@@ -58,7 +63,7 @@
 
 <script setup lang="ts">
 import type { Carona } from '../types/api'
-import { dataCurta, dinheiro, hora } from '../utils/formato'
+import { dataCurta, dinheiro, ENERGIAS, hora, reais } from '../utils/formato'
 import AvatarUsuario from './AvatarUsuario.vue'
 import ReputacaoResumo from './ReputacaoResumo.vue'
 

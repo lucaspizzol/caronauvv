@@ -66,9 +66,9 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h1>Plataforma de caronas entre alunos da Universidade Vila Velha</h1>
   <p class="sub">Documentação do projeto final · Entrega do 2º bimestre (auditoria técnica)</p>
   <div class="numeros">
-    <div><b>72</b><span>rotas da API REST</span></div>
-    <div><b>17</b><span>tabelas no banco</span></div>
-    <div><b>279</b><span>testes automatizados</span></div>
+    <div><b>77</b><span>rotas da API REST</span></div>
+    <div><b>18</b><span>tabelas no banco</span></div>
+    <div><b>328</b><span>testes automatizados</span></div>
     <div><b>15</b><span>telas em Vue 3</span></div>
   </div>
   <table class="ficha">
@@ -133,6 +133,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
       <tr><td>Perfil verificado</td><td>O aluno pede o selo; a administração confere a matrícula e aprova.</td><td>BlaBlaCar (ID verificado)</td></tr>
       <tr><td>Foto de perfil</td><td>O aluno envia a foto pelo perfil (câmera ou galeria no celular). Ela aparece na busca, nos pedidos, nas avaliações, no perfil público e no link da família, para motorista e passageiro se reconhecerem no ponto de encontro. A administração pode remover foto inadequada.</td><td>Uber / BlaBlaCar (foto no perfil)</td></tr>
       <tr><td>Verificação em duas etapas</td><td>Com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy), o login pede a senha e um código de 6 números que muda a cada 30 s. Vem com 8 códigos de reserva de uso único.</td><td>Uber, bancos, GitHub (2FA)</td></tr>
+      <tr><td>Documentos verificados</td><td>Motorista e passageiro enviam a foto da identidade; quem oferece carona envia também a CNH (com a validade). A administração confere e o perfil ganha os selos "Identidade verificada" e "CNH verificada", que aparecem nos cartões das caronas. Depois da conferência a imagem é apagada. O painel pode exigir CNH de quem oferece e identidade de quem pede vaga.</td><td>Uber e 99 (documentos do motorista), BlaBlaCar (ID verificado)</td></tr>
+      <tr><td>Cálculo do combustível</td><td>O carro informa o tipo (gasolina, etanol, flex, diesel, híbrido ou elétrico) e o consumo. Ao oferecer carona, a tela mostra a conta inteira: distância em km e metros, litros (ou kWh) gastos, custo da viagem com o preço do painel, a parte de cada pessoa no carro e o adicional do motorista, separado. O passageiro vê o mesmo detalhamento no cartão da carona.</td><td>BlaBlaCar (divisão de custos)</td></tr>
       <tr><td>Reputação</td><td>Nota média, número de avaliações, nível de experiência (Calouro, Veterano, Embaixador), viagens como motorista e passageiro, faltas, taxa de cancelamento e selos (Super pontual, Muito bem avaliado, Nunca faltou...).</td><td>BlaBlaCar (perfil e níveis)</td></tr>
       <tr><td>Avaliação "às cegas"</td><td>Motorista e passageiro se avaliam (1 a 5 + elogios + comentário) em até 14 dias; a nota só aparece quando os dois avaliam ou depois de 7 dias, para ninguém avaliar por vingança.</td><td>BlaBlaCar (two-way ratings)</td></tr>
       <tr><td>Preferências</td><td>Conversa (prefere silêncio / depende / adora conversar), música, animais e cigarro, no perfil público.</td><td>BlaBlaCar ("Bla, BlaBla, BlaBlaBla")</td></tr>
@@ -164,6 +166,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     <li>Verificação em duas etapas: cada código vale uma vez; 5 códigos errados bloqueiam a segunda etapa por 10 min; ligar e desligar exigem a senha e um código.</li>
     <li>"Esqueci minha senha": código de 6 números por e-mail, vale 30 min e aceita 5 tentativas; a resposta é a mesma exista a conta ou não.</li>
     <li>Trocar ou redefinir a senha encerra os logins abertos nos outros aparelhos.</li>
+    <li>Documentos: só o próprio aluno e a administração acessam a imagem, que é servida sem cache e apagada depois da análise; CNH vencida não é aceita e perde o selo quando vence.</li>
+    <li>Rateio: com o cálculo ligado, o servidor refaz a conta ao salvar e ignora o valor que veio do navegador; combustível mais adicional nunca passa do teto do painel.</li>
   </ul>
 </section>
 
@@ -191,6 +195,13 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <figure class="baixa"><img src="img/12_login_duas_etapas.jpg" alt="Login de quem ligou a verificação em duas etapas: depois da senha, o sistema pede o código do aplicativo (ou um código de reserva)."><figcaption>Login de quem ligou a verificação em duas etapas: depois da senha, o sistema pede o código do aplicativo (ou um código de reserva).</figcaption></figure>
 </section>
 <section class="quebra">
+  <figure class=""><img src="img/13_oferecer_calculo.jpg" alt="Oferecer carona: bairro e rua vêm do perfil, o carro traz o tipo de combustível e o consumo, e a conta aparece passo a passo (distância em km e metros, litros, custo, divisão e adicional)."><figcaption>Oferecer carona: bairro e rua vêm do perfil, o carro traz o tipo de combustível e o consumo, e a conta aparece passo a passo (distância em km e metros, litros, custo, divisão e adicional).</figcaption></figure>
+  <figure class="media"><img src="img/14_perfil_documentos.jpg" alt="Meu perfil: envio da identidade e da CNH para verificação, com a situação de cada documento."><figcaption>Meu perfil: envio da identidade e da CNH para verificação, com a situação de cada documento.</figcaption></figure>
+</section>
+<section class="quebra">
+  <figure class=""><img src="img/15_admin_documentos.jpg" alt="Painel da administração: fila de documentos para conferir. A imagem vem pela API com o login do administrador e é apagada ao aprovar ou recusar."><figcaption>Painel da administração: fila de documentos para conferir. A imagem vem pela API com o login do administrador e é apagada ao aprovar ou recusar.</figcaption></figure>
+</section>
+<section class="quebra">
   <div class="lado-a-lado">
     <figure class="celular"><img src="img/10_celular.jpg" alt="No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo."><figcaption>No celular: Meus pedidos com PIN, Pix, compartilhar e emergência; menu na parte de baixo.</figcaption></figure>
     <div>
@@ -212,12 +223,12 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
 
 <section class="quebra">
   <h2>3. Banco de dados</h2>
-  <p>O banco tem <b>17 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
-  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 3 migrações).</p>
+  <p>O banco tem <b>18 tabelas</b>, definidas como classes Python com Flask-SQLAlchemy 2.0
+  (<code>Mapped[...]</code> e <code>mapped_column</code>) e versionadas com Flask-Migrate (Alembic, 4 migrações).</p>
   <p><b>Qual banco e por quê.</b> No desenvolvimento e na apresentação usamos <b>SQLite</b>: é um arquivo
   (<code>backend/instance/caronauvv.db</code>), não precisa instalar servidor e o projeto roda em qualquer máquina.
   Em produção o banco indicado é o <b>PostgreSQL</b> (concorrência real, tipos fortes, transações em DDL); basta
-  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 255 testes do back-end
+  definir <code>DATABASE_URL</code>, sem mudar código. Não ficamos só na promessa: <b>os 297 testes do back-end
   e as migrações (upgrade, downgrade e upgrade de novo, com dados) foram executados nos dois bancos</b>.</p>
 
   <h3>Núcleo do modelo (principais colunas)</h3>
@@ -303,12 +314,18 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   veiculos {
     integer id PK
     integer usuario_id FK
+    varchar energia
+    float consumo_km
   }
   caronas {
     integer id PK
     integer motorista_id FK
     integer veiculo_id FK
     datetime data_hora_saida
+    varchar energia
+    float consumo_km
+    numeric combustivel_por_passageiro
+    numeric adicional_por_passageiro
     varchar status
   }
   posicoes_gps {
@@ -375,6 +392,10 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer motorista_id FK
     integer veiculo_id FK
     datetime data_hora_saida
+    varchar energia
+    float consumo_km
+    numeric combustivel_por_passageiro
+    numeric adicional_por_passageiro
     varchar status
   }
   alertas {
@@ -414,7 +435,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   caronas ||--o{ links_compartilhados : &quot;carona_id&quot;
   usuarios ||--o{ links_compartilhados : &quot;usuario_id&quot;
   contatos_confianca |o--o{ links_compartilhados : &quot;contato_id&quot;</div>
-  <h3>Conta: foto de perfil e verificação em duas etapas</h3>
+  <h3>Conta: foto de perfil, documentos verificados e verificação em duas etapas</h3>
   <div class="mermaid dominio">erDiagram
   usuarios {
     integer id PK
@@ -428,6 +449,16 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer usuario_id FK
     datetime usado_em
   }
+  documentos {
+    integer id PK
+    integer usuario_id FK
+    varchar tipo
+    varchar status
+    date validade
+    varchar mime
+    integer tamanho
+    integer analisado_por_id FK
+  }
   fotos_perfil {
     integer id PK
     integer usuario_id FK
@@ -436,6 +467,8 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer tamanho
   }
   usuarios ||--o{ codigos_reserva : &quot;usuario_id&quot;
+  usuarios ||--o{ documentos : &quot;usuario_id&quot;
+  usuarios |o--o{ documentos : &quot;analisado_por_id&quot;
   usuarios ||--o{ fotos_perfil : &quot;usuario_id&quot;</div>
 </section>
 <section class="quebra">
@@ -463,6 +496,10 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
     integer motorista_id FK
     integer veiculo_id FK
     datetime data_hora_saida
+    varchar energia
+    float consumo_km
+    numeric combustivel_por_passageiro
+    numeric adicional_por_passageiro
     varchar status
   }
   notificacoes {
@@ -484,7 +521,7 @@ ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
   <h3>Tabelas</h3>
   <p class="pequeno">O dicionário de dados completo (cada coluna, tipo e restrição) está em <code>docs/banco_de_dados.md</code>,
   e o esquema SQL do PostgreSQL em <code>docs/schema_postgresql.sql</code> (ambos gerados por <code>invoke docsdb</code>).</p>
-  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>6</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>25</td><td>usuarios, veiculos</td><td class='c'>4</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>18</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
+  <table class='compacta'><thead><tr><th>Tabela</th><th>Para que serve</th><th>Colunas</th><th>Chaves estrangeiras para</th><th>CHECKs</th></tr></thead><tbody><tr><td><code>configuracoes</code></td><td>Regras ajustáveis: teto do rateio, prazos, segurança</td><td class='c'>4</td><td>—</td><td class='c'>0</td></tr><tr><td><code>usuarios</code></td><td>Alunos (motorista e passageiro), preferências, verificação de e-mail e selo</td><td class='c'>40</td><td>—</td><td class='c'>1</td></tr><tr><td><code>buscas</code></td><td>Buscas por bairro (demanda sem oferta no painel)</td><td class='c'>9</td><td>usuarios</td><td class='c'>1</td></tr><tr><td><code>codigos_reserva</code></td><td>Códigos de uso único da verificação em duas etapas (só o HMAC)</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>contatos_confianca</code></td><td>Quem recebe o link da viagem e o aviso de emergência</td><td class='c'>5</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>documentos</code></td><td>Identidade e CNH enviadas para verificação (a imagem é apagada depois da análise)</td><td class='c'>12</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>fotos_perfil</code></td><td>Arquivo da foto de perfil (no banco: a Vercel não guarda arquivos em disco)</td><td class='c'>7</td><td>usuarios</td><td class='c'>0</td></tr><tr><td><code>veiculos</code></td><td>Carros do motorista (placa única)</td><td class='c'>8</td><td>usuarios</td><td class='c'>2</td></tr><tr><td><code>caronas</code></td><td>Oferta do motorista: trajeto, horário, vagas, rateio e status</td><td class='c'>29</td><td>usuarios, veiculos</td><td class='c'>5</td></tr><tr><td><code>alertas</code></td><td>Alertas de segurança, inclusive o botão de emergência</td><td class='c'>13</td><td>caronas, usuarios</td><td class='c'>3</td></tr><tr><td><code>denuncias</code></td><td>Denúncias entre usuários e a análise do admin</td><td class='c'>11</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>links_compartilhados</code></td><td>Links públicos de acompanhamento da viagem</td><td class='c'>9</td><td>caronas, contatos_confianca, usuarios</td><td class='c'>0</td></tr><tr><td><code>notificacoes</code></td><td>Avisos do sino (pedido novo, vaga confirmada...)</td><td class='c'>8</td><td>caronas, usuarios</td><td class='c'>0</td></tr><tr><td><code>posicoes_gps</code></td><td>Trilha GPS da viagem em andamento (link da família)</td><td class='c'>5</td><td>caronas</td><td class='c'>0</td></tr><tr><td><code>solicitacoes</code></td><td>Pedido de vaga: status, PIN de embarque, embarque e falta</td><td class='c'>18</td><td>caronas, usuarios</td><td class='c'>2</td></tr><tr><td><code>avaliacoes</code></td><td>Nota de 1 a 5 entre motorista e passageiro</td><td class='c'>7</td><td>solicitacoes, usuarios</td><td class='c'>2</td></tr><tr><td><code>pagamentos</code></td><td>Rateio por Pix/dinheiro, com o código Pix copia e cola</td><td class='c'>9</td><td>solicitacoes</td><td class='c'>3</td></tr><tr><td><code>avaliacao_tags</code></td><td>Elogios de cada avaliação (Pontual, Dirige bem...)</td><td class='c'>3</td><td>avaliacoes</td><td class='c'>0</td></tr></tbody></table>
   <h3>Integridade garantida pelo próprio banco</h3>
   <ul>
     <li><b>Chaves estrangeiras</b> com <code>ON DELETE CASCADE / SET NULL</code> conforme o caso (apagar uma carona apaga pedidos e GPS; apagar um carro deixa a carona antiga sem carro). No SQLite elas são ligadas com <code>PRAGMA foreign_keys=ON</code>.</li>
@@ -977,7 +1014,105 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
     return usuario</code></pre></div>
 </section>
 <section>
-  <h3>5.8 Tratamento de erros, logging e variáveis de ambiente</h3>
+  <h3>5.8 Cálculo do rateio pelo combustível</h3>
+  <p>A conta fica numa função pura (sem banco nem requisição), fácil de testar. A distância é convertida para metros
+  inteiros, o consumo vem do carro (km por litro, ou por kWh no elétrico) e o preço vem do painel. Toda a conta usa
+  <code>Decimal</code>, porque dinheiro em <code>float</code> acumula erro de arredondamento:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/combustivel.py</div><pre><code class="language-python">def calcular_rateio(distancia_km, vagas: int, energia: str = &quot;flex&quot;, consumo_km=None, adicional=0) -&gt; Rateio:
+    &quot;&quot;&quot;Conta completa do rateio. Levanta ApiError com o campo errado quando um dado nao serve.&quot;&quot;&quot;
+    if energia not in PRECO_POR_ENERGIA:
+        raise ApiError(&quot;Tipo de energia inválido.&quot;, campos={&quot;energia&quot;: &quot;Escolha gasolina, etanol, flex, diesel, híbrido ou elétrico.&quot;})
+    if not 1 &lt;= int(vagas) &lt;= 6:
+        raise ApiError(&quot;As vagas vão de 1 a 6.&quot;, campos={&quot;vagas&quot;: &quot;De 1 a 6 vagas.&quot;})
+
+    distancia_m = int((_decimal(distancia_km, &quot;distancia_km&quot;) * 1000).to_integral_value(rounding=ROUND_HALF_UP))
+    if not 0 &lt; distancia_m &lt;= 500_000:
+        raise ApiError(&quot;Informe a distância (até 500 km).&quot;, campos={&quot;distancia_km&quot;: &quot;Informe a distância (até 500 km).&quot;})
+
+    estimado = consumo_km in (None, &quot;&quot;, 0)
+    consumo = Decimal(str(CONSUMO_MEDIO[energia])) if estimado else _decimal(consumo_km, &quot;consumo_km&quot;)
+    if not 0 &lt; consumo &lt;= 60:
+        raise ApiError(&quot;O consumo vai de 0,1 a 60 km por litro (ou kWh).&quot;, campos={&quot;consumo_km&quot;: &quot;Entre 0,1 e 60.&quot;})
+
+    extra = _decimal(adicional or 0, &quot;adicional&quot;)
+    if extra &lt; 0:
+        raise ApiError(&quot;O adicional não pode ser negativo.&quot;, campos={&quot;adicional&quot;: &quot;Não pode ser negativo.&quot;})
+
+    preco = Configuracao.obter_decimal(PRECO_POR_ENERGIA[energia], &quot;0&quot;)
+    km = Decimal(distancia_m) / 1000
+    quantidade = km / consumo
+    custo_total = quantidade * preco
+    ocupantes = int(vagas) + 1
+    por_pessoa = (custo_total / ocupantes).quantize(CENTAVO, rounding=ROUND_HALF_UP)
+    extra = extra.quantize(CENTAVO, rounding=ROUND_HALF_UP)
+
+    return Rateio(
+        energia=energia,
+        unidade=&quot;kWh&quot; if energia == &quot;eletrico&quot; else &quot;L&quot;,
+        distancia_m=distancia_m,
+        distancia_km=km,
+        consumo_km=consumo,
+        consumo_estimado=estimado,
+        quantidade=quantidade.quantize(Decimal(&quot;0.001&quot;), rounding=ROUND_HALF_UP),
+        preco_unidade=preco,
+        custo_total=custo_total.quantize(CENTAVO, rounding=ROUND_HALF_UP),
+        ocupantes=ocupantes,
+        combustivel_por_pessoa=por_pessoa,
+        adicional=extra,
+        valor_por_passageiro=por_pessoa + extra,
+    )</code></pre></div>
+  <p>Ao salvar a carona, o servidor não confia no valor que o navegador mandou: se o adicional veio, ele refaz a conta
+  e guarda o detalhamento (combustível e adicional por passageiro) para o passageiro ver.</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/caronas/services.py</div><pre><code class="language-python">def _calcular_valor(carona: Carona, veiculo: Veiculo | None) -&gt; None:
+    &quot;&quot;&quot;Valor por passageiro = combustivel da viagem dividido pelos ocupantes + adicional.&quot;&quot;&quot;
+    if not carona.distancia_km:
+        raise ApiError(&quot;Informe a distância para calcular o combustível.&quot;,
+                       campos={&quot;distancia_km&quot;: &quot;Informe a distância até a UVV.&quot;})
+    if carona.energia is None:
+        carona.energia = veiculo.energia if veiculo else &quot;flex&quot;
+    if carona.consumo_km is None and veiculo is not None and veiculo.energia == carona.energia:
+        carona.consumo_km = veiculo.consumo_km
+    rateio = calcular_rateio(carona.distancia_km, carona.vagas, carona.energia, carona.consumo_km,
+                             carona.adicional_por_passageiro or 0)
+    carona.combustivel_por_passageiro = rateio.combustivel_por_pessoa
+    carona.adicional_por_passageiro = rateio.adicional
+    carona.valor_por_passageiro = rateio.valor_por_passageiro</code></pre></div>
+</section>
+<section>
+  <h3>5.9 Verificação de documentos e LGPD</h3>
+  <p>O aluno envia a foto da identidade ou da CNH (o navegador reduz para 1600 px). O servidor confere o formato pelo
+  conteúdo do arquivo, igual à foto de perfil, e a CNH precisa de validade no futuro. A imagem só existe enquanto a
+  administração não analisa; depois, fica apenas o resultado:</p>
+  <div class="codigo"><div class="arquivo">backend/caronauvv/auth/documentos.py</div><pre><code class="language-python">def analisar_documento(doc: Documento, admin: Usuario, aprovado: bool, motivo: str | None = None) -&gt; Documento:
+    if doc.status != &quot;pendente&quot;:
+        raise ApiError(&quot;Este documento já foi analisado.&quot;, 409)
+    motivo = (motivo or &quot;&quot;).strip()
+    if not aprovado and not motivo:
+        raise ApiError(&quot;Diga o motivo da recusa (o aluno vê esse texto).&quot;, campos={&quot;motivo&quot;: &quot;Informe o motivo.&quot;})
+    if aprovado and doc.vencido:
+        raise ApiError(&quot;Não dá para aprovar: a CNH está vencida.&quot;)
+
+    doc.status = &quot;aprovado&quot; if aprovado else &quot;recusado&quot;
+    doc.motivo_recusa = None if aprovado else motivo[:255]
+    doc.analisado_em = datetime.now()
+    doc.analisado_por_id = admin.id
+    # LGPD: depois da analise a imagem nao e mais necessaria
+    doc.dados, doc.mime, doc.tamanho = None, None, None
+
+    nome = NOMES[doc.tipo]
+    if aprovado:
+        notificar(doc.usuario, &quot;documento&quot;, f&quot;{nome[0].upper() + nome[1:]} verificada!&quot;,
+                  f&quot;A administração conferiu sua {nome}. O selo já aparece no seu perfil.&quot;)
+    else:
+        notificar(doc.usuario, &quot;documento&quot;, f&quot;{nome[0].upper() + nome[1:]} recusada&quot;,
+                  f&quot;Motivo: {doc.motivo_recusa} Envie uma nova foto em Meu perfil.&quot;)
+    db.session.commit()
+    return doc</code></pre></div>
+  <p>O painel pode ligar duas regras: só oferece carona quem tem a CNH verificada e só pede vaga quem tem a
+  identidade verificada (<code>exigir_cnh_motorista</code> e <code>exigir_identidade_passageiro</code>).</p>
+</section>
+<section>
+  <h3>5.10 Tratamento de erros, logging e variáveis de ambiente</h3>
   <p>Toda resposta de erro tem o mesmo formato. Erros de regra de negócio viram <code>ApiError</code>; erros
   inesperados vão para o log com traceback, e o cliente recebe só uma mensagem genérica.</p>
   <div class="codigo"><div class="arquivo">backend/caronauvv/errors.py</div><pre><code class="language-python">def init_app(app: Flask) -&gt; None:
@@ -1013,11 +1148,11 @@ def salvar_foto(usuario: Usuario, dados: bytes) -&gt; Usuario:
     return url</code></pre></div>
 </section>
 <section>
-  <h3>5.9 Testes automatizados</h3>
-  <p><b>255 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
-  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil e verificação em duas etapas. Cada teste roda num banco novo, criado
+  <h3>5.11 Testes automatizados</h3>
+  <p><b>297 testes no back-end</b> (pytest + pytest-flask), com <b>96% de cobertura</b> de código, cobrindo rotas,
+  regras de negócio, validação, permissões, banco (FK, CHECK, seed), Pix, foto de perfil, verificação em duas etapas, documentos e cálculo do combustível. Cada teste roda num banco novo, criado
   pelas fixtures. Os mesmos testes rodam no PostgreSQL definindo <code>TEST_DATABASE_URL</code>.
-  No front-end, <b>24 testes com Vitest</b> cobrem as regras de validação, a formatação e o recorte da foto.</p>
+  No front-end, <b>31 testes com Vitest</b> cobrem as regras de validação, a formatação, o recorte da foto e os textos do cálculo do combustível.</p>
   <div class="codigo"><div class="arquivo">backend/tests/conftest.py</div><pre><code class="language-python">@pytest.fixture
 def viagem(client, novo_aluno, nova_carona):
     &quot;&quot;&quot;
@@ -1056,6 +1191,8 @@ def viagem(client, novo_aluno, nova_carona):
       <tr><td><code>test_auth.py</code>, <code>test_validacao_cadastro.py</code></td><td>Cadastro, e-mail institucional, código de verificação, força bruta, perfil e preferências</td></tr>
       <tr><td><code>test_dois_fatores.py</code></td><td>TOTP com os vetores da RFC 6238, ativar, login em duas etapas, código de uso único, bloqueio após 5 erros, códigos de reserva, desligar</td></tr>
       <tr><td><code>test_foto_perfil.py</code></td><td>Envio, formato pelo conteúdo, tamanho e medidas, troca e remoção, moderação pelo admin</td></tr>
+      <tr><td><code>test_combustivel.py</code></td><td>Conta do rateio (metros, cada energia, consumo médio, preço do painel), dados inválidos, teto, e o servidor recalculando ao salvar e editar</td></tr>
+      <tr><td><code>test_documentos.py</code></td><td>Envio, CNH vencida, arquivo inválido, análise pelo admin, imagem apagada depois (LGPD), selos e as regras de exigir documento</td></tr>
       <tr><td><code>test_recuperar_senha.py</code></td><td>Código por e-mail, validade, tentativas, reenvio, e a senha nova derrubando os logins antigos</td></tr>
       <tr><td><code>test_caronas.py</code>, <code>test_solicitacoes.py</code></td><td>Criar, buscar, editar, cancelar; pedir, aceitar, recusar, lotação, expiração</td></tr>
       <tr><td><code>test_ciclo_viagem.py</code>, <code>test_conclusao_e_erros.py</code></td><td>Iniciar, PIN, falta, GPS, concluir, teto e valor sugerido, erros em JSON</td></tr>
@@ -1067,7 +1204,7 @@ def viagem(client, novo_aluno, nova_carona):
   </table>
 </section>
 <section>
-  <h3>5.10 Front-end em Vue 3 + TypeScript</h3>
+  <h3>5.12 Front-end em Vue 3 + TypeScript</h3>
   <p>Todo o front-end é escrito em <b>TypeScript em modo estrito</b> (<code>strict: true</code>): os arquivos
   <code>.ts</code> e o <code>&lt;script setup lang="ts"&gt;</code> de cada componente. O formato de cada resposta da
   API está descrito em <code>src/types/api.ts</code>, espelhando os <code>to_dict()</code> do back-end; assim, ler um
@@ -1186,7 +1323,8 @@ const emit = defineEmits&lt;{ pago: [pagamento: Pagamento] }&gt;()</code></pre><
       <tr><td>Flask-CORS e python-dotenv</td><td>Liberar o front-end para chamar a API; configuração por <code>.env</code>.</td></tr>
       <tr><td>itsdangerous, Werkzeug, hmac/secrets</td><td>Token de login assinado, hash de senha (scrypt), HMAC do código de verificação e PIN aleatório seguro.</td></tr>
       <tr><td>TOTP (RFC 6238) com hmac, hashlib e struct</td><td>Código do aplicativo autenticador calculado com a biblioteca padrão do Python: nenhuma dependência nova no servidor, e compatível com qualquer aplicativo autenticador.</td></tr>
-      <tr><td>Canvas e FormData (navegador)</td><td>Recorte e redução da foto de perfil antes do envio em <code>multipart/form-data</code>.</td></tr>
+      <tr><td>Canvas e FormData (navegador)</td><td>Recorte e redução da foto de perfil e da foto do documento antes do envio em <code>multipart/form-data</code>.</td></tr>
+      <tr><td><code>Decimal</code> (biblioteca padrão do Python)</td><td>Cálculo do rateio sem erro de arredondamento: litros, custo e divisão em decimal exato, arredondando só no fim para centavos.</td></tr>
       <tr><td>SQLite / PostgreSQL (psycopg 3)</td><td>SQLite no desenvolvimento e na apresentação (um arquivo, nada para instalar); PostgreSQL em produção, só trocando a <code>DATABASE_URL</code>. Testado nos dois.</td></tr>
       <tr><td>pytest, pytest-flask, pytest-cov</td><td>Testes das rotas e regras de negócio, com cobertura medida.</td></tr>
       <tr><td>invoke e pyproject.toml</td><td>Empacotamento e tarefas (<code>invoke test</code>, <code>invoke resetdb</code>, <code>invoke docsdb</code>).</td></tr>
@@ -1206,8 +1344,11 @@ const emit = defineEmits&lt;{ pago: [pagamento: Pagamento] }&gt;()</code></pre><
 
 <section class="quebra compacto">
   <h2>7. Como rodar o projeto</h2>
-  <p><b>Online:</b> <b>https://caronauvv.vercel.app</b> (Vercel: Vue como site estático, API Flask como função
-  serverless e banco PostgreSQL Neon; logins de exemplo abaixo). Para rodar na própria máquina:</p>
+  <p>Há duas opções. As duas usam as mesmas contas de exemplo (tabela abaixo).</p>
+  <h3>Opção 1 – Online, sem instalar nada</h3>
+  <p>Abrir <b>https://caronauvv.vercel.app</b> no navegador (computador ou celular). Na Vercel, o Vue é publicado como
+  site estático, a API Flask roda como função serverless e o banco é um PostgreSQL (Neon).</p>
+  <h3>Opção 2 – Localhost, na própria máquina</h3>
   <p><b>Pré-requisitos:</b> Python 3.10 ou mais novo e Node.js 18 ou mais novo. No Windows, extraia o projeto num
   caminho curto (ex.: <code>C:\caronauvv</code>), porque caminhos longos passam do limite de 260 caracteres e o
   <code>pip</code> falha. São dois terminais.</p>
@@ -1235,9 +1376,9 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
       <tr><td><code>kaua@uvv.br</code></td><td>Motorista Veterano, nota 5,0. Tem carona <b>hoje, cerca de 20 min depois do seed</b>, com a Ana confirmada (PIN <b>4821</b>)</td></tr>
       <tr><td><code>lucas@uvv.br</code></td><td>Passageiro com uma avaliação pendente</td></tr>
       <tr><td><code>ana@uvv.br</code> / <code>pedro@uvv.br</code></td><td>Passageira com contatos de confiança / passageiro com 2 faltas</td></tr>
-      <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado (aprovar no painel)</td></tr>
+      <tr><td><code>marina@uvv.br</code></td><td>Pediu o selo de verificado e enviou a identidade (aprovar no painel); ainda não mandou a CNH</td></tr>
       <tr><td><code>beatriz@uvv.br</code></td><td>Já usa a verificação em duas etapas: o login pede o código. Use um código de reserva de exemplo (<code>UVVA-2026</code>, <code>UVVB-2026</code>, <code>UVVC-2026</code>, <code>UVVD-2026</code>; cada um vale uma vez)</td></tr>
-      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração</td></tr>
+      <tr><td><code>admin@uvv.br</code></td><td>Painel da administração (documentos na fila: identidade da Marina e CNH da Beatriz)</td></tr>
     </tbody>
   </table>
   <h3>Roteiro de demonstração</h3>
@@ -1247,6 +1388,8 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <li><b>Aba 1, Kauã:</b> Minhas caronas → carona de hoje → Iniciar viagem → PIN errado e depois 4821 → Compartilhar viagem (abrir o link numa janela anônima) → Concluir → Avaliações.</li>
     <li><b>Aba 2, Lucas:</b> buscar "Itapuã", ver a nota do Kauã e abrir o perfil dele → Pedir vaga. Na aba 1 o pedido chega sozinho; aceitar. Em Meus pedidos: PIN, Pix com QR Code e Emergência.</li>
     <li><b>Foto e autenticador:</b> no Perfil, trocar a foto (ela muda na barra na hora). Ativar a verificação em duas etapas lendo o QR Code com o Google Authenticator do celular, guardar os códigos de reserva, sair e entrar de novo: o login pede o código. No login, "Esqueci minha senha" mostra a recuperação por código.</li>
+    <li><b>Combustível:</b> como Kauã, Oferecer carona: bairro, rua e distância já vêm preenchidos e a conta aparece sozinha; mudar o adicional ou o carro refaz a conta. No Perfil, trocar o consumo do carro. Na busca, cada cartão mostra combustível + adicional (a carona da Beatriz é de carro elétrico).</li>
+    <li><b>Documentos:</b> como Marina, enviar a foto da CNH no Perfil. Como admin, aba Documentos: ver a imagem, aprovar uma e recusar outra com o motivo; o selo aparece no perfil e a imagem some.</li>
     <li><b>Admin:</b> indicadores, aprovar o selo da Marina, a emergência em Alertas, remover uma foto ou desligar o autenticador de um aluno em Usuários, e o diagrama na aba Banco de dados.</li>
 
   </ol>
@@ -1304,6 +1447,15 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
   em modo estrito e descrevemos cada resposta da API em <code>types/api.ts</code>, copiando os <code>to_dict()</code>
   do back-end. Na migração, o compilador apontou três telas que liam dados ainda não carregados ou sem conferir o
   formato; foram corrigidas, e o build agora não sai se os tipos não baterem.</p>
+  <p><b>Dinheiro sem centavo perdido.</b> Em <code>float</code>, 0,1 + 0,2 não dá 0,3. O cálculo do combustível usa
+  <code>Decimal</code> do começo ao fim e só arredonda no final; a distância vira metros inteiros para a conta ser
+  exata. Os testes conferem a conta à mão (ex.: 6,2 km a 12,5 km/l e R$ 6,29 = R$ 3,12; por 4 = R$ 0,78).</p>
+  <p><b>Documento é dado sensível.</b> Guardar a foto da identidade para sempre seria um risco sem necessidade. A
+  imagem só existe enquanto espera a análise; depois fica só o resultado (aprovado ou recusado e a validade da CNH),
+  seguindo o princípio da minimização de dados da LGPD. A imagem é entregue só ao administrador, sem cache.</p>
+  <p><b>Data que voltava um dia.</b> A validade da CNH digitada como 10/05/2029 aparecia como 09/05/2029: o JavaScript
+  lê "2029-05-10" como meia-noite em UTC, que no horário de Brasília ainda é dia 9. A data passou a ser montada no
+  fuso local, com teste automático.</p>
   <p><b>Oferecer carona sem digitar tudo de novo.</b> O motorista quase sempre sai de casa. O formulário já vem com o
   bairro e a rua do perfil, estima a distância até a UVV pelo bairro e calcula o rateio sugerido com um clique;
   tudo continua editável para quem sai de outro lugar.</p>
@@ -1315,11 +1467,11 @@ npm run type-check                 # checagem do TypeScript (vue-tsc)</pre>
     <thead><tr><th>Critério</th><th>Onde conferir</th></tr></thead>
     <tbody>
       <tr><td>1. Arquitetura modular e fábrica de aplicação</td><td><code>create_app()</code> em <code>caronauvv/__init__.py</code> recebendo a classe de configuração; extensões desacopladas em <code>extensions.py</code> e <code>ext/db</code> (seção 5.1).</td></tr>
-      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 72 rotas (seção 4).</td></tr>
-      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulário com envio de arquivo (foto de perfil, seção 5.7).</td></tr>
+      <tr><td>2. Módulos / Blueprints / rotas</td><td>6 pacotes de domínio (auth, caronas, avaliacoes, notificacoes, seguranca, admin), cada um com <code>routes.py</code> (Blueprint), <code>schemas.py</code>, <code>services.py</code> e <code>models.py</code>; 77 rotas (seção 4).</td></tr>
+      <tr><td>3. Formulários e validação</td><td>Schemas Pydantic no servidor com erro por campo (<code>validacao.py</code>, <code>*/schemas.py</code>) + validação no Vue (<code>utils/validacao.ts</code>) (seção 5.2). Inclui formulários com envio de arquivo (foto de perfil e documentos, seções 5.7 e 5.9).</td></tr>
       <tr><td>4. Interface / front-end</td><td>Vue 3 + TypeScript (modo estrito, checado pelo <code>vue-tsc</code>) + Bootstrap 5, 15 telas, responsivo (barra inferior no celular), componentes reutilizáveis (seção 2).</td></tr>
-      <tr><td>5. Testes automatizados</td><td>255 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 24 testes Vitest (seção 5.9).</td></tr>
-      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 17 tabelas com FK, CHECK, UNIQUE e índices; 3 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
+      <tr><td>5. Testes automatizados</td><td>297 testes pytest (rotas e regras, 96% de cobertura, também no PostgreSQL) + 31 testes Vitest (seção 5.11).</td></tr>
+      <tr><td>6. Persistência e ORM</td><td>SQLAlchemy 2.0, 18 tabelas com FK, CHECK, UNIQUE e índices; 4 migrações Alembic; SQLite e PostgreSQL (seção 3).</td></tr>
       <tr><td>7. Qualidade de código</td><td>Pastas por responsabilidade, <code>.env</code>, logging com rotação, erros centralizados em JSON, código e nomes em português legíveis, histórico de commits no Git.</td></tr>
     </tbody>
   </table>

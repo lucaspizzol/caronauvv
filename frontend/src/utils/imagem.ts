@@ -74,3 +74,30 @@ export async function prepararFoto(arquivo: Blob, lado = LADO_FOTO): Promise<Blo
     tela.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Não deu para preparar a foto.'))), 'image/jpeg', 0.85)
   })
 }
+
+/**
+ * Documento (identidade/CNH): reduz sem recortar, mantendo a proporcao, ate `ladoMaximo`
+ * pixels no lado maior. Uma foto de celular de 4000 px vira ~200 KB, legivel para a conferencia.
+ */
+export function medidasReduzidas(largura: number, altura: number, ladoMaximo: number): { largura: number; altura: number } {
+  const escala = Math.min(1, ladoMaximo / Math.max(largura, altura))
+  return { largura: Math.round(largura * escala), altura: Math.round(altura * escala) }
+}
+
+export async function prepararDocumento(arquivo: Blob, ladoMaximo = 1600): Promise<Blob> {
+  const imagem = await carregar(arquivo)
+  const { largura, altura } = medidasReduzidas(imagem.width, imagem.height, ladoMaximo)
+  const tela = document.createElement('canvas')
+  tela.width = largura
+  tela.height = altura
+  const ctx = tela.getContext('2d')
+  if (!ctx) throw new Error('Este navegador não consegue preparar a imagem.')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, largura, altura)
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(imagem, 0, 0, largura, altura)
+  if ('close' in imagem) imagem.close()
+  return new Promise((resolve, reject) => {
+    tela.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Não deu para preparar a imagem.'))), 'image/jpeg', 0.88)
+  })
+}

@@ -25,6 +25,7 @@ class Carona(db.Model):
     __table_args__ = (
         CheckConstraint("vagas BETWEEN 1 AND 6", name="vagas"),
         CheckConstraint("valor_por_passageiro >= 0", name="valor"),
+        CheckConstraint("adicional_por_passageiro IS NULL OR adicional_por_passageiro >= 0", name="adicional"),
         CheckConstraint(check_valores("sentido", SENTIDOS), name="sentido"),
         CheckConstraint(check_valores("status", STATUS_CARONA), name="status"),
     )
@@ -54,6 +55,12 @@ class Carona(db.Model):
     data_hora_saida: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, index=True)
     vagas: Mapped[int] = mapped_column(db.Integer, nullable=False)
     valor_por_passageiro: Mapped[Decimal] = mapped_column(db.Numeric(6, 2), nullable=False, default=0)
+    # Detalhamento do rateio (preenchido quando o valor vem do calculo do combustivel;
+    # nulo quando o motorista digita o valor a mao). valor = combustivel + adicional.
+    energia: Mapped[Optional[str]] = mapped_column(db.String(15))
+    consumo_km: Mapped[Optional[float]] = mapped_column(db.Float)
+    combustivel_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
+    adicional_por_passageiro: Mapped[Optional[Decimal]] = mapped_column(db.Numeric(6, 2))
     reserva_automatica: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)  # [EXTRA]
     observacoes: Mapped[Optional[str]] = mapped_column(db.String(300))  # "Saio pontualmente; cabe mochila"
 
@@ -78,6 +85,17 @@ class Carona(db.Model):
     posicoes: Mapped[List["PosicaoGps"]] = relationship(
         "PosicaoGps", back_populates="carona", cascade="all, delete-orphan"
     )
+
+    def rateio_dict(self) -> Optional[dict]:
+        """Como o valor foi composto (so quando veio do calculo do combustivel)."""
+        if self.combustivel_por_passageiro is None:
+            return None
+        return {
+            "energia": self.energia,
+            "consumo_km": self.consumo_km,
+            "combustivel": float(self.combustivel_por_passageiro),
+            "adicional": float(self.adicional_por_passageiro or 0),
+        }
 
     # ======================================================
     # REGRA DE NEGOCIO: vagas restantes = vagas - aceitas
@@ -121,6 +139,7 @@ class Carona(db.Model):
             "vagas": self.vagas,
             "vagas_restantes": self.vagas_restantes,
             "valor_por_passageiro": float(self.valor_por_passageiro),
+            "rateio": self.rateio_dict(),
             "reserva_automatica": self.reserva_automatica,
             "observacoes": self.observacoes,
             "status": self.status,

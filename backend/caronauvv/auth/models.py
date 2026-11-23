@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional, TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from caronauvv.ext.db import check_valores, db
@@ -12,6 +12,13 @@ if TYPE_CHECKING:
 
 # Preferencias de viagem (inspiradas no "Bla / BlaBla / BlaBlaBla" do BlaBlaCar)
 NIVEIS_CONVERSA = ("quieto", "depende", "conversador")
+
+# Tipo de energia do carro: define o preco usado no calculo do rateio (caronas/combustivel.py)
+ENERGIAS = ("gasolina", "etanol", "flex", "diesel", "hibrido", "eletrico")
+
+# Documentos que o aluno envia para ganhar os selos de confianca
+TIPOS_DOCUMENTO = ("identidade", "cnh")
+STATUS_DOCUMENTO = ("pendente", "aprovado", "recusado")
 
 
 # === Usuario (aluno: pode ser motorista e passageiro) ===  [MVP]
@@ -119,6 +126,31 @@ class Usuario(db.Model):
     codigos_reserva: Mapped[List["CodigoReserva"]] = relationship(
         "CodigoReserva", back_populates="usuario", cascade="all, delete-orphan"
     )
+    documentos: Mapped[List["Documento"]] = relationship(
+        "Documento", back_populates="usuario", cascade="all, delete-orphan",
+        foreign_keys="Documento.usuario_id",
+    )
+
+    # ======================================================
+    # SELOS DE DOCUMENTO (identidade e CNH conferidas pela administracao)
+    # ======================================================
+    def documento(self, tipo: str) -> Optional["Documento"]:
+        return next((d for d in self.documentos if d.tipo == tipo), None)
+
+    def documento_aprovado(self, tipo: str) -> bool:
+        doc = self.documento(tipo)
+        if doc is None or doc.status != "aprovado":
+            return False
+        # CNH vencida deixa de valer, mesmo aprovada
+        return doc.validade is None or doc.validade >= date.today()
+
+    @property
+    def identidade_verificada(self) -> bool:
+        return self.documento_aprovado("identidade")
+
+    @property
+    def cnh_verificada(self) -> bool:
+        return self.documento_aprovado("cnh")
 
     # ======================================================
     # SENHA (hash com Werkzeug, que ja vem com o Flask)
@@ -148,6 +180,8 @@ class Usuario(db.Model):
             "foto_url": self.foto_url,
             "verificado": self.verificado,
             "email_verificado": self.email_verificado,
+            "identidade_verificada": self.identidade_verificada,
+            "cnh_verificada": self.cnh_verificada,
             "bio": self.bio,
             "preferencias": self.preferencias(),
             "membro_desde": self.created_at.date().isoformat() if self.created_at else None,
@@ -183,10 +217,17 @@ class Usuario(db.Model):
 # === Veiculo (carro do motorista) ===  [EXTRA - recomendado]
 class Veiculo(db.Model):
     __tablename__ = "veiculos"
+    __table_args__ = (
+        CheckConstraint(check_valores("energia", ENERGIAS), name="energia"),
+        CheckConstraint("consumo_km IS NULL OR (consumo_km > 0 AND consumo_km <= 60)", name="consumo"),
+    )
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
     usuario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     modelo: Mapped[str] = mapped_column(db.String(80), nullable=False)       # ex.: HB20
+    # Energia e consumo: base do calculo do combustivel (km por litro; no eletrico, km por kWh)
+    energia: Mapped[str] = mapped_column(db.String(15), nullable=False, default="flex", server_default="flex")
+    consumo_km: Mapped[Optional[float]] = mapped_column(db.Float)
     cor: Mapped[str] = mapped_column(db.String(30), nullable=False)          # ex.: Branco
     placa: Mapped[str] = mapped_column(db.String(10), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
@@ -195,7 +236,8 @@ class Veiculo(db.Model):
 
     # A placa so aparece depois que a solicitacao e aceita
     def to_dict(self, com_placa: bool = False) -> dict:
-        dados = {"id": self.id, "modelo": self.modelo, "cor": self.cor}
+        dados = {"id": self.id, "modelo": self.modelo, "cor": self.cor,
+                 "energia": self.energia, "consumo_km": self.consumo_km}
         if com_placa:
             dados["placa"] = self.placa
         return dados
@@ -258,3 +300,51 @@ class CodigoReserva(db.Model):
 
     def __repr__(self) -> str:
         return f"<CodigoReserva id={self.id} usuario_id={self.usuario_id} usado={self.usado_em is not None}>"
+
+
+# === Documento (identidade ou CNH enviada para verificacao) ===  [EXTRA - confianca]
+# A imagem so existe enquanto a administracao nao analisa: depois de aprovar ou
+# recusar, ela e apagada e fica so o resultado (minimizacao de dados, LGPD).
+class Documento(db.Model):
+    __tablename__ = "documentos"
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "tipo", name="uq_documentos_usuario_tipo"),
+        CheckConstraint(check_valores("tipo", TIPOS_DOCUMENTO), name="tipo"),
+        CheckConstraint(check_valores("status", STATUS_DOCUMENTO), name="status"),
+    )
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipo: Mapped[str] = mapped_column(db.String(20), nullable=False)
+    status: Mapped[str] = mapped_column(db.String(20), nullable=False, default="pendente", index=True)
+    validade: Mapped[Optional[date]] = mapped_column(db.Date)          # CNH: vale ate esta data
+    mime: Mapped[Optional[str]] = mapped_column(db.String(20))
+    tamanho: Mapped[Optional[int]] = mapped_column(db.Integer)
+    dados: Mapped[Optional[bytes]] = mapped_column(db.LargeBinary)     # apagado depois da analise
+    motivo_recusa: Mapped[Optional[str]] = mapped_column(db.String(255))
+    enviado_em: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, default=datetime.now, server_default=db.func.now())
+    analisado_em: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
+    analisado_por_id: Mapped[Optional[int]] = mapped_column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"))
+
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="documentos", foreign_keys=[usuario_id])
+    analisado_por: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[analisado_por_id])
+
+    @property
+    def vencido(self) -> bool:
+        return self.validade is not None and self.validade < date.today()
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "tipo": self.tipo,
+            "status": self.status,
+            "validade": self.validade.isoformat() if self.validade else None,
+            "vencido": self.vencido,
+            "tem_imagem": self.dados is not None,
+            "motivo_recusa": self.motivo_recusa,
+            "enviado_em": self.enviado_em.isoformat(timespec="minutes") if self.enviado_em else None,
+            "analisado_em": self.analisado_em.isoformat(timespec="minutes") if self.analisado_em else None,
+        }
+
+    def __repr__(self) -> str:
+        return f"<Documento id={self.id} usuario_id={self.usuario_id} tipo='{self.tipo}' status='{self.status}'>"

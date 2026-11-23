@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import inspect
 
-from caronauvv.auth.models import Usuario
+from caronauvv.auth.models import Documento, Usuario
 from caronauvv.avaliacoes.models import Avaliacao
 from caronauvv.caronas.models import Carona, Solicitacao
 from caronauvv.errors import ApiError
@@ -72,6 +72,7 @@ def resumo() -> dict:
             "suspensos": _contar(Usuario, Usuario.is_active.is_(False)),
             "verificacoes_pendentes": _contar(
                 Usuario, Usuario.verificacao_solicitada_em.is_not(None), Usuario.verificado.is_(False)),
+            "documentos_pendentes": _contar(Documento, Documento.status == "pendente"),
         },
         "caronas": {"total": sum(por_status.values()), "por_status": por_status},
         "viagens": {
@@ -216,6 +217,14 @@ def resolver_alerta(alerta_id: int) -> Alerta:
 # CONFIGURACOES ("Regras e precos")
 # ==========================================================
 def listar_configuracoes() -> list[Configuracao]:
+    # Regra nova (ex.: preco do kWh) ainda nao gravada num banco antigo: entra com o valor padrao
+    existentes = set(db.session.scalars(db.select(Configuracao.chave)))
+    faltando = [c for c in Configuracao.PADROES if c not in existentes]
+    for chave in faltando:
+        valor, descricao = Configuracao.PADROES[chave]
+        db.session.add(Configuracao(chave=chave, valor=valor, descricao=descricao))
+    if faltando:
+        db.session.commit()
     return list(db.session.scalars(db.select(Configuracao).order_by(Configuracao.chave)))
 
 

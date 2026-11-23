@@ -1,4 +1,4 @@
-import type { DataIso, NivelConversa, Preferencias, StatusCarona, StatusSolicitacao } from '../types/api'
+import type { DataIso, Energia, NivelConversa, Preferencias, StatusCarona, StatusSolicitacao } from '../types/api'
 
 // ==========================================================
 // Formatacao de datas, valores e status para exibicao
@@ -12,7 +12,12 @@ const doisDigitos = (n: number): string => String(n).padStart(2, '0')
 
 export function paraData(iso: Talvez<DataIso>): Date | null {
   // A API envia "AAAA-MM-DDTHH:MM" no horario local
-  return iso ? new Date(iso) : null
+  if (!iso) return null
+  // So a data ("2029-05-10", ex.: validade da CNH): o JavaScript leria como meia-noite em UTC,
+  // que no horario de Brasilia ainda e o dia anterior. Monta a data no fuso local.
+  const soData = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (soData) return new Date(Number(soData[1]), Number(soData[2]) - 1, Number(soData[3]))
+  return new Date(iso)
 }
 
 export function dataCurta(iso: Talvez<DataIso>): string {
@@ -35,6 +40,11 @@ export function hora(iso: Talvez<DataIso>): string {
 export function dinheiro(valor: Talvez<number | string>): string {
   const numero = Number(valor || 0)
   return numero === 0 ? 'Grátis' : numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/** Sempre em reais, inclusive zero ("R$ 0,00"): para contas e detalhamentos */
+export function reais(valor: Talvez<number | string>): string {
+  return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 export function jaSaiu(iso: Talvez<DataIso>): boolean {
@@ -180,4 +190,40 @@ export function membroDesde(isoData: Talvez<string>): string {
 
 export function porcentagem(fracao: Talvez<number>): string {
   return `${Math.round(Number(fracao || 0) * 100)}%`
+}
+
+// ==========================================================
+// Energia do carro e distancia (calculo do combustivel)
+// ==========================================================
+export interface InfoEnergia {
+  texto: string
+  icone: string
+  unidade: 'L' | 'kWh'
+  consumoMedio: number // usado quando o carro nao tem consumo cadastrado (igual ao servidor)
+}
+
+export const ENERGIAS: Record<Energia, InfoEnergia> = {
+  flex: { texto: 'Flex (gasolina)', icone: 'bi-fuel-pump', unidade: 'L', consumoMedio: 12 },
+  gasolina: { texto: 'Gasolina', icone: 'bi-fuel-pump', unidade: 'L', consumoMedio: 12 },
+  etanol: { texto: 'Etanol', icone: 'bi-fuel-pump', unidade: 'L', consumoMedio: 8.5 },
+  diesel: { texto: 'Diesel', icone: 'bi-fuel-pump-diesel', unidade: 'L', consumoMedio: 13 },
+  hibrido: { texto: 'Híbrido (gasolina)', icone: 'bi-lightning-charge', unidade: 'L', consumoMedio: 18 },
+  eletrico: { texto: 'Elétrico', icone: 'bi-ev-station', unidade: 'kWh', consumoMedio: 6.5 }
+}
+
+/** "km/l" ou "km/kWh" */
+export function unidadeConsumo(energia: Energia): string {
+  return `km/${ENERGIAS[energia].unidade === 'kWh' ? 'kWh' : 'l'}`
+}
+
+/** Numero no formato brasileiro com ate N casas: 6.2 -> "6,2" */
+export function numeroBr(valor: Talvez<number>, casas = 2): string {
+  return Number(valor || 0).toLocaleString('pt-BR', { maximumFractionDigits: casas })
+}
+
+/** 6200 -> "6,2 km (6.200 m)"; abaixo de 1 km so em metros */
+export function distanciaTexto(metros: Talvez<number>): string {
+  const m = Math.round(Number(metros || 0))
+  if (m < 1000) return `${m.toLocaleString('pt-BR')} m`
+  return `${numeroBr(m / 1000, 3)} km (${m.toLocaleString('pt-BR')} m)`
 }

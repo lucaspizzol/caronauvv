@@ -4,6 +4,7 @@ from caronauvv.auth.decorators import login_required
 from caronauvv.errors import ApiError
 from caronauvv.validacao import validar
 
+from .combustivel import calcular_rateio
 from .schemas import CaronaEdicaoSchema, CaronaNovaSchema, PedidoVagaSchema, PinSchema, PosicaoSchema
 from .services import (
     aceitar_solicitacao,
@@ -60,7 +61,17 @@ def sugerir_valor():
     vagas = request.args.get("vagas", default=3, type=int)
     if distancia is None or distancia < 0 or not 1 <= vagas <= 6:
         raise ApiError("Informe distancia_km (>= 0) e vagas (1 a 6).")
-    return {"valor_sugerido": float(valor_sugerido(distancia, vagas)), "teto": float(teto_rateio())}
+    teto = teto_rateio()
+    energia = request.args.get("energia")
+    if energia:
+        # Conta completa: litros (ou kWh), preco, custo da viagem, parte de cada um e adicional
+        rateio = calcular_rateio(distancia, vagas, energia, request.args.get("consumo_km"),
+                                 request.args.get("adicional", 0))
+        return {
+            "valor_sugerido": float(rateio.valor_por_passageiro), "teto": float(teto),
+            "acima_do_teto": rateio.valor_por_passageiro > teto, "calculo": rateio.to_dict(),
+        }
+    return {"valor_sugerido": float(valor_sugerido(distancia, vagas)), "teto": float(teto)}
 
 
 @bp.get("/<int:carona_id>")

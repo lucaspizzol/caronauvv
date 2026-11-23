@@ -11,6 +11,8 @@ from pydantic import Field, field_validator
 
 from caronauvv.validacao import Schema, TextoOpcional
 
+from caronauvv.auth.models import ENERGIAS
+
 from .models import SENTIDOS
 
 VAGAS_MIN, VAGAS_MAX = 1, 6
@@ -41,6 +43,11 @@ class CaronaEdicaoSchema(Schema):
     origem_lng: float | None = Field(default=None, ge=-180, le=180)
     distancia_km: float | None = Field(default=None, ge=0, le=500)
     duracao_min: int | None = Field(default=None, ge=0, le=600)
+    # Calculo do rateio: mandar o adicional liga o calculo pelo combustivel
+    # (o servidor calcula o valor; o valor_por_passageiro enviado e ignorado)
+    energia: Literal[ENERGIAS] | None = None  # type: ignore[valid-type]
+    consumo_km: float | None = Field(default=None, gt=0, le=60)
+    adicional_por_passageiro: Decimal | None = Field(default=None, ge=0, le=999)
 
     @field_validator("bairro_origem", "endereco_origem", "destino", "data_hora_saida", "vagas", mode="before")
     @classmethod

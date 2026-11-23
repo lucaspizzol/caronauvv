@@ -154,6 +154,8 @@ const route = useRoute()
 const ICONE_SELO: Record<Selo['codigo'], string> = {
   email_uvv: 'bi-envelope-check-fill',
   perfil_verificado: 'bi-patch-check-fill',
+  identidade_verificada: 'bi-person-vcard-fill',
+  cnh_verificada: 'bi-car-front-fill',
   pontual: 'bi-alarm-fill',
   bem_avaliado: 'bi-star-fill',
   sem_faltas: 'bi-calendar-check-fill'

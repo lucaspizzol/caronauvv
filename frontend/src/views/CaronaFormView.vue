@@ -56,67 +56,15 @@
           <input id="data" v-model="form.data" type="date" :min="hojeLocal()" :class="['form-control', { 'is-invalid': erros.data }]" />
           <div class="invalid-feedback">{{ erros.data }}</div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4">
           <label class="form-label" for="hora">Horário de saída</label>
           <input id="hora" v-model="form.hora" type="time" :class="['form-control', { 'is-invalid': erros.hora }]" />
           <div class="invalid-feedback">{{ erros.hora }}</div>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-4">
           <label class="form-label" for="vagas">Vagas</label>
           <input id="vagas" v-model.number="form.vagas" type="number" min="1" max="6" :class="['form-control', { 'is-invalid': erros.vagas }]" />
           <div class="invalid-feedback">{{ erros.vagas }}</div>
-        </div>
-        <div class="col-6 col-md-3">
-          <label class="form-label" for="valor">Rateio (R$)</label>
-          <div class="input-group has-validation">
-            <span class="input-group-text">R$</span>
-            <input id="valor" v-model.number="form.valor_por_passageiro" type="number" min="0" :max="teto" step="0.50" :class="['form-control', { 'is-invalid': erros.valor_por_passageiro }]" />
-            <div class="invalid-feedback">{{ erros.valor_por_passageiro }}</div>
-          </div>
-        </div>
-
-        <!-- Carona solidaria: valor sugerido = combustivel dividido entre todos -->
-        <div class="col-12">
-          <div class="rateio p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="rateio-icone"><i class="bi bi-calculator"></i></span>
-              <div>
-                <div class="fw-bold">Quanto cobrar de cada passageiro?</div>
-                <div class="small text-secondary">
-                  Carona solidária: o rateio só divide o combustível entre você e os passageiros (máximo de {{ dinheiro(teto) }}).
-                </div>
-              </div>
-            </div>
-            <div class="d-flex flex-wrap align-items-end gap-2">
-              <div>
-                <label class="form-label mb-1 small" for="distancia">Distância até a UVV (km)</label>
-                <input
-                  id="distancia" v-model.number="form.distancia_km" type="number" min="0" max="500" step="0.1" class="form-control"
-                  style="max-width: 9rem" :class="{ 'is-invalid': erros.distancia_km }" @input="distanciaManual"
-                />
-              </div>
-              <button type="button" class="btn btn-warning fw-semibold" :disabled="!form.distancia_km || calculando" @click="sugerirValor">
-                <span v-if="calculando" class="spinner-border spinner-border-sm me-1"></span>
-                <i v-else class="bi bi-magic me-1"></i>Calcular rateio sugerido
-              </button>
-            </div>
-            <div class="small mt-2" aria-live="polite">
-              <span v-if="sugestao !== null" class="text-success">
-                <i class="bi bi-check-circle-fill me-1"></i>Sugestão aplicada: <strong>{{ dinheiro(sugestao) }}</strong> por pessoa
-                (combustível de {{ Number(form.distancia_km).toLocaleString('pt-BR') }} km dividido entre você e {{ form.vagas }} passageiro(s)). Você ainda pode mudar o valor.
-              </span>
-              <span v-else-if="distanciaEstimadaPeloBairro" class="text-secondary">
-                <i class="bi bi-info-circle me-1"></i>Distância estimada pelo bairro {{ form.bairro_origem }}; ajuste se o seu trajeto for diferente.
-              </span>
-              <span v-else class="text-secondary">Informe a distância e clique em <strong>Calcular rateio sugerido</strong>.</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label" for="obs">Observações <span class="text-secondary fw-normal">(opcional)</span></label>
-          <textarea id="obs" v-model.trim="form.observacoes" rows="2" maxlength="300" :class="['form-control', { 'is-invalid': erros.observacoes }]" placeholder="Ex.: saio pontualmente; cabe mochila no porta-malas"></textarea>
-          <div class="invalid-feedback">{{ erros.observacoes }}</div>
         </div>
 
         <div class="col-md-7">
@@ -126,7 +74,7 @@
             <option v-for="v in veiculos" :key="v.id" :value="v.id">{{ v.modelo }} {{ v.cor }} · {{ v.placa }}</option>
           </select>
           <div class="form-text">
-            <RouterLink to="/perfil#veiculos">Cadastrar um carro</RouterLink> para o passageiro reconhecer você.
+            <RouterLink to="/perfil#veiculos">Cadastre o carro</RouterLink> com o tipo de combustível e o consumo: o cálculo usa esses dados.
           </div>
         </div>
         <div class="col-md-5 d-flex align-items-center">
@@ -137,6 +85,126 @@
               <span class="d-block small text-secondary">O passageiro já sai com a vaga confirmada.</span>
             </label>
           </div>
+        </div>
+
+        <!-- ============ RATEIO: calculo do combustivel + adicional ============ -->
+        <div class="col-12">
+          <div class="rateio p-3">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="rateio-icone"><i class="bi bi-calculator"></i></span>
+              <div>
+                <div class="fw-bold">Quanto cobrar de cada passageiro?</div>
+                <div class="small text-secondary">
+                  O combustível da viagem é dividido entre todos no carro; o adicional é a sua parte pela carona
+                  (total de até {{ reais(teto) }} por pessoa).
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-2">
+              <div class="col-6 col-md-3">
+                <label class="form-label mb-1 small" for="distancia">Distância (km)</label>
+                <input
+                  id="distancia" v-model.number="form.distancia_km" type="number" min="0" max="500" step="0.001" class="form-control"
+                  :class="{ 'is-invalid': erros.distancia_km }" @input="distanciaManual"
+                />
+                <div class="form-text mt-1">{{ form.distancia_km ? `= ${Math.round(Number(form.distancia_km) * 1000).toLocaleString('pt-BR')} m` : 'Até a UVV' }}</div>
+                <div class="invalid-feedback">{{ erros.distancia_km }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label mb-1 small" for="energia">Combustível</label>
+                <select id="energia" v-model="calc.energia" class="form-select">
+                  <option v-for="(info, chave) in ENERGIAS" :key="chave" :value="chave">{{ info.texto }}</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label mb-1 small" for="consumo">Consumo ({{ unidadeConsumo(calc.energia) }})</label>
+                <input
+                  id="consumo" v-model.number="calc.consumo_km" type="number" min="0.1" max="60" step="0.1" class="form-control"
+                  :placeholder="`média ${numeroBr(ENERGIAS[calc.energia].consumoMedio, 1)}`" :class="{ 'is-invalid': erros.consumo_km }"
+                />
+                <div class="invalid-feedback">{{ erros.consumo_km }}</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label mb-1 small" for="adicional">Adicional por pessoa</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">R$</span>
+                  <input
+                    id="adicional" v-model.number="calc.adicional" type="number" min="0" step="0.05" class="form-control"
+                    :class="{ 'is-invalid': erros.adicional_por_passageiro || erros.adicional }"
+                  />
+                  <div class="invalid-feedback">{{ erros.adicional_por_passageiro || erros.adicional }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button type="button" class="btn btn-warning fw-semibold" :disabled="!form.distancia_km || calculando" @click="ligarCalculo">
+                <span v-if="calculando" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="bi bi-fuel-pump me-1"></i>{{ modoCalculo ? 'Recalcular' : 'Calcular pelo combustível' }}
+              </button>
+              <span v-if="distanciaEstimadaPeloBairro && !calculo" class="small text-secondary">
+                <i class="bi bi-info-circle me-1"></i>Distância estimada pelo bairro {{ form.bairro_origem }}; ajuste se o trajeto for diferente.
+              </span>
+              <span v-else-if="!form.distancia_km" class="small text-secondary">Informe a distância até a UVV.</span>
+            </div>
+
+            <!-- A conta, passo a passo -->
+            <div v-if="modoCalculo && calculo" class="conta mt-3" aria-live="polite">
+              <div class="linha"><span><i class="bi bi-signpost-2 me-1"></i>Distância</span><span>{{ distanciaTexto(calculo.distancia_m) }}</span></div>
+              <div class="linha">
+                <span><i :class="['bi me-1', ENERGIAS[calculo.energia].icone]"></i>{{ calculo.energia === 'eletrico' ? 'Energia gasta' : 'Combustível gasto' }}</span>
+                <span>
+                  {{ numeroBr(calculo.distancia_km, 3) }} km ÷ {{ numeroBr(calculo.consumo_km, 1) }} {{ unidadeConsumo(calculo.energia) }}
+                  = <strong>{{ numeroBr(calculo.quantidade, 3) }} {{ calculo.unidade }}</strong>
+                </span>
+              </div>
+              <div class="linha">
+                <span><i class="bi bi-receipt me-1"></i>Custo da viagem</span>
+                <span>{{ numeroBr(calculo.quantidade, 3) }} {{ calculo.unidade }} × {{ reais(calculo.preco_unidade) }} = <strong>{{ reais(calculo.custo_total) }}</strong></span>
+              </div>
+              <div class="linha">
+                <span><i class="bi bi-people me-1"></i>Dividido por {{ calculo.ocupantes }} ({{ calculo.ocupantes === 2 ? 'você + 1 vaga' : `você + ${calculo.ocupantes - 1} vagas` }})</span>
+                <span><strong>{{ reais(calculo.combustivel_por_pessoa) }}</strong> por pessoa</span>
+              </div>
+              <div class="linha"><span><i class="bi bi-plus-circle me-1"></i>Adicional pela carona</span><span>{{ reais(calculo.adicional) }}</span></div>
+              <div class="linha total">
+                <span>Valor por passageiro</span><span>{{ reais(calculo.valor_por_passageiro) }}</span>
+              </div>
+              <div v-if="calculo.consumo_estimado" class="small text-warning-emphasis mt-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>Consumo médio de um carro {{ ENERGIAS[calculo.energia].texto.toLowerCase() }}:
+                informe o do seu carro para a conta ficar exata.
+              </div>
+              <div v-if="acimaDoTeto" class="small text-danger mt-2">
+                <i class="bi bi-exclamation-octagon me-1"></i>Passa do máximo de {{ reais(teto) }} por pessoa: diminua o adicional.
+              </div>
+            </div>
+
+            <!-- Valor final: vem do calculo ou o motorista digita -->
+            <div class="row g-2 align-items-end mt-2">
+              <div class="col-sm-5">
+                <label class="form-label mb-1 small" for="valor">Valor por passageiro</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">R$</span>
+                  <input
+                    id="valor" v-model.number="form.valor_por_passageiro" type="number" min="0" :max="teto" step="0.05"
+                    :class="['form-control fw-semibold', { 'is-invalid': erros.valor_por_passageiro }]" @input="valorManual"
+                  />
+                  <div class="invalid-feedback">{{ erros.valor_por_passageiro }}</div>
+                </div>
+              </div>
+              <div class="col-sm-7 small" :class="modoCalculo ? 'text-success' : 'text-secondary'">
+                <template v-if="modoCalculo"><i class="bi bi-check-circle-fill me-1"></i>Calculado pelo combustível. O passageiro vê a conta.</template>
+                <template v-else>Valor digitado por você (sem o detalhamento do combustível).</template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label" for="obs">Observações <span class="text-secondary fw-normal">(opcional)</span></label>
+          <textarea id="obs" v-model.trim="form.observacoes" rows="2" maxlength="300" :class="['form-control', { 'is-invalid': erros.observacoes }]" placeholder="Ex.: saio pontualmente; cabe mochila no porta-malas"></textarea>
+          <div class="invalid-feedback">{{ erros.observacoes }}</div>
         </div>
       </div>
 
@@ -152,15 +220,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AlertaMensagem from '../components/AlertaMensagem.vue'
-import api, { mensagemDeErro } from '../services/api'
+import api, { camposDoErro, mensagemDeErro } from '../services/api'
 import { auth } from '../stores/auth'
-import type { Carona, ErrosCampos, Sentido, Veiculo } from '../types/api'
+import type { CalculoRateio, Carona, Energia, ErrosCampos, RespostaValorSugerido, Sentido, Veiculo } from '../types/api'
 import { BAIRROS, distanciaEstimada } from '../utils/bairros'
-import { dinheiro, hojeLocal } from '../utils/formato'
+import { distanciaTexto, ENERGIAS, hojeLocal, numeroBr, reais, unidadeConsumo } from '../utils/formato'
 import { errosDoServidor, regras, validar } from '../utils/validacao'
 
 const props = withDefaults(defineProps<{ id?: string | null }>(), { id: null })
@@ -198,8 +266,17 @@ const form = reactive<FormCarona>({
   observacoes: '',
   distancia_km: null
 })
+
+// Dados do calculo do combustivel (o carro escolhido preenche energia e consumo)
+const calc = reactive<{ energia: Energia; consumo_km: number | ''; adicional: number | '' }>({
+  energia: 'flex',
+  consumo_km: '',
+  adicional: 0
+})
+const modoCalculo = ref(false) // true: o valor vem da conta (e o servidor refaz a conta ao salvar)
+const calculo = ref<CalculoRateio | null>(null)
+const acimaDoTeto = ref(false)
 const teto = ref(5)
-const sugestao = ref<number | null>(null)
 const veiculos = ref<Veiculo[]>([])
 const erros = ref<ErrosCampos>({})
 const erroApi = ref('')
@@ -220,30 +297,69 @@ watch(
   }
 )
 
-// Mudou a distancia ou as vagas: a sugestao antiga deixa de valer
+// Escolheu o carro: o calculo passa a usar a energia e o consumo dele
 watch(
-  () => [form.distancia_km, form.vagas],
-  () => (sugestao.value = null)
+  () => form.veiculo_id,
+  (id) => {
+    const carro = veiculos.value.find((v) => v.id === id)
+    if (!carro) return
+    calc.energia = carro.energia
+    calc.consumo_km = carro.consumo_km ?? ''
+  }
+)
+
+// Mudou algum dado da conta: refaz o calculo sozinho (com uma pequena espera enquanto digita)
+let espera: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => [form.distancia_km, form.vagas, calc.energia, calc.consumo_km, calc.adicional],
+  () => {
+    if (!modoCalculo.value) return
+    clearTimeout(espera)
+    espera = setTimeout(() => void calcular(), 350)
+  }
 )
 
 function distanciaManual(): void {
   distanciaEstimadaPeloBairro.value = false
 }
 
-async function sugerirValor(): Promise<void> {
+function valorManual(): void {
+  // digitou o valor: deixa de ser o valor calculado
+  modoCalculo.value = false
+}
+
+async function calcular(): Promise<void> {
+  if (!form.distancia_km || !(Number(form.vagas) >= 1)) {
+    calculo.value = null
+    return
+  }
   calculando.value = true
   try {
-    const { data } = await api.get<{ valor_sugerido: number; teto: number }>('/caronas/valor-sugerido', {
-      params: { distancia_km: form.distancia_km, vagas: form.vagas || 1 }
+    const { data } = await api.get<RespostaValorSugerido>('/caronas/valor-sugerido', {
+      params: {
+        distancia_km: form.distancia_km,
+        vagas: form.vagas,
+        energia: calc.energia,
+        consumo_km: calc.consumo_km || undefined,
+        adicional: calc.adicional || 0
+      }
     })
-    sugestao.value = data.valor_sugerido
     teto.value = data.teto
-    form.valor_por_passageiro = data.valor_sugerido
+    calculo.value = data.calculo ?? null
+    acimaDoTeto.value = Boolean(data.acima_do_teto)
+    erros.value = {}
+    if (modoCalculo.value) form.valor_por_passageiro = data.valor_sugerido
   } catch (e) {
-    erroApi.value = mensagemDeErro(e)
+    erros.value = { ...erros.value, ...camposDoErro(e) }
+    calculo.value = null
   } finally {
     calculando.value = false
   }
+}
+
+async function ligarCalculo(): Promise<void> {
+  modoCalculo.value = true
+  await calcular()
 }
 
 onMounted(async () => {
@@ -277,7 +393,19 @@ onMounted(async () => {
         distancia_km: c.distancia_km
       } satisfies FormCarona)
       if (!DESTINOS.includes(c.destino)) DESTINOS.push(c.destino)
+      if (c.rateio) {
+        // carona calculada: mostra a mesma conta (energia e consumo usados naquele dia)
+        await nextTick() // deixa o watch do carro rodar antes de aplicar a conta salva
+        Object.assign(calc, { energia: c.rateio.energia, consumo_km: c.rateio.consumo_km ?? '', adicional: c.rateio.adicional })
+        modoCalculo.value = true
+      }
+    } else {
+      // os watches do bairro (distancia) e do carro (combustivel e consumo) rodam no proximo ciclo
+      await nextTick()
+      // carona nova com distancia conhecida: o valor ja aparece calculado
+      if (form.distancia_km) modoCalculo.value = true
     }
+    if (modoCalculo.value) await calcular()
   } catch (e) {
     erroApi.value = mensagemDeErro(e)
   } finally {
@@ -294,9 +422,10 @@ function validarForm(): ErrosCampos {
     vagas: [(v) => (Number.isInteger(v) && Number(v) >= 1 && Number(v) <= 6 ? null : 'De 1 a 6 vagas.')],
     valor_por_passageiro: [
       (v) => (v === '' || v === null || Number(v) >= 0 ? null : 'O valor não pode ser negativo.'),
-      (v) => (Number(v || 0) <= teto.value ? null : `Carona solidária: máximo de ${dinheiro(teto.value)} por pessoa.`)
+      (v) => (Number(v || 0) <= teto.value ? null : `Carona solidária: máximo de ${reais(teto.value)} por pessoa.`)
     ]
   })
+  if (modoCalculo.value && !form.distancia_km) e.distancia_km = 'Informe a distância para calcular.'
   // Regra de negocio (tambem validada na API): saida precisa ser no futuro
   if (!e.data && !e.hora && new Date(`${form.data}T${form.hora}`) <= new Date()) {
     e.hora = 'A saída precisa ser no futuro.'
@@ -310,11 +439,19 @@ async function salvar(): Promise<void> {
   if (Object.keys(erros.value).length) return
 
   const { data, hora, ...resto } = form
-  const dados = {
+  const dados: Record<string, unknown> = {
     ...resto,
     valor_por_passageiro: Number(form.valor_por_passageiro || 0),
     distancia_km: form.distancia_km || null,
     data_hora_saida: `${data}T${hora}`
+  }
+  if (modoCalculo.value) {
+    // o servidor refaz a conta com estes dados (nao confia no valor que o navegador mandou)
+    Object.assign(dados, {
+      energia: calc.energia,
+      consumo_km: calc.consumo_km === '' ? null : Number(calc.consumo_km),
+      adicional_por_passageiro: Number(calc.adicional || 0)
+    })
   }
 
   salvando.value = true
@@ -327,7 +464,7 @@ async function salvar(): Promise<void> {
     void router.push({ name: 'minhas-caronas', query: { ok: editando.value ? 'editada' : 'criada' } })
   } catch (e) {
     erroApi.value = mensagemDeErro(e)
-    erros.value = { ...erros.value, ...errosDoServidor(e, Object.keys(form)) }
+    erros.value = { ...erros.value, ...errosDoServidor(e, [...Object.keys(form), 'consumo_km', 'adicional_por_passageiro']) }
   } finally {
     salvando.value = false
   }
@@ -354,5 +491,38 @@ async function salvar(): Promise<void> {
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
+}
+
+/* A conta, uma linha por passo */
+.conta {
+  background: #fff;
+  border: 1px solid #ffe08a;
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.conta .linha {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed #eee3bd;
+}
+
+.conta .linha > span:first-child {
+  color: var(--bs-secondary-color);
+}
+
+.conta .total {
+  border-bottom: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--uvv-azul);
+}
+
+.conta .total > span:first-child {
+  color: inherit;
 }
 </style>
